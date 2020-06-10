@@ -2,7 +2,9 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 pub mod functions;
-// mod tests;
+
+#[cfg(test)]
+mod tests;
 
 use sp_std::{
   prelude::*,
