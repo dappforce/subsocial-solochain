@@ -199,7 +199,7 @@ decl_module! {
       }
 
       if let Some(permissions) = update.permissions {
-        let permissions_diff: Vec<_> = role.permissions.difference(&permissions).cloned().collect();
+        let permissions_diff: Vec<_> = permissions.difference(&role.permissions).cloned().collect();
 
         if !permissions_diff.is_empty() {
           role.permissions = permissions;
@@ -226,7 +226,7 @@ decl_module! {
 
       let users = Self::users_by_role_id(role_id);
       ensure!(
-        users.len() > T::MaxUsersToProcessPerDeleteRole::get() as usize,
+        users.len() < T::MaxUsersToProcessPerDeleteRole::get() as usize,
         Error::<T>::TooManyUsersForDeleteRole
       );
 
@@ -250,8 +250,8 @@ decl_module! {
     pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
 
+      ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
       let users_set: BTreeSet<User<T::AccountId>> = Utils::<T>::convert_users_vec_to_btree_set(users)?;
-      ensure!(!users_set.is_empty(), Error::<T>::NoUsersProvided);
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
@@ -273,6 +273,8 @@ decl_module! {
     /// Only the space owner, an user with `ManageRoles` permission or an user that has this role can execute this extrinsic.
     pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
+
+      ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 

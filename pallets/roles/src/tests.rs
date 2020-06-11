@@ -1,5 +1,4 @@
 use crate::*;
-// use std::cell::RefCell;
 use frame_support::{
     assert_ok, assert_noop,
     impl_outer_origin, parameter_types,
@@ -14,7 +13,6 @@ use sp_runtime::{
     Perbill,
     DispatchError
 };
-use sp_std::collections::btree_map::BTreeMap;
 
 use pallet_permissions::{
     SpacePermission as SP,
@@ -142,9 +140,6 @@ type Roles = Module<Test>;
 pub type AccountId = u64;
 pub type BlockNumber = u64;
 
-pub type SpaceForRolesByIdMap = BTreeMap<u64, SpaceForRoles<AccountId>>;
-// pub type SpaceForRolesByIdVec = Vec<(u64, SpaceForRoles<AccountId>)>;
-
 const ACCOUNT1: AccountId = 1;
 const ACCOUNT2: AccountId = 2;
 const _ACCOUNT3: AccountId = 3;
@@ -153,31 +148,29 @@ const ROLE1: RoleId = 1;
 const ROLE2: RoleId = 2;
 
 const SPACE1: SpaceId = 1;
+const SPACE2: SpaceId = 2;
 
 impl<T: Trait> SpaceForRolesProvider for Module<T> {
     type AccountId = u64;
     type SpaceId = u64;
 
-    fn get_space(_id: Self::SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
-        unimplemented!()
+    // This function should return an error every time Space doesn't exist by SpaceId
+    // Currently, we have a list of valid space id's to check
+    fn get_space(id: Self::SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
+        if self::valid_space_ids().contains(&id) {
+            return Ok(SpaceForRoles { owner: ACCOUNT1, permissions: None })
+        }
+
+        Err("SpaceNotFound".into())
     }
 
+    // No need to use function within this pallet, returns true by default
     fn is_space_follower(_account: Self::AccountId, _space_id: Self::SpaceId) -> bool {
-        unimplemented!()
+        true
     }
 }
 
-pub struct ExtBuilder {
-    _space_for_roles_by_id: SpaceForRolesByIdMap
-}
-// (1, SpaceForRoles { owner: ACCOUNT1, permissions: None })
-// impl Default for ExtBuilder {
-//     fn default() -> Self {
-//         Self {
-//             space_for_roles_by_id: BTreeMap::new()
-//         }
-//     }
-// }
+pub struct ExtBuilder;
 
 impl ExtBuilder {
     pub fn build() -> TestExternalities {
@@ -188,23 +181,7 @@ impl ExtBuilder {
         ext.execute_with(|| System::set_block_number(1));
         ext
     }
-
-    /*pub fn space_for_roles_by_id(mut self, vec: SpaceForRolesByIdVec) -> Self {
-        self.space_for_roles_by_id = BTreeMap::from_iter(vec.into_iter());
-        self
-    }*/
 }
-
-/*thread_local! {
-    static SPACE_FOR_ROLES_BY_ID: RefCell<SpaceForRolesByIdMap> = RefCell::new(BTreeMap::new());
-}
-
-pub struct SignalQuota;
-impl Get<SpaceForRolesByIdMap> for SignalQuota {
-    fn get() -> SpaceForRolesByIdMap {
-        SPACE_FOR_ROLES_BY_ID.with(|v| *v.clone())
-    }
-}*/
 
 fn default_role_ipfs_hash() -> Option<Vec<u8>> {
     Option::from(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
@@ -226,6 +203,10 @@ fn permission_set_default() -> Vec<SpacePermission> {
 /// Permissions Set that includes next permissions: ManageRoles, CreatePosts
 fn permission_set_updated() -> Vec<SpacePermission> {
     vec![SP::ManageRoles, SP::CreatePosts]
+}
+
+fn valid_space_ids() -> Vec<SpaceId> {
+    vec![SPACE1]
 }
 
 /// Permissions Set that includes nothing
@@ -273,7 +254,7 @@ fn _update_role(
     Roles::update_role(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         role_id.unwrap_or(ROLE1),
-        update.unwrap_or(self::role_update(
+        update.unwrap_or_else(|| self::role_update(
             Some(true),
             Some(self::updated_role_ipfs_hash()),
             Some(
@@ -309,12 +290,12 @@ fn _grant_role(
     Roles::grant_role(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         role_id.unwrap_or(ROLE1),
-        users.unwrap_or(vec![User::Account(ACCOUNT2)])
+        users.unwrap_or_else(|| vec![User::Account(ACCOUNT2)])
     )
 }
 
 fn _revoke_default_role() -> DispatchResult {
-    _grant_role(None, None, None)
+    _revoke_role(None, None, None)
 }
 
 fn _revoke_role(
@@ -325,14 +306,13 @@ fn _revoke_role(
     Roles::revoke_role(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         role_id.unwrap_or(ROLE1),
-        users.unwrap_or(vec![User::Account(ACCOUNT2)])
+        users.unwrap_or_else(|| vec![User::Account(ACCOUNT2)])
     )
 }
 
 #[test]
 fn create_role_should_work() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
 
         // Check whether Role is stored correctly
@@ -354,11 +334,32 @@ fn create_role_should_work() {
 }
 
 #[test]
-fn create_role_should_fail_with_post_not_found() {
+fn create_role_should_fail_with_space_not_found() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which doesn't contain space
-        // TODO: import an error or use SpaceNotFound from this pallet
-        // assert_noop!(_create_default_role(), Error::<Test>::SpaceNotFound);
+        assert_noop!(
+            _create_role(
+                None,
+                Some(SPACE2),
+                None,
+                None,
+                None
+            ), "SpaceNotFound"
+        );
+    });
+}
+
+#[test]
+fn create_role_should_fail_with_no_permission() {
+    ExtBuilder::build().execute_with(|| {
+        assert_noop!(
+            _create_role(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                None,
+                None,
+                None
+            ), Error::<Test>::NoPermissionToManageRoles
+        );
     });
 }
 
@@ -381,7 +382,6 @@ fn create_role_should_fail_with_no_permissions_provided() {
 #[test]
 fn create_role_should_fail_with_ipfs_is_incorrect() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_noop!(_create_role(
             None,
             None,
@@ -395,7 +395,6 @@ fn create_role_should_fail_with_ipfs_is_incorrect() {
 #[test]
 fn update_role_should_work() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(_update_default_role());
 
@@ -419,7 +418,6 @@ fn update_role_should_work() {
 #[test]
 fn update_role_should_work_empty_set() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(
             _update_role(
@@ -455,7 +453,6 @@ fn update_role_should_work_empty_set() {
 #[test]
 fn update_role_should_work_not_updated_all_the_same() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(
             _update_role(
@@ -496,9 +493,22 @@ fn update_role_should_fail_with_role_not_found() {
 }
 
 #[test]
+fn update_role_should_fail_with_no_permission() {
+    ExtBuilder::build().execute_with(|| {
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_noop!(
+            _update_role(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                None
+            ), Error::<Test>::NoPermissionToManageRoles
+        );
+    });
+}
+
+#[test]
 fn update_role_should_fail_with_no_role_updates() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_noop!(_update_role(
             None,
@@ -511,7 +521,6 @@ fn update_role_should_fail_with_no_role_updates() {
 #[test]
 fn update_role_should_fail_with_ipfs_is_incorrect() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_noop!(_update_role(
             None,
@@ -526,7 +535,6 @@ fn grant_role_should_work() {
     ExtBuilder::build().execute_with(|| {
         let user = User::Account(ACCOUNT2);
 
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(_grant_default_role()); // Grant RoleId 1 to ACCOUNT2
 
@@ -537,11 +545,45 @@ fn grant_role_should_work() {
 }
 
 #[test]
+fn grant_role_should_fail_with_role_not_found() {
+    ExtBuilder::build().execute_with(|| {
+        assert_noop!(_grant_default_role(), Error::<Test>::RoleNotFound);
+    });
+}
+
+#[test]
+fn grant_role_should_fail_with_no_permission() {
+    ExtBuilder::build().execute_with(|| {
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_noop!(
+            _grant_role(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                None
+            ), Error::<Test>::NoPermissionToManageRoles
+        );
+    });
+}
+
+#[test]
+fn grant_role_should_fail_with_no_users_provided() {
+    ExtBuilder::build().execute_with(|| {
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_noop!(
+            _grant_role(
+                None,
+                None,
+                Some(vec![])
+            ), Error::<Test>::NoUsersProvided
+        );
+    });
+}
+
+#[test]
 fn revoke_role_should_work() {
     ExtBuilder::build().execute_with(|| {
         let user = User::Account(ACCOUNT2);
 
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(_grant_default_role()); // Grant RoleId 1 to ACCOUNT2
         assert_ok!(_revoke_default_role()); // Revoke RoleId 1 from ACCOUNT2
@@ -553,9 +595,38 @@ fn revoke_role_should_work() {
 }
 
 #[test]
+fn revoke_role_should_fail_with_role_not_found() {
+    ExtBuilder::build().execute_with(|| {
+        assert_noop!(_revoke_default_role(), Error::<Test>::RoleNotFound);
+    });
+}
+
+#[test]
+fn revoke_role_should_fail_with_no_users_provided() {
+    ExtBuilder::build().execute_with(|| {
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_noop!(_revoke_role(None, None, Some(vec![])), Error::<Test>::NoUsersProvided);
+    });
+}
+
+#[test]
+fn revoke_role_should_fail_with_no_permission() {
+    ExtBuilder::build().execute_with(|| {
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_noop!(
+            _revoke_role(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                None
+            ),
+            Error::<Test>::NoPermissionToManageRoles
+        );
+    });
+}
+
+#[test]
 fn delete_role_should_work() {
     ExtBuilder::build().execute_with(|| {
-        // TODO: launch with custom ExtBuild, which contains space
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(_grant_default_role());
         assert_ok!(_delete_default_role());
@@ -566,5 +637,39 @@ fn delete_role_should_work() {
         assert!(Roles::role_ids_by_space_id(SPACE1).is_empty());
         assert!(Roles::in_space_role_ids_by_user((User::Account(ACCOUNT2), SPACE1)).is_empty());
         assert_eq!(Roles::next_role_id(), ROLE2);
+    });
+}
+
+#[test]
+fn delete_role_should_fail_with_role_not_found() {
+    ExtBuilder::build().execute_with(|| {
+        assert_noop!(_delete_default_role(), Error::<Test>::RoleNotFound);
+    });
+}
+
+#[test]
+fn delete_role_should_fail_with_no_permission() {
+    ExtBuilder::build().execute_with(|| {
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_noop!(
+            _delete_role(
+                Some(Origin::signed(ACCOUNT2)),
+                None
+            ), Error::<Test>::NoPermissionToManageRoles
+        );
+    });
+}
+
+#[test]
+fn delete_role_should_fail_with_too_many_users_for_delete_role() {
+    ExtBuilder::build().execute_with(|| {
+        let mut users: Vec<User<AccountId>> = Vec::new();
+        for account in 2..22 {
+            users.push(User::Account(account));
+        }
+
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_ok!(_grant_role(None, None, Some(users))); // Grant RoleId 1 to ACCOUNT2-ACCOUNT20
+        assert_noop!(_delete_default_role(), Error::<Test>::TooManyUsersForDeleteRole);
     });
 }

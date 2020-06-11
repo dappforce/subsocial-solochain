@@ -156,6 +156,13 @@ impl<T: Trait> Role<T> {
       if let Some(role_idx) = role_idx_by_user_opt {
         <InSpaceRoleIdsByUser<T>>::mutate((user, self.space_id), |n| { n.swap_remove(role_idx) });
       }
+
+      let user_idx_by_role_opt = Module::<T>::users_by_role_id(self.id).iter()
+          .position(|x| { x == user });
+
+      if let Some(user_idx) = user_idx_by_role_opt {
+        <UsersByRoleId<T>>::mutate(self.id, |n| { n.swap_remove(user_idx) });
+      }
     }
   }
 }
