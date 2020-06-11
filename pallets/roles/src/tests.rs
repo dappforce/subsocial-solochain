@@ -18,9 +18,9 @@ use pallet_permissions::{
     SpacePermission as SP,
     SpacePermissions,
 };
-use df_traits::{SpaceForRolesProvider, SpaceForRoles};
+use df_traits::{SpaceForRoles};
 
-use pallet_utils::{Error as UtilsError, SpaceId};
+use pallet_utils::{Error as UtilsError};
 
 impl_outer_origin! {
   pub enum Origin for Test {}

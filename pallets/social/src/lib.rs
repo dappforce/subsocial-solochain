@@ -366,9 +366,6 @@ decl_error! {
     /// Username is not alphanumeric
     UsernameIsNotAlphanumeric,
 
-    /// IPFS-hash is not correct
-    IpfsIsIncorrect,
-
     /// User has no permission to update this space
     NoPermissionToUpdateSpace,
     /// User has no permission to create posts in this space

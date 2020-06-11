@@ -2788,6 +2788,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-permissions",
+ "pallet-roles",
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
