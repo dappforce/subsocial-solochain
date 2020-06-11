@@ -3,7 +3,9 @@
 
 pub mod functions;
 pub mod roles;
-// mod tests;
+
+#[cfg(test)]
+mod tests;
 
 use sp_std::prelude::*;
 use codec::{Encode, Decode};
