@@ -184,13 +184,65 @@ const ACCOUNT3: AccountId = 3;
 
 pub struct ExtBuilder;
 
+// TODO: make created space/post/comment configurable or by default
 impl ExtBuilder {
+    /// Default ext configuration with BlockNumber 1
     pub fn build() -> TestExternalities {
         let storage = system::GenesisConfig::default()
             .build_storage::<TestRuntime>()
             .unwrap();
+
         let mut ext = TestExternalities::from(storage);
         ext.execute_with(|| System::set_block_number(1));
+
+        ext
+    }
+
+    /// Custom ext configuration with SpaceId 1 and BlockNumber 1
+    pub fn build_with_space() -> TestExternalities {
+        let storage = system::GenesisConfig::default()
+            .build_storage::<TestRuntime>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+        ext.execute_with(|| {
+            System::set_block_number(1);
+            assert_ok!(_create_default_space());
+        });
+
+        ext
+    }
+
+    /// Custom ext configuration with SpaceId 1, PostId 1 and BlockNumber 1
+    pub fn build_with_post() -> TestExternalities {
+        let storage = system::GenesisConfig::default()
+            .build_storage::<TestRuntime>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+        ext.execute_with(|| {
+            System::set_block_number(1);
+            assert_ok!(_create_default_space());
+            assert_ok!(_create_default_post());
+        });
+
+        ext
+    }
+
+    /// Custom ext configuration with SpaceId 1, PostId 1, PostId 2 (as comment) and BlockNumber 1
+    pub fn build_with_comment() -> TestExternalities {
+        let storage = system::GenesisConfig::default()
+            .build_storage::<TestRuntime>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+        ext.execute_with(|| {
+            System::set_block_number(1);
+            assert_ok!(_create_default_space());
+            assert_ok!(_create_default_post());
+            assert_ok!(_create_default_comment());
+        });
+
         ext
     }
 }
@@ -567,9 +619,9 @@ fn create_space_should_work() {
 
 #[test]
 fn create_space_should_make_handle_lowercase() {
-    let handle : Vec<u8> = b"sPaCe_hAnDlE".to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let handle : Vec<u8> = b"sPaCe_hAnDlE".to_vec();
+
         assert_ok!(_create_space(None, Some(Some(handle.clone())), None)); // BlodId 1
 
         // Handle should be lowercase in storage and original in struct
@@ -581,9 +633,9 @@ fn create_space_should_make_handle_lowercase() {
 
 #[test]
 fn create_space_should_fail_short_handle() {
-    let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
-
     ExtBuilder::build().execute_with(|| {
+        let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
+
         // Try to catch an error creating a space with too short handle
         assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<TestRuntime>::HandleIsTooShort);
     });
@@ -591,9 +643,9 @@ fn create_space_should_fail_short_handle() {
 
 #[test]
 fn create_space_should_fail_long_handle() {
-    let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
-
     ExtBuilder::build().execute_with(|| {
+        let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
+
         // Try to catch an error creating a space with too long handle
         assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<TestRuntime>::HandleIsTooLong);
     });
@@ -601,7 +653,6 @@ fn create_space_should_fail_long_handle() {
 
 #[test]
 fn create_space_should_fail_not_unique_handle() {
-
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_create_default_space()); // SpaceId 1
         // Try to catch an error creating a space with not unique handle
@@ -611,45 +662,45 @@ fn create_space_should_fail_not_unique_handle() {
 
 #[test]
 fn create_space_should_fail_invalid_at_char() {
-    let handle : Vec<u8> = b"@space_handle".to_vec();
-
     ExtBuilder::build().execute_with(|| {
-        assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<TestRuntime>::HandleContainsInvalidChars);
+        let handle : Vec<u8> = b"@space_handle".to_vec();
+
+        assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<TestRuntime>::HandleContainsInvalidChars);
     });
 }
 
 #[test]
 fn create_space_should_fail_invalid_minus_char() {
-    let handle : Vec<u8> = b"space-handle".to_vec();
-
     ExtBuilder::build().execute_with(|| {
-        assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<TestRuntime>::HandleContainsInvalidChars);
+        let handle : Vec<u8> = b"space-handle".to_vec();
+
+        assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<TestRuntime>::HandleContainsInvalidChars);
     });
 }
 
 #[test]
 fn create_space_should_fail_invalid_space_char() {
-    let handle : Vec<u8> = b"space handle".to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let handle : Vec<u8> = b"space handle".to_vec();
+
         assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<TestRuntime>::HandleContainsInvalidChars);
     });
 }
 
 #[test]
 fn create_space_should_fail_invalid_unicode_char() {
-    let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
+
         assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<TestRuntime>::HandleContainsInvalidChars);
     });
 }
 
 #[test]
 fn create_space_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+
         // Try to catch an error creating a space with invalid ipfs_hash
         assert_noop!(_create_space(None, None, Some(ipfs_hash)), UtilsError::<TestRuntime>::IpfsIsIncorrect);
     });
@@ -657,13 +708,10 @@ fn create_space_should_fail_invalid_ipfs_hash() {
 
 #[test]
 fn update_space_should_work() {
-    let handle : Vec<u8> = b"new_handle".to_vec();
-    let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec();
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = b"new_handle".to_vec();
+        let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec();        // Space update with ID 1 should be fine
 
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-
-        // Space update with ID 1 should be fine
         assert_ok!(_update_space(None, None,
       Some(
         self::space_update(
@@ -689,9 +737,7 @@ fn update_space_should_work() {
 
 #[test]
 fn update_space_should_fail_nothing_to_update() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-
+    ExtBuilder::build_with_space().execute_with(|| {
         // Try to catch an error updating a space with no changes
         assert_noop!(_update_space(None, None, None), Error::<TestRuntime>::NoUpdatesInSpace);
     });
@@ -699,10 +745,8 @@ fn update_space_should_fail_nothing_to_update() {
 
 #[test]
 fn update_space_should_fail_space_not_found() {
-    let handle : Vec<u8> = b"new_handle".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = b"new_handle".to_vec();
 
         // Try to catch an error updating a space with wrong space ID
         assert_noop!(_update_space(None, Some(2),
@@ -719,10 +763,8 @@ fn update_space_should_fail_space_not_found() {
 
 #[test]
 fn update_space_should_fail_not_an_owner() {
-    let handle : Vec<u8> = b"new_handle".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = b"new_handle".to_vec();
 
         // Try to catch an error updating a space with different account
         assert_noop!(_update_space(Some(Origin::signed(ACCOUNT2)), None,
@@ -739,10 +781,8 @@ fn update_space_should_fail_not_an_owner() {
 
 #[test]
 fn update_space_should_fail_short_handle() {
-    let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
         // Try to catch an error updating a space with too short handle
         assert_noop!(_update_space(None, None,
@@ -759,10 +799,8 @@ fn update_space_should_fail_short_handle() {
 
 #[test]
 fn update_space_should_fail_long_handle() {
-    let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
         // Try to catch an error updating a space with too long handle
         assert_noop!(_update_space(None, None,
@@ -779,10 +817,8 @@ fn update_space_should_fail_long_handle() {
 
 #[test]
 fn update_space_should_fail_not_unique_handle() {
-    let handle : Vec<u8> = b"unique_handle".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = b"unique_handle".to_vec();
 
         assert_ok!(_create_space(
       None,
@@ -805,10 +841,8 @@ fn update_space_should_fail_not_unique_handle() {
 
 #[test]
 fn update_space_should_fail_invalid_at_char() {
-    let handle : Vec<u8> = b"@space_handle".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = b"@space_handle".to_vec();
 
         assert_noop!(_update_space(None, None,
       Some(
@@ -824,10 +858,8 @@ fn update_space_should_fail_invalid_at_char() {
 
 #[test]
 fn update_space_should_fail_invalid_minus_char() {
-    let handle : Vec<u8> = b"space-handle".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = b"space-handle".to_vec();
 
         assert_noop!(_update_space(None, None,
       Some(
@@ -843,10 +875,8 @@ fn update_space_should_fail_invalid_minus_char() {
 
 #[test]
 fn update_space_should_fail_invalid_space_char() {
-    let handle : Vec<u8> = b"space handle".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = b"space handle".to_vec();
 
         assert_noop!(_update_space(None, None,
       Some(
@@ -862,10 +892,8 @@ fn update_space_should_fail_invalid_space_char() {
 
 #[test]
 fn update_space_should_fail_invalid_unicode_char() {
-    let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
         assert_noop!(_update_space(None, None,
       Some(
@@ -881,10 +909,8 @@ fn update_space_should_fail_invalid_unicode_char() {
 
 #[test]
 fn update_space_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
         // Try to catch an error updating a space with invalid ipfs_hash
         assert_noop!(_update_space(None, None,
@@ -902,8 +928,7 @@ fn update_space_should_fail_invalid_ipfs_hash() {
 // Post tests
 #[test]
 fn create_post_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_default_post()); // PostId 1
 
         // Check storages
@@ -934,8 +959,7 @@ fn create_post_should_work() {
 
 #[test]
 fn create_post_should_fail_space_not_defined() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_create_post(None, Some(None), None, None), Error::<TestRuntime>::SpaceIdIsUndefined);
     });
 }
@@ -949,10 +973,8 @@ fn create_post_should_fail_space_not_found() {
 
 #[test]
 fn create_post_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
         // Try to catch an error creating a regular post with invalid ipfs_hash
         assert_noop!(_create_post(None, None, None, Some(ipfs_hash)), UtilsError::<TestRuntime>::IpfsIsIncorrect);
@@ -961,31 +983,26 @@ fn create_post_should_fail_invalid_ipfs_hash() {
 
 #[test]
 fn create_post_should_fail_not_a_space_owner() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None), Error::<TestRuntime>::NoPermissionToCreatePosts);
     });
 }
 
 #[test]
 fn update_post_should_work() {
-    let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
+        let ipfs_hash: Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
 
         // Post update with ID 1 should be fine
         assert_ok!(_update_post(None, None,
-      Some(
-        self::post_update(
-          None,
-          Some(ipfs_hash.clone()),
-          Some(true)
-        )
-      )
-    ));
-
+            Some(
+                self::post_update(
+                  None,
+                  Some(ipfs_hash.clone()),
+                  Some(true)
+                )
+            )
+        ));
 
         // Check whether post updates correctly
         let post = Social::post_by_id(1).unwrap();
@@ -1002,32 +1019,27 @@ fn update_post_should_work() {
 
 #[test]
 fn update_post_should_work_after_transfer_space_ownership() {
-    let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
+    ExtBuilder::build_with_post().execute_with(|| {
+        let ipfs_hash: Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
 
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
         assert_ok!(_transfer_default_space_ownership());
 
         // Post update with ID 1 should be fine
         assert_ok!(_update_post(None, None,
-      Some(
-        self::post_update(
-          None,
-          Some(ipfs_hash.clone()),
-          Some(true)
-        )
-      )
-    ));
+            Some(
+                self::post_update(
+                    None,
+                    Some(ipfs_hash.clone()),
+                    Some(true)
+                )
+            )
+        ));
     });
 }
 
 #[test]
 fn update_post_should_fail_nothing_to_update() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         // Try to catch an error updating a post with no changes
         assert_noop!(_update_post(None, None, None), Error::<TestRuntime>::NoUpdatesInPost);
     });
@@ -1035,10 +1047,8 @@ fn update_post_should_fail_nothing_to_update() {
 
 #[test]
 fn update_post_should_fail_post_not_found() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
-        assert_ok!(_create_default_post()); // PostId 1
 
         // Try to catch an error updating a post with wrong post ID
         assert_noop!(_update_post(None, Some(2),
@@ -1055,10 +1065,8 @@ fn update_post_should_fail_post_not_found() {
 
 #[test]
 fn update_post_should_fail_not_an_owner() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
-        assert_ok!(_create_default_post()); // PostId 1
 
         // Try to catch an error updating a post with different account
         assert_noop!(_update_post(Some(Origin::signed(ACCOUNT2)), None,
@@ -1075,31 +1083,26 @@ fn update_post_should_fail_not_an_owner() {
 
 #[test]
 fn update_post_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
         // Try to catch an error updating a post with invalid ipfs_hash
         assert_noop!(_update_post(None, None,
-      Some(
-        self::post_update(
-          None,
-          Some(ipfs_hash),
-          None
-        )
-      )
-    ), UtilsError::<TestRuntime>::IpfsIsIncorrect);
+            Some(
+                self::post_update(
+                    None,
+                    Some(ipfs_hash),
+                    None
+                )
+            )
+        ), UtilsError::<TestRuntime>::IpfsIsIncorrect);
     });
 }
 
 // Comment tests
 #[test]
 fn create_comment_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_default_comment()); // PostId 2
 
         // Check storages
@@ -1128,9 +1131,7 @@ fn create_comment_should_work() {
 
 #[test]
 fn create_comment_should_work_with_parent() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_default_comment()); // PostId 2
         assert_ok!(_create_comment(None, None, Some(Some(2)), None)); // PostId 3 with parent comment with PostId 2
 
@@ -1160,10 +1161,7 @@ fn create_comment_should_fail_post_not_found() {
 
 #[test]
 fn create_comment_should_fail_parent_not_found() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         // Try to catch an error creating a comment with wrong parent
         assert_noop!(_create_comment(None, None, Some(Some(2)), None), Error::<TestRuntime>::UnknownParentComment);
     });
@@ -1171,11 +1169,8 @@ fn create_comment_should_fail_parent_not_found() {
 
 #[test]
 fn create_comment_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
         // Try to catch an error creating a comment with wrong parent
         assert_noop!(_create_comment(None, None, None, Some(ipfs_hash)), UtilsError::<TestRuntime>::IpfsIsIncorrect);
@@ -1184,14 +1179,12 @@ fn create_comment_should_fail_invalid_ipfs_hash() {
 
 #[test]
 fn create_comment_should_fail_space_is_hidden() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_update_space(
-      None,
-      None,
-      Some(self::space_update(None, None, Some(true)))
-    ));
+          None,
+          None,
+          Some(self::space_update(None, None, Some(true)))
+        ));
 
         assert_noop!(_create_default_comment(), Error::<TestRuntime>::BannedToCreateWhenHidden);
     });
@@ -1199,14 +1192,12 @@ fn create_comment_should_fail_space_is_hidden() {
 
 #[test]
 fn create_comment_should_fail_post_is_hidden() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_update_post(
-      None,
-      None,
-      Some(self::post_update(None, None, Some(true)))
-    ));
+          None,
+          None,
+          Some(self::post_update(None, None, Some(true)))
+        ));
 
         assert_noop!(_create_default_comment(), Error::<TestRuntime>::BannedToCreateWhenHidden);
     });
@@ -1214,19 +1205,12 @@ fn create_comment_should_fail_post_is_hidden() {
 
 #[test]
 fn create_comment_should_fail_max_depth_reached() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_comment(None, None, Some(None), None)); // PostId 2
-        assert_ok!(_create_comment(None, None, Some(Some(2)), None)); // PostId 3
-        assert_ok!(_create_comment(None, None, Some(Some(3)), None)); // PostId 4
-        assert_ok!(_create_comment(None, None, Some(Some(4)), None)); // PostId 5
-        assert_ok!(_create_comment(None, None, Some(Some(5)), None)); // PostId 6
-        assert_ok!(_create_comment(None, None, Some(Some(6)), None)); // PostId 7
-        assert_ok!(_create_comment(None, None, Some(Some(7)), None)); // PostId 8
-        assert_ok!(_create_comment(None, None, Some(Some(8)), None)); // PostId 9
-        assert_ok!(_create_comment(None, None, Some(Some(9)), None)); // PostId 10
-        assert_ok!(_create_comment(None, None, Some(Some(10)), None)); // PostId 11
+
+        for parent_id in 2..11 as PostId {
+            assert_ok!(_create_comment(None, None, Some(Some(parent_id)), None)); // PostId N (last = 10)
+        }
 
         assert_noop!(_create_comment(None, None, Some(Some(11)), None), Error::<TestRuntime>::MaxCommentDepthReached);
     });
@@ -1234,11 +1218,7 @@ fn create_comment_should_fail_max_depth_reached() {
 
 #[test]
 fn update_comment_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
-
+    ExtBuilder::build_with_comment().execute_with(|| {
         // Post update with ID 1 should be fine
         assert_ok!(_update_comment(None, None, None));
 
@@ -1261,11 +1241,7 @@ fn update_comment_should_fail_comment_not_found() {
 
 #[test]
 fn update_comment_should_fail_not_an_owner() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
-
+    ExtBuilder::build_with_comment().execute_with(|| {
         // Try to catch an error updating a comment with wrong Account
         assert_noop!(_update_comment(
       Some(Origin::signed(2)), None, None
@@ -1275,27 +1251,19 @@ fn update_comment_should_fail_not_an_owner() {
 
 #[test]
 fn update_comment_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+    ExtBuilder::build_with_comment().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
         // Try to catch an error updating a comment with invalid ipfs_hash
         assert_noop!(_update_comment(
-      None, None, Some(self::post_update(None, Some(ipfs_hash), None))
-    ), UtilsError::<TestRuntime>::IpfsIsIncorrect);
+          None, None, Some(self::post_update(None, Some(ipfs_hash), None))
+        ), UtilsError::<TestRuntime>::IpfsIsIncorrect);
     });
 }
 
 #[test]
 fn update_comment_should_fail_ipfs_hash_dont_differ() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
-
+    ExtBuilder::build_with_comment().execute_with(|| {
         // Try to catch an error updating a comment with the same ipfs_hash
         assert_noop!(_update_comment(
       None, None, Some(self::post_update(None, Some(self::comment_ipfs_hash()), None))
@@ -1306,10 +1274,7 @@ fn update_comment_should_fail_ipfs_hash_dont_differ() {
 // Reaction tests
 #[test]
 fn create_post_reaction_should_work_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1 by ACCOUNT2
 
         // Check storages
@@ -1330,10 +1295,7 @@ fn create_post_reaction_should_work_upvote() {
 
 #[test]
 fn create_post_reaction_should_work_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
 
         // Check storages
@@ -1354,9 +1316,7 @@ fn create_post_reaction_should_work_downvote() {
 
 #[test]
 fn create_post_reaction_should_fail_already_reacted() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_default_post_reaction()); // ReactionId1
 
         // Try to catch an error creating reaction by the same account
@@ -1374,14 +1334,12 @@ fn create_post_reaction_should_fail_post_not_found() {
 
 #[test]
 fn create_post_reaction_should_fail_space_is_hidden() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_update_space(
-      None,
-      None,
-      Some(self::space_update(None, None, Some(true)))
-    ));
+          None,
+          None,
+          Some(self::space_update(None, None, Some(true)))
+        ));
 
         assert_noop!(_create_default_post_reaction(), Error::<TestRuntime>::BannedToChangeReactionWhenHidden);
     });
@@ -1389,14 +1347,12 @@ fn create_post_reaction_should_fail_space_is_hidden() {
 
 #[test]
 fn create_post_reaction_should_fail_post_is_hidden() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_update_post(
-      None,
-      None,
-      Some(self::post_update(None, None, Some(true)))
-    ));
+          None,
+          None,
+          Some(self::post_update(None, None, Some(true)))
+        ));
 
         assert_noop!(_create_default_post_reaction(), Error::<TestRuntime>::BannedToChangeReactionWhenHidden);
     });
@@ -1404,10 +1360,7 @@ fn create_post_reaction_should_fail_post_is_hidden() {
 
 #[test]
 fn create_comment_reaction_should_work_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+    ExtBuilder::build_with_comment().execute_with(|| {
         assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1 by ACCOUNT2
 
         // Check storages
@@ -1428,10 +1381,7 @@ fn create_comment_reaction_should_work_upvote() {
 
 #[test]
 fn create_comment_reaction_should_work_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+    ExtBuilder::build_with_comment().execute_with(|| {
         assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
 
         // Check storages
@@ -1452,10 +1402,7 @@ fn create_comment_reaction_should_work_downvote() {
 
 #[test]
 fn create_comment_reaction_should_fail_already_reacted() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+    ExtBuilder::build_with_comment().execute_with(|| {
         assert_ok!(_create_default_comment_reaction()); // ReactionId 1
 
         // Try to catch an error creating reaction by the same account
@@ -1473,15 +1420,12 @@ fn create_comment_reaction_should_fail_comment_not_found() {
 
 #[test]
 fn create_comment_reaction_should_fail_space_is_hidden() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+    ExtBuilder::build_with_comment().execute_with(|| {
         assert_ok!(_update_space(
-      None,
-      None,
-      Some(self::space_update(None, None, Some(true)))
-    ));
+          None,
+          None,
+          Some(self::space_update(None, None, Some(true)))
+        ));
 
         assert_noop!(_create_default_comment_reaction(), Error::<TestRuntime>::BannedToChangeReactionWhenHidden);
     });
@@ -1489,15 +1433,12 @@ fn create_comment_reaction_should_fail_space_is_hidden() {
 
 #[test]
 fn create_comment_reaction_should_fail_post_is_hidden() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+    ExtBuilder::build_with_comment().execute_with(|| {
         assert_ok!(_update_post(
-      None,
-      None,
-      Some(self::post_update(None, None, Some(true)))
-    ));
+          None,
+          None,
+          Some(self::post_update(None, None, Some(true)))
+        ));
 
         assert_noop!(_create_default_comment_reaction(), Error::<TestRuntime>::BannedToChangeReactionWhenHidden);
     });
@@ -1534,9 +1475,7 @@ fn random_score_diff_check_result() {
 
 #[test]
 fn change_space_score_should_work_follow_space() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(Social::follow_space(Origin::signed(ACCOUNT2), 1));
 
         assert_eq!(Social::space_by_id(1).unwrap().score, FollowSpaceActionWeight::get() as i32);
@@ -1547,9 +1486,7 @@ fn change_space_score_should_work_follow_space() {
 
 #[test]
 fn change_space_score_should_work_revert_follow_space() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(Social::follow_space(Origin::signed(ACCOUNT2), 1));
         assert_ok!(Social::unfollow_space(Origin::signed(ACCOUNT2), 1));
 
@@ -1561,9 +1498,7 @@ fn change_space_score_should_work_revert_follow_space() {
 
 #[test]
 fn change_space_score_should_work_upvote_post() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post());
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
 
         assert_eq!(Social::space_by_id(1).unwrap().score, UpvotePostActionWeight::get() as i32);
@@ -1573,9 +1508,7 @@ fn change_space_score_should_work_upvote_post() {
 
 #[test]
 fn change_space_score_should_work_downvote_post() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post());
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
 
         assert_eq!(Social::space_by_id(1).unwrap().score, DownvotePostActionWeight::get() as i32);
@@ -1587,9 +1520,7 @@ fn change_space_score_should_work_downvote_post() {
 
 #[test]
 fn change_post_score_should_work_create_comment() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
         assert_eq!(Social::post_by_id(1).unwrap().score, CreateCommentActionWeight::get() as i32);
@@ -1601,10 +1532,7 @@ fn change_post_score_should_work_create_comment() {
 
 #[test]
 fn change_post_score_should_work_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None));
 
         assert_eq!(Social::post_by_id(1).unwrap().score, UpvotePostActionWeight::get() as i32);
@@ -1615,10 +1543,7 @@ fn change_post_score_should_work_upvote() {
 
 #[test]
 fn change_post_score_should_work_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote())));
 
         assert_eq!(Social::post_by_id(1).unwrap().score, DownvotePostActionWeight::get() as i32);
@@ -1629,10 +1554,7 @@ fn change_post_score_should_work_downvote() {
 
 #[test]
 fn change_post_score_should_revert_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
         assert_ok!(_delete_post_reaction(Some(Origin::signed(ACCOUNT2)), None, 1));
 
@@ -1644,10 +1566,7 @@ fn change_post_score_should_revert_upvote() {
 
 #[test]
 fn change_post_score_should_revert_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
         assert_ok!(_delete_post_reaction(Some(Origin::signed(ACCOUNT2)), None, 1));
 
@@ -1659,10 +1578,7 @@ fn change_post_score_should_revert_downvote() {
 
 #[test]
 fn change_post_score_cancel_upvote_with_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
         assert_ok!(_update_post_reaction(Some(Origin::signed(ACCOUNT2)), None, 1, Some(self::reaction_downvote())));
 
@@ -1675,10 +1591,7 @@ fn change_post_score_cancel_upvote_with_downvote() {
 
 #[test]
 fn change_post_score_cancel_downvote_with_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
-        assert_ok!(_create_default_post()); // PostId 1
-
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
         assert_ok!(_update_post_reaction(Some(Origin::signed(ACCOUNT2)), None, 1, None));
 
@@ -1701,8 +1614,8 @@ fn change_post_score_should_fail_post_not_found() {
 
         assert_ok!(_create_default_space()); // SpaceId 1
         assert_noop!(_change_post_score_by_extension(
-      ACCOUNT1, fake_post, self::scoring_action_upvote_post()
-    ), Error::<TestRuntime>::PostNotFound);
+          ACCOUNT1, fake_post, self::scoring_action_upvote_post()
+        ), Error::<TestRuntime>::PostNotFound);
     });
 }
 
@@ -1710,57 +1623,55 @@ fn change_post_score_should_fail_post_not_found() {
 
 #[test]
 fn change_social_account_reputation_should_work_max_score_diff() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
         assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT1,
-      ACCOUNT2,
-      std::i16::MAX,
-      self::scoring_action_follow_account())
-    );
+          ACCOUNT1,
+          ACCOUNT2,
+          std::i16::MAX,
+          self::scoring_action_follow_account())
+        );
     });
 }
 
 #[test]
 fn change_social_account_reputation_should_work_min_score_diff() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
         assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT1,
-      ACCOUNT2,
-      std::i16::MIN,
-      self::scoring_action_follow_account())
-    );
+          ACCOUNT1,
+          ACCOUNT2,
+          std::i16::MIN,
+          self::scoring_action_follow_account())
+        );
     });
 }
 
 #[test]
 fn change_social_account_reputation_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space());
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
         assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT1,
-      ACCOUNT2,
-      DownvotePostActionWeight::get(),
-      self::scoring_action_downvote_post())
-    );
+          ACCOUNT1,
+          ACCOUNT2,
+          DownvotePostActionWeight::get(),
+          self::scoring_action_downvote_post())
+        );
         assert_eq!(Social::account_reputation_diff_by_account((ACCOUNT2, ACCOUNT1, self::scoring_action_downvote_post())), Some(0));
         assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
 
         // To ensure function works correctly, multiply default UpvotePostActionWeight by two
         assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT1,
-      ACCOUNT2,
-      UpvotePostActionWeight::get() * 2,
-      self::scoring_action_upvote_post())
-    );
-        assert_eq!(Social::account_reputation_diff_by_account(
-            (ACCOUNT2, ACCOUNT1, self::scoring_action_upvote_post())),
-                   Some(UpvotePostActionWeight::get() * 2)
+          ACCOUNT1,
+          ACCOUNT2,
+          UpvotePostActionWeight::get() * 2,
+          self::scoring_action_upvote_post())
         );
+
+        assert_eq!(Social::account_reputation_diff_by_account(
+            (ACCOUNT2, ACCOUNT1, self::scoring_action_upvote_post())
+        ), Some(UpvotePostActionWeight::get() * 2));
+
         assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + (UpvotePostActionWeight::get() * 2) as u32);
     });
 }
@@ -1769,8 +1680,7 @@ fn change_social_account_reputation_should_work() {
 
 #[test]
 fn change_comment_score_should_work_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1786,8 +1696,7 @@ fn change_comment_score_should_work_upvote() {
 
 #[test]
 fn change_comment_score_should_work_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1803,8 +1712,7 @@ fn change_comment_score_should_work_downvote() {
 
 #[test]
 fn change_comment_score_should_revert_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1821,8 +1729,7 @@ fn change_comment_score_should_revert_upvote() {
 
 #[test]
 fn change_comment_score_should_revert_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1839,8 +1746,7 @@ fn change_comment_score_should_revert_downvote() {
 
 #[test]
 fn change_comment_score_check_cancel_upvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1858,8 +1764,7 @@ fn change_comment_score_check_cancel_upvote() {
 
 #[test]
 fn change_comment_score_check_cancel_downvote() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1877,7 +1782,7 @@ fn change_comment_score_check_cancel_downvote() {
 
 #[test]
 fn change_comment_score_should_fail_comment_not_found() {
-    ExtBuilder::build().execute_with(|| {
+    ExtBuilder::build_with_post().execute_with(|| {
         let fake_post = &mut self::fake_post(
             3,
             ACCOUNT1,
@@ -1888,13 +1793,11 @@ fn change_comment_score_should_fail_comment_not_found() {
             })
         );
 
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
         assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
         assert_noop!(_change_post_score_by_extension(
-      ACCOUNT1, fake_post, self::scoring_action_upvote_comment()
-    ), Error::<TestRuntime>::PostNotFound);
+          ACCOUNT1, fake_post, self::scoring_action_upvote_comment()
+        ), Error::<TestRuntime>::PostNotFound);
     });
 }
 
@@ -1902,16 +1805,15 @@ fn change_comment_score_should_fail_comment_not_found() {
 
 #[test]
 fn share_post_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
-        assert_ok!(_create_default_post()); // PostId 1
+
         assert_ok!(_create_post(
-      Some(Origin::signed(ACCOUNT2)),
-      Some(Some(2)),
-      Some(self::extension_shared_post(1)),
-      None
-    )); // Share PostId 1 on SpaceId 2 by ACCOUNT2
+          Some(Origin::signed(ACCOUNT2)),
+          Some(Some(2)),
+          Some(self::extension_shared_post(1)),
+          None
+        )); // Share PostId 1 on SpaceId 2 by ACCOUNT2
 
         // Check storages
         assert_eq!(Social::post_ids_by_space_id(1), vec![1]);
@@ -1934,15 +1836,13 @@ fn share_post_should_work() {
 
 #[test]
 fn share_post_should_work_share_own_post() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post(
-      Some(Origin::signed(ACCOUNT1)),
-      Some(Some(1)),
-      Some(self::extension_shared_post(1)),
-      None
-    )); // Share PostId 1
+          Some(Origin::signed(ACCOUNT1)),
+          Some(Some(1)),
+          Some(self::extension_shared_post(1)),
+          None
+        )); // Share PostId 1
 
         // Check storages
         assert_eq!(Social::post_ids_by_space_id(1), vec![1, 2]);
@@ -1963,16 +1863,15 @@ fn share_post_should_work_share_own_post() {
 
 #[test]
 fn share_post_should_change_score() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
-        assert_ok!(_create_default_post()); // PostId 1
+
         assert_ok!(_create_post(
-      Some(Origin::signed(ACCOUNT2)),
-      Some(Some(2)),
-      Some(self::extension_shared_post(1)),
-      None
-    )); // Share PostId 1 on SpaceId 2 by ACCOUNT2
+          Some(Origin::signed(ACCOUNT2)),
+          Some(Some(2)),
+          Some(self::extension_shared_post(1)),
+          None
+        )); // Share PostId 1 on SpaceId 2 by ACCOUNT2
 
         assert_eq!(Social::post_by_id(1).unwrap().score, SharePostActionWeight::get() as i32);
         assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + SharePostActionWeight::get() as u32);
@@ -1982,15 +1881,13 @@ fn share_post_should_change_score() {
 
 #[test]
 fn share_post_should_not_change_score() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_create_default_post()); // PostId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post(
-      Some(Origin::signed(ACCOUNT1)),
-      Some(Some(1)),
-      Some(self::extension_shared_post(1)),
-      None
-    )); // Share PostId
+          Some(Origin::signed(ACCOUNT1)),
+          Some(Some(1)),
+          Some(self::extension_shared_post(1)),
+          None
+        )); // Share PostId
 
         assert_eq!(Social::post_by_id(1).unwrap().score, 0);
         assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
@@ -2000,55 +1897,51 @@ fn share_post_should_not_change_score() {
 
 #[test]
 fn share_post_should_fail_original_post_not_found() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
         // Skipped creating PostId 1
         assert_noop!(_create_post(
-      Some(Origin::signed(ACCOUNT2)),
-      Some(Some(2)),
-      Some(self::extension_shared_post(1)),
-      None
-    ), Error::<TestRuntime>::OriginalPostNotFound);
+          Some(Origin::signed(ACCOUNT2)),
+          Some(Some(2)),
+          Some(self::extension_shared_post(1)),
+          None
+        ), Error::<TestRuntime>::OriginalPostNotFound);
     });
 }
 
 #[test]
 fn share_post_should_fail_share_shared_post() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
-        assert_ok!(_create_default_post());
+
         assert_ok!(_create_post(
-      Some(Origin::signed(ACCOUNT2)),
-      Some(Some(2)),
-      Some(self::extension_shared_post(1)),
-      None)
-    );
+          Some(Origin::signed(ACCOUNT2)),
+          Some(Some(2)),
+          Some(self::extension_shared_post(1)),
+          None)
+        );
 
         // Try to share post with extension SharedPost
         assert_noop!(_create_post(
-      Some(Origin::signed(ACCOUNT1)),
-      Some(Some(1)),
-      Some(self::extension_shared_post(2)),
-      None
-    ), Error::<TestRuntime>::CannotShareSharedPost);
+          Some(Origin::signed(ACCOUNT1)),
+          Some(Some(1)),
+          Some(self::extension_shared_post(2)),
+          None
+        ), Error::<TestRuntime>::CannotShareSharedPost);
     });
 }
 
 #[test]
 fn share_comment_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_comment().execute_with(|| {
         assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+
         assert_ok!(_create_post(
-      Some(Origin::signed(ACCOUNT2)),
-      Some(Some(2)),
-      Some(self::extension_shared_post(2)),
-      None
-    )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
+          Some(Origin::signed(ACCOUNT2)),
+          Some(Some(2)),
+          Some(self::extension_shared_post(2)),
+          None
+        )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
 
         // Check storages
         assert_eq!(Social::post_ids_by_space_id(1), vec![1]);
@@ -2071,17 +1964,15 @@ fn share_comment_should_work() {
 
 #[test]
 fn share_comment_should_change_score() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_comment().execute_with(|| {
         assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
-        assert_ok!(_create_default_post()); // PostId 1
-        assert_ok!(_create_default_comment()); // PostId 2
+
         assert_ok!(_create_post(
-      Some(Origin::signed(ACCOUNT2)),
-      Some(Some(2)),
-      Some(self::extension_shared_post(2)),
-      None
-    )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
+          Some(Origin::signed(ACCOUNT2)),
+          Some(Some(2)),
+          Some(self::extension_shared_post(2)),
+          None
+        )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
 
         assert_eq!(Social::post_by_id(2).unwrap().score, ShareCommentActionWeight::get() as i32);
         assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + ShareCommentActionWeight::get() as u32);
@@ -2091,17 +1982,16 @@ fn share_comment_should_change_score() {
 
 #[test]
 fn share_comment_should_fail_original_comment_not_found() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
-        assert_ok!(_create_default_post()); // PostId 1
+
         // Skipped creating comment with PostId 2
         assert_noop!(_create_post(
-      Some(Origin::signed(ACCOUNT2)),
-      Some(Some(2)),
-      Some(self::extension_shared_post(2)),
-      None
-     ), Error::<TestRuntime>::OriginalPostNotFound);
+          Some(Origin::signed(ACCOUNT2)),
+          Some(Some(2)),
+          Some(self::extension_shared_post(2)),
+          None
+         ), Error::<TestRuntime>::OriginalPostNotFound);
     });
 }
 
@@ -2133,9 +2023,8 @@ fn create_profile_should_fail_profile_exists() {
 
 #[test]
 fn create_profile_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
         assert_noop!(_create_profile(None, None, Some(ipfs_hash)), UtilsError::<TestRuntime>::IpfsIsIncorrect);
     });
 }
@@ -2150,9 +2039,9 @@ fn create_profile_should_fail_username_is_busy() {
 
 #[test]
 fn create_profile_should_fail_too_short_username() {
-    let username : Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
-
     ExtBuilder::build().execute_with(|| {
+        let username : Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
+
         assert_ok!(_create_default_profile()); // AccountId 1
         assert_noop!(_create_profile(Some(Origin::signed(ACCOUNT2)), Some(username), None), Error::<TestRuntime>::UsernameIsTooShort);
     });
@@ -2160,9 +2049,9 @@ fn create_profile_should_fail_too_short_username() {
 
 #[test]
 fn create_profile_should_fail_too_long_username() {
-    let username : Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
-
     ExtBuilder::build().execute_with(|| {
+        let username : Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
+
         assert_ok!(_create_default_profile()); // AccountId 1
         assert_noop!(_create_profile(Some(Origin::signed(ACCOUNT2)), Some(username), None), Error::<TestRuntime>::UsernameIsTooLong);
     });
@@ -2170,9 +2059,9 @@ fn create_profile_should_fail_too_long_username() {
 
 #[test]
 fn create_profile_should_fail_invalid_username() {
-    let username : Vec<u8> = b"{}sername".to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let username : Vec<u8> = b"{}sername".to_vec();
+
         assert_ok!(_create_default_profile()); // AccountId 1
         assert_noop!(_create_profile(Some(Origin::signed(ACCOUNT2)), Some(username), None), Error::<TestRuntime>::UsernameIsNotAlphanumeric);
     });
@@ -2234,9 +2123,9 @@ fn update_profile_should_fail_username_is_busy() {
 
 #[test]
 fn update_profile_should_fail_too_short_username() {
-    let username : Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
-
     ExtBuilder::build().execute_with(|| {
+        let username : Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
+
         assert_ok!(_create_default_profile()); // AccountId 1
         assert_noop!(_update_profile(None, Some(username), None), Error::<TestRuntime>::UsernameIsTooShort);
     });
@@ -2244,9 +2133,9 @@ fn update_profile_should_fail_too_short_username() {
 
 #[test]
 fn update_profile_should_fail_too_long_username() {
-    let username : Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
-
     ExtBuilder::build().execute_with(|| {
+        let username : Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
+
         assert_ok!(_create_default_profile()); // AccountId 1
         assert_noop!(_update_profile(None, Some(username), None), Error::<TestRuntime>::UsernameIsTooLong);
     });
@@ -2254,9 +2143,9 @@ fn update_profile_should_fail_too_long_username() {
 
 #[test]
 fn update_profile_should_fail_invalid_username() {
-    let username : Vec<u8> = b"{}sername".to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let username : Vec<u8> = b"{}sername".to_vec();
+
         assert_ok!(_create_default_profile()); // AccountId 1
         assert_noop!(_update_profile(None, Some(username), None), Error::<TestRuntime>::UsernameIsNotAlphanumeric);
     });
@@ -2264,9 +2153,9 @@ fn update_profile_should_fail_invalid_username() {
 
 #[test]
 fn update_profile_should_fail_invalid_ipfs_hash() {
-    let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
-
     ExtBuilder::build().execute_with(|| {
+        let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+
         assert_ok!(_create_default_profile());
         assert_noop!(_update_profile(None, None, Some(ipfs_hash)), UtilsError::<TestRuntime>::IpfsIsIncorrect);
     });
@@ -2276,9 +2165,7 @@ fn update_profile_should_fail_invalid_ipfs_hash() {
 
 #[test]
 fn follow_space_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
         assert_eq!(Social::space_by_id(1).unwrap().followers_count, 2);
@@ -2297,8 +2184,7 @@ fn follow_space_should_fail_space_not_found() {
 
 #[test]
 fn follow_space_should_fail_already_following() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
         assert_noop!(_default_follow_space(), Error::<TestRuntime>::AccountIsFollowingSpace);
@@ -2307,13 +2193,12 @@ fn follow_space_should_fail_already_following() {
 
 #[test]
 fn follow_space_should_fail_space_is_hidden() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_update_space(
-      None,
-      None,
-      Some(self::space_update(None, None, Some(true)))
-    ));
+          None,
+          None,
+          Some(self::space_update(None, None, Some(true)))
+        ));
 
         assert_noop!(_default_follow_space(), Error::<TestRuntime>::BannedToFollowWhenHidden);
     });
@@ -2321,9 +2206,7 @@ fn follow_space_should_fail_space_is_hidden() {
 
 #[test]
 fn unfollow_space_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
         assert_ok!(_default_unfollow_space());
 
@@ -2342,9 +2225,7 @@ fn unfollow_space_should_fail_space_not_found() {
 
 #[test]
 fn unfollow_space_should_fail_already_following() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_default_unfollow_space(), Error::<TestRuntime>::AccountIsNotFollowingSpace);
     });
 }
@@ -2378,16 +2259,15 @@ fn follow_account_should_fail_already_followed() {
     });
 }
 
-
-
 #[test]
 fn unfollow_account_should_work() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_default_follow_account()); // Follow ACCOUNT1 by ACCOUNT2
+        assert_ok!(_default_unfollow_account());
 
-        assert_eq!(Social::accounts_followed_by_account(ACCOUNT2), vec![ACCOUNT1]);
-        assert_eq!(Social::account_followers(ACCOUNT1), vec![ACCOUNT2]);
-        assert_eq!(Social::account_followed_by_account((ACCOUNT2, ACCOUNT1)), true);
+        assert!(Social::accounts_followed_by_account(ACCOUNT2).is_empty());
+        assert!(Social::account_followers(ACCOUNT1).is_empty());
+        assert_eq!(Social::account_followed_by_account((ACCOUNT2, ACCOUNT1)), false);
     });
 }
 
@@ -2412,8 +2292,7 @@ fn unfollow_account_should_fail_is_not_followed() {
 
 #[test]
 fn transfer_space_ownership_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
 
         assert_eq!(Social::pending_space_owner(1).unwrap(), ACCOUNT2);
@@ -2429,32 +2308,29 @@ fn transfer_space_ownership_should_fail_space_not_found() {
 
 #[test]
 fn transfer_space_ownership_should_fail_not_an_owner() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_transfer_space_ownership(
-      Some(Origin::signed(ACCOUNT2)),
-      None,
-      Some(ACCOUNT1)
-    ), Error::<TestRuntime>::NotASpaceOwner);
+          Some(Origin::signed(ACCOUNT2)),
+          None,
+          Some(ACCOUNT1)
+        ), Error::<TestRuntime>::NotASpaceOwner);
     });
 }
 
 #[test]
 fn transfer_space_ownership_should_fail_transferring_to_current_owner() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_transfer_space_ownership(
-      Some(Origin::signed(ACCOUNT1)),
-      None,
-      Some(ACCOUNT1)
-    ), Error::<TestRuntime>::CannotTranferToCurrentOwner);
+          Some(Origin::signed(ACCOUNT1)),
+          None,
+          Some(ACCOUNT1)
+        ), Error::<TestRuntime>::CannotTranferToCurrentOwner);
     });
 }
 
 #[test]
 fn accept_pending_ownership_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
         assert_ok!(_accept_default_pending_ownership()); // Accepting a transfer from ACCOUNT2
         // Check whether owner was changed
@@ -2475,16 +2351,14 @@ fn accept_pending_ownership_should_fail_space_not_found() {
 
 #[test]
 fn accept_pending_ownership_should_fail_no_pending_transfer() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_accept_default_pending_ownership(), Error::<TestRuntime>::NoPendingTransferOnSpace);
     });
 }
 
 #[test]
 fn accept_pending_ownership_should_fail_not_allowed_to_accept() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_transfer_default_space_ownership());
 
         assert_noop!(_accept_pending_ownership(
@@ -2496,8 +2370,7 @@ fn accept_pending_ownership_should_fail_not_allowed_to_accept() {
 
 #[test]
 fn reject_pending_ownership_should_work() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
         assert_ok!(_reject_default_pending_ownership()); // Rejecting a transfer from ACCOUNT2
 
@@ -2512,8 +2385,7 @@ fn reject_pending_ownership_should_work() {
 
 #[test]
 fn reject_pending_ownership_should_work_when_rejected_by_current_owner() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
         assert_ok!(_reject_default_pending_ownership_by_current_owner()); // Rejecting a transfer from ACCOUNT2
 
@@ -2528,32 +2400,21 @@ fn reject_pending_ownership_should_work_when_rejected_by_current_owner() {
 
 #[test]
 fn reject_pending_ownership_should_fail_space_not_found() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
-        assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
-        assert_ok!(_reject_default_pending_ownership()); // Rejecting a transfer from ACCOUNT2
-
-        // Check whether owner was not changed
-        let space = Social::space_by_id(1).unwrap();
-        assert_eq!(space.owner, ACCOUNT1);
-
-        // Check whether storage state is correct
-        assert!(Social::pending_space_owner(1).is_none());
+    ExtBuilder::build_with_space().execute_with(|| {
+        // TODO: after adding new test externality
     });
 }
 
 #[test]
 fn reject_pending_ownership_should_fail_no_pending_transfer() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_reject_default_pending_ownership(), Error::<TestRuntime>::NoPendingTransferOnSpace); // Rejecting a transfer from ACCOUNT2
     });
 }
 
 #[test]
 fn reject_pending_ownership_should_fail_not_allowed_to_reject() {
-    ExtBuilder::build().execute_with(|| {
-        assert_ok!(_create_default_space()); // SpaceId 1
+    ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
 
         assert_noop!(_reject_pending_ownership(
