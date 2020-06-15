@@ -683,7 +683,7 @@ fn create_space_should_fail_invalid_space_char() {
     ExtBuilder::build().execute_with(|| {
         let handle : Vec<u8> = b"space handle".to_vec();
 
-        assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<TestRuntime>::HandleContainsInvalidChars);
+        assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<TestRuntime>::HandleContainsInvalidChars);
     });
 }
 
@@ -692,7 +692,7 @@ fn create_space_should_fail_invalid_unicode_char() {
     ExtBuilder::build().execute_with(|| {
         let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
-        assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<TestRuntime>::HandleContainsInvalidChars);
+        assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<TestRuntime>::HandleContainsInvalidChars);
     });
 }
 
@@ -1029,7 +1029,7 @@ fn update_post_should_work_after_transfer_space_ownership() {
             Some(
                 self::post_update(
                     None,
-                    Some(ipfs_hash.clone()),
+                    Some(ipfs_hash),
                     Some(true)
                 )
             )
