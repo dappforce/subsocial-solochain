@@ -21,8 +21,7 @@ use pallet_permissions::{
     SpacePermission as SP,
     SpacePermissions,
 };
-
-use pallet_utils::{Error as UtilsError};
+use pallet_utils::{Error as UtilsError, User};
 
 impl_outer_origin! {
     pub enum Origin for TestRuntime {}
@@ -177,6 +176,7 @@ type Social = Module<TestRuntime>;
 type Roles = pallet_roles::Module<TestRuntime>;
 
 pub type AccountId = u64;
+type BlockNumber = u64;
 
 
 pub struct ExtBuilder;
@@ -243,7 +243,7 @@ impl ExtBuilder {
         ext
     }
 
-    /// Custom ext configuration with pending ownership trasfer without Space
+    /// Custom ext configuration with pending ownership transfer without Space
     pub fn build_with_pending_ownership_transfer() -> TestExternalities {
         let storage = system::GenesisConfig::default()
             .build_storage::<TestRuntime>()
@@ -261,8 +261,39 @@ impl ExtBuilder {
 
         ext
     }
+
+    /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
+    pub fn build_with_a_few_roles_granted_to_account2(perms: Vec<SP>) -> TestExternalities {
+        let storage = system::GenesisConfig::default()
+            .build_storage::<TestRuntime>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+        ext.execute_with(|| {
+            System::set_block_number(1);
+            let user = User::Account(ACCOUNT2);
+
+            assert_ok!(_create_default_space());
+
+            assert_ok!(_create_role(
+                None,
+                None,
+                None,
+                None,
+                Some(perms)
+            )); // RoleId 1
+            assert_ok!(_create_default_role()); // RoleId 2
+
+            assert_ok!(_grant_role(None, Some(ROLE1), Some(vec![user.clone()])));
+            assert_ok!(_grant_role(None, Some(ROLE2), Some(vec![user])));
+        });
+
+        ext
+    }
 }
 
+
+/* Social pallet mocks */
 
 const ACCOUNT1 : AccountId = 1;
 const ACCOUNT2 : AccountId = 2;
@@ -275,7 +306,6 @@ const _SPACE3: SpaceId = 3;
 const POST1: PostId = 1;
 const POST2: PostId = 2;
 const POST3: PostId = 3;
-const POST4: PostId = 4;
 
 const REACTION1: ReactionId = 1;
 const REACTION2: ReactionId = 2;
@@ -628,6 +658,77 @@ fn _reject_pending_ownership(origin: Option<Origin>, space_id: Option<SpaceId>) 
         space_id.unwrap_or(SPACE1)
     )
 }
+/* ---------------------------------------------------------------------------------------------- */
+
+// TODO: fix copy-paste from pallet_roles
+/* Roles pallet mocks */
+
+type RoleId = u64;
+
+const ROLE1: RoleId = 1;
+const ROLE2: RoleId = 2;
+
+fn default_role_ipfs_hash() -> Option<Vec<u8>> {
+    Option::from(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+}
+
+/// Permissions Set that includes next permission: ManageRoles
+fn permission_set_default() -> Vec<SpacePermission> {
+    vec![SP::ManageRoles]
+}
+
+
+pub fn _create_default_role() -> DispatchResult {
+    _create_role(None, None, None, None, None)
+}
+
+pub fn _create_role(
+    origin: Option<Origin>,
+    space_id: Option<SpaceId>,
+    time_to_live: Option<Option<BlockNumber>>,
+    ipfs_hash: Option<Option<Vec<u8>>>,
+    permissions: Option<Vec<SpacePermission>>,
+) -> DispatchResult {
+    Roles::create_role(
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        space_id.unwrap_or(SPACE1),
+        time_to_live.unwrap_or_default(), // Should return 'None'
+        ipfs_hash.unwrap_or_else(self::default_role_ipfs_hash),
+        permissions.unwrap_or_else(self::permission_set_default),
+    )
+}
+
+pub fn _grant_default_role() -> DispatchResult {
+    _grant_role(None, None, None)
+}
+
+pub fn _grant_role(
+    origin: Option<Origin>,
+    role_id: Option<RoleId>,
+    users: Option<Vec<User<AccountId>>>
+) -> DispatchResult {
+    Roles::grant_role(
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        role_id.unwrap_or(ROLE1),
+        users.unwrap_or_else(|| vec![User::Account(ACCOUNT2)])
+    )
+}
+
+pub fn _delete_default_role() -> DispatchResult {
+    _delete_role(None, None)
+}
+
+pub fn _delete_role(
+    origin: Option<Origin>,
+    role_id: Option<RoleId>
+) -> DispatchResult {
+    Roles::delete_role(
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        role_id.unwrap_or(ROLE1)
+    )
+}
+/* ---------------------------------------------------------------------------------------------- */
+
 
 // Space tests
 #[test]
@@ -754,7 +855,7 @@ fn update_space_should_work() {
         let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec(); // Space update with ID 1 should be fine
 
         assert_ok!(_update_space(
-            None,
+            None, // From ACCOUNT1 (has permission as he's an owner)
             None,
             Some(
                 self::space_update(
@@ -775,6 +876,23 @@ fn update_space_should_work() {
         assert_eq!(space.edit_history[0].old_data.handle, Some(Some(self::space_handle())));
         assert_eq!(space.edit_history[0].old_data.ipfs_hash, Some(self::space_ipfs_hash()));
         assert_eq!(space.edit_history[0].old_data.hidden, Some(false));
+    });
+}
+
+#[test]
+fn update_space_should_work_a_few_roles() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
+        let space_update = self::space_update(
+            Some(Some(b"new_handle".to_vec())),
+            Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()),
+            Some(true)
+        );
+
+        assert_ok!(_update_space(
+            Some(Origin::signed(ACCOUNT2)),
+            Some(SPACE1),
+            Some(space_update)
+        ));
     });
 }
 
@@ -807,20 +925,20 @@ fn update_space_should_fail_space_not_found() {
 }
 
 #[test]
-fn update_space_should_fail_not_an_owner() {
+fn update_space_should_fail_with_no_permission() {
     ExtBuilder::build_with_space().execute_with(|| {
         let handle : Vec<u8> = b"new_handle".to_vec();
 
-        // Try to catch an error updating a space with different account
+        // Try to catch an error updating a space with an account that it not permitted
         assert_noop!(_update_space(
             Some(Origin::signed(ACCOUNT2)),
             None,
             Some(
-            self::space_update(
-            Some(Some(handle)),
-            None,
-            None
-            )
+                self::space_update(
+                    Some(Some(handle)),
+                    None,
+                    None
+                )
             )
         ), Error::<TestRuntime>::NoPermissionToUpdateSpace);
     });
@@ -988,11 +1106,30 @@ fn update_space_should_fail_invalid_ipfs_hash() {
     });
 }
 
+#[test]
+fn update_space_should_fail_with_a_few_roles_no_permission() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
+        let space_update = self::space_update(
+            Some(Some(b"new_handle".to_vec())),
+            Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()),
+            Some(true)
+        );
+
+        assert_ok!(_delete_default_role());
+
+        assert_noop!(_update_space(
+            Some(Origin::signed(ACCOUNT2)),
+            Some(SPACE1),
+            Some(space_update)
+        ), Error::<TestRuntime>::NoPermissionToUpdateSpace);
+    });
+}
+
 // Post tests
 #[test]
 fn create_post_should_work() {
     ExtBuilder::build_with_space().execute_with(|| {
-        assert_ok!(_create_default_post()); // PostId 1
+        assert_ok!(_create_default_post()); // PostId 1 by ACCOUNT1 which is permitted by default
 
         // Check storages
         assert_eq!(Social::post_ids_by_space_id(SPACE1), vec![POST1]);
@@ -1017,6 +1154,18 @@ fn create_post_should_work() {
         assert_eq!(post.downvotes_count, 0);
 
         assert_eq!(post.score, 0);
+    });
+}
+
+#[test]
+fn create_post_should_work_a_few_roles() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
+        assert_ok!(_create_post(
+            Some(Origin::signed(ACCOUNT2)),
+            None, // SpaceId 1,
+            None, // RegularPost extension
+            None, // Default post ipfs_hash
+        ));
     });
 }
 
@@ -1055,7 +1204,7 @@ fn create_post_should_fail_invalid_ipfs_hash() {
 }
 
 #[test]
-fn create_post_should_fail_not_a_space_owner() {
+fn create_post_should_fail_with_no_permission_at_all() {
     ExtBuilder::build_with_space().execute_with(|| {
         assert_noop!(_create_post(
             Some(Origin::signed(ACCOUNT2)),
@@ -1067,13 +1216,27 @@ fn create_post_should_fail_not_a_space_owner() {
 }
 
 #[test]
+fn create_post_should_fail_with_a_few_roles_no_permission() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
+        assert_ok!(_delete_default_role());
+
+        assert_noop!(_create_post(
+            Some(Origin::signed(ACCOUNT2)),
+            None, // SpaceId 1,
+            None, // RegularPost extension
+            None, // Default post ipfs_hash
+        ), Error::<TestRuntime>::NoPermissionToCreatePosts);
+    });
+}
+
+#[test]
 fn update_post_should_work() {
     ExtBuilder::build_with_post().execute_with(|| {
         let ipfs_hash: Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
 
         // Post update with ID 1 should be fine
         assert_ok!(_update_post(
-            None,
+            None, // From ACCOUNT1 (has default permission to UpdateOwnPosts)
             None,
             Some(
                 self::post_update(
@@ -1100,19 +1263,58 @@ fn update_post_should_work() {
 #[test]
 fn update_post_should_work_after_transfer_space_ownership() {
     ExtBuilder::build_with_post().execute_with(|| {
-        let ipfs_hash: Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
+        let post_update = self::post_update(
+            None,
+            Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+            Some(true)
+        );
 
         assert_ok!(_transfer_default_space_ownership());
 
         // Post update with ID 1 should be fine
-        assert_ok!(_update_post(None, None,
-            Some(
-                self::post_update(
-                    None,
-                    Some(ipfs_hash),
-                    Some(true)
-                )
-            )
+        assert_ok!(_update_post(None, None, Some(post_update)));
+    });
+}
+
+#[test]
+fn update_any_post_should_work_default_permission() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
+        let post_update = self::post_update(
+            None,
+            Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+            Some(true)
+        );
+        assert_ok!(_create_post(
+            Some(Origin::signed(ACCOUNT2)),
+            None, // SpaceId 1
+            None, // RegularPost extension
+            None // Default post ipfs_hash
+        )); // PostId 1
+
+        // Post update with ID 1 should be fine
+        assert_ok!(_update_post(
+            None, // From ACCOUNT1 (has default permission to UpdateAnyPosts as SpaceOwner)
+            Some(POST1),
+            Some(post_update)
+        ));
+    });
+}
+
+#[test]
+fn update_any_post_should_work_a_few_roles() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPosts]).execute_with(|| {
+        let post_update = self::post_update(
+            None,
+            Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+            Some(true)
+        );
+        assert_ok!(_create_default_post()); // PostId 1
+
+        // Post update with ID 1 should be fine
+        assert_ok!(_update_post(
+            Some(Origin::signed(ACCOUNT2)),
+            Some(POST1),
+            Some(post_update)
         ));
     });
 }
@@ -1146,7 +1348,7 @@ fn update_post_should_fail_post_not_found() {
 }
 
 #[test]
-fn update_post_should_fail_not_an_owner() {
+fn update_post_should_fail_with_no_permission_to_update_any_post() {
     ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
 
@@ -1185,11 +1387,31 @@ fn update_post_should_fail_invalid_ipfs_hash() {
     });
 }
 
+#[test]
+fn update_any_post_should_fail_with_a_few_roles_no_permission() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPosts]).execute_with(|| {
+        let post_update = self::post_update(
+            None,
+            Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+            Some(true)
+        );
+        assert_ok!(_create_default_post()); // PostId 1
+        assert_ok!(_delete_default_role());
+
+        // Post update with ID 1 should be fine
+        assert_noop!(_update_post(
+            Some(Origin::signed(ACCOUNT2)),
+            Some(POST1),
+            Some(post_update)
+        ), Error::<TestRuntime>::NoPermissionToUpdateAnyPosts);
+    });
+}
+
 // Comment tests
 #[test]
 fn create_comment_should_work() {
     ExtBuilder::build_with_post().execute_with(|| {
-        assert_ok!(_create_default_comment()); // PostId 2
+        assert_ok!(_create_default_comment()); // PostId 2 by ACCOUNT1 which is permitted by default
 
         // Check storages
         let root_post = Social::post_by_id(POST1).unwrap();
@@ -1216,7 +1438,7 @@ fn create_comment_should_work() {
 }
 
 #[test]
-fn create_comment_should_work_with_parent() {
+fn create_comment_should_work_parent() {
     ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_default_comment()); // PostId 2
         assert_ok!(_create_comment(None, None, Some(Some(POST2)), None)); // PostId 3 with parent comment with PostId 2
@@ -1380,7 +1602,11 @@ fn update_comment_should_fail_ipfs_hash_dont_differ() {
 #[test]
 fn create_post_reaction_should_work_upvote() {
     ExtBuilder::build_with_post().execute_with(|| {
-        assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1 by ACCOUNT2
+        assert_ok!(_create_post_reaction(
+            Some(Origin::signed(ACCOUNT2)),
+            None,
+            None
+        )); // ReactionId 1 by ACCOUNT2 which is permitted by default
 
         // Check storages
         assert_eq!(Social::reaction_ids_by_post_id(POST1), vec![REACTION1]);
@@ -1405,7 +1631,7 @@ fn create_post_reaction_should_work_downvote() {
             Some(Origin::signed(ACCOUNT2)),
             None,
             Some(self::reaction_downvote())
-        )); // ReactionId 1 by ACCOUNT2
+        )); // ReactionId 1 by ACCOUNT2 which is permitted by default
 
         // Check storages
         assert_eq!(Social::reaction_ids_by_post_id(POST1), vec![REACTION1]);
@@ -1464,96 +1690,6 @@ fn create_post_reaction_should_fail_post_is_hidden() {
         ));
 
         assert_noop!(_create_default_post_reaction(), Error::<TestRuntime>::BannedToChangeReactionWhenHidden);
-    });
-}
-
-#[test]
-fn create_comment_reaction_should_work_upvote() {
-    ExtBuilder::build_with_comment().execute_with(|| {
-        assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1 by ACCOUNT2
-
-        // Check storages
-        assert_eq!(Social::reaction_ids_by_post_id(POST2), vec![REACTION1]);
-        assert_eq!(Social::next_reaction_id(), REACTION2);
-
-        // Check comment reaction counters
-        let comment = Social::post_by_id(POST2).unwrap();
-        assert_eq!(comment.upvotes_count, 1);
-        assert_eq!(comment.downvotes_count, 0);
-
-        // Check whether data stored correctly
-        let reaction = Social::reaction_by_id(REACTION1).unwrap();
-        assert_eq!(reaction.created.account, ACCOUNT2);
-        assert_eq!(reaction.kind, self::reaction_upvote());
-    });
-}
-
-#[test]
-fn create_comment_reaction_should_work_downvote() {
-    ExtBuilder::build_with_comment().execute_with(|| {
-        assert_ok!(_create_comment_reaction(
-            Some(Origin::signed(ACCOUNT2)),
-            None,
-            Some(self::reaction_downvote())
-        )); // ReactionId 1 by ACCOUNT2
-
-        // Check storages
-        assert_eq!(Social::reaction_ids_by_post_id(POST2), vec![REACTION1]);
-        assert_eq!(Social::next_reaction_id(), REACTION2);
-
-        // Check comment reaction counters
-        let comment = Social::post_by_id(POST2).unwrap();
-        assert_eq!(comment.upvotes_count, 0);
-        assert_eq!(comment.downvotes_count, 1);
-
-        // Check whether data stored correctly
-        let reaction = Social::reaction_by_id(REACTION1).unwrap();
-        assert_eq!(reaction.created.account, ACCOUNT2);
-        assert_eq!(reaction.kind, self::reaction_downvote());
-    });
-}
-
-#[test]
-fn create_comment_reaction_should_fail_already_reacted() {
-    ExtBuilder::build_with_comment().execute_with(|| {
-        assert_ok!(_create_default_comment_reaction()); // ReactionId 1
-
-        // Try to catch an error creating reaction by the same account
-        assert_noop!(_create_default_comment_reaction(), Error::<TestRuntime>::AccountAlreadyReacted);
-    });
-}
-
-#[test]
-fn create_comment_reaction_should_fail_comment_not_found() {
-    ExtBuilder::build().execute_with(|| {
-        // Try to catch an error creating reaction by the same account
-        assert_noop!(_create_default_comment_reaction(), Error::<TestRuntime>::PostNotFound);
-    });
-}
-
-#[test]
-fn create_comment_reaction_should_fail_space_is_hidden() {
-    ExtBuilder::build_with_comment().execute_with(|| {
-        assert_ok!(_update_space(
-            None,
-            None,
-            Some(self::space_update(None, None, Some(true)))
-        ));
-
-        assert_noop!(_create_default_comment_reaction(), Error::<TestRuntime>::BannedToChangeReactionWhenHidden);
-    });
-}
-
-#[test]
-fn create_comment_reaction_should_fail_post_is_hidden() {
-    ExtBuilder::build_with_comment().execute_with(|| {
-        assert_ok!(_update_post(
-            None,
-            None,
-            Some(self::post_update(None, None, Some(true)))
-        ));
-
-        assert_noop!(_create_default_comment_reaction(), Error::<TestRuntime>::BannedToChangeReactionWhenHidden);
     });
 }
 
@@ -2069,7 +2205,7 @@ fn share_post_should_work() {
             Some(Some(SPACE2)),
             Some(self::extension_shared_post(POST1)),
             None
-        )); // Share PostId 1 on SpaceId 2 by ACCOUNT2
+        )); // Share PostId 1 on SpaceId 2 by ACCOUNT2 which is permitted by default in both spaces
 
         // Check storages
         assert_eq!(Social::post_ids_by_space_id(SPACE1), vec![POST1]);
@@ -2091,7 +2227,31 @@ fn share_post_should_work() {
 }
 
 #[test]
-fn share_post_should_work_share_own_post() {
+fn share_post_should_work_a_few_roles() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
+        assert_ok!(_create_space(
+            None, // From ACCOUNT1
+            Some(None), // Provided without any handle
+            None // With default space ipfs_hash
+        )); // SpaceId 2
+        assert_ok!(_create_post(
+            None, // From ACCOUNT1
+            Some(Some(SPACE2)),
+            None, // With RegularPost extension
+            None // With default post ipfs_hash
+        )); // PostId 1 on SpaceId 2
+
+        assert_ok!(_create_post(
+            Some(Origin::signed(ACCOUNT2)),
+            Some(Some(SPACE1)),
+            Some(self::extension_shared_post(POST1)),
+            None
+        )); // Share PostId 1 on SpaceId 1 by ACCOUNT2 which is permitted by RoleId 1 from ext
+    });
+}
+
+#[test]
+fn share_post_should_work_share_own_post_in_same_own_space() {
     ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_post(
             Some(Origin::signed(ACCOUNT1)),
@@ -2201,78 +2361,47 @@ fn share_post_should_fail_share_shared_post() {
 }
 
 #[test]
-fn share_comment_should_work() {
-    ExtBuilder::build_with_comment().execute_with(|| {
-        assert_ok!(_create_space(
-            Some(Origin::signed(ACCOUNT2)),
-            Some(Some(b"space2_handle".to_vec())),
-            None
-        )); // SpaceId 2 by ACCOUNT2
-
-        assert_ok!(_create_post(
-            Some(Origin::signed(ACCOUNT2)),
-            Some(Some(SPACE2)),
-            Some(self::extension_shared_post(POST2)),
-            None
-        )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
-
-        // Check storages
-        assert_eq!(Social::post_ids_by_space_id(POST1), vec![POST1]);
-        assert_eq!(Social::post_ids_by_space_id(POST2), vec![POST3]);
-        assert_eq!(Social::next_post_id(), POST4);
-
-        assert_eq!(Social::post_shares_by_account((ACCOUNT2, POST2)), 1);
-        assert_eq!(Social::shared_post_ids_by_original_post_id(POST2), vec![POST3]);
-
-        // Check whether data stored correctly
-        assert_eq!(Social::post_by_id(POST2).unwrap().shares_count, 1);
-
-        let shared_post = Social::post_by_id(POST3).unwrap();
-
-        assert_eq!(shared_post.space_id, Some(SPACE2));
-        assert_eq!(shared_post.created.account, ACCOUNT2);
-        assert_eq!(shared_post.extension, self::extension_shared_post(POST2));
-    });
-}
-
-#[test]
-fn share_comment_should_change_score() {
-    ExtBuilder::build_with_comment().execute_with(|| {
-        assert_ok!(_create_space(
-            Some(Origin::signed(ACCOUNT2)),
-            Some(Some(b"space2_handle".to_vec())),
-            None
-        )); // SpaceId 2 by ACCOUNT2
-
-        assert_ok!(_create_post(
-            Some(Origin::signed(ACCOUNT2)),
-            Some(Some(SPACE2)),
-            Some(self::extension_shared_post(POST2)),
-            None
-        )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
-
-        assert_eq!(Social::post_by_id(POST2).unwrap().score, ShareCommentActionWeight::get() as i32);
-        assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + ShareCommentActionWeight::get() as u32);
-        assert_eq!(Social::post_score_by_account((ACCOUNT2, POST2, self::scoring_action_share_comment())), Some(ShareCommentActionWeight::get()));
-    });
-}
-
-#[test]
-fn share_comment_should_fail_original_comment_not_found() {
+fn share_post_should_fail_with_no_permission_to_create_posts() {
     ExtBuilder::build_with_post().execute_with(|| {
         assert_ok!(_create_space(
-            Some(Origin::signed(ACCOUNT2)),
-            Some(Some(b"space2_handle".to_vec())),
-            None
-        )); // SpaceId 2 by ACCOUNT2
+            Some(Origin::signed(ACCOUNT1)),
+            Some(None), // No space_handle provided (ok)
+            None // Default space ipfs_hash
+        )); // SpaceId 2 by ACCOUNT1
 
-        // Skipped creating comment with PostId 2
+        // Try to share post with extension SharedPost
         assert_noop!(_create_post(
             Some(Origin::signed(ACCOUNT2)),
             Some(Some(SPACE2)),
-            Some(self::extension_shared_post(POST2)),
+            Some(self::extension_shared_post(POST1)),
             None
-        ), Error::<TestRuntime>::OriginalPostNotFound);
+        ), Error::<TestRuntime>::NoPermissionToCreatePosts);
+    });
+}
+
+#[test]
+fn share_post_should_fail_with_a_few_roles_no_permission() {
+    ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
+        assert_ok!(_create_space(
+            None, // From ACCOUNT1
+            Some(None), // Provided without any handle
+            None // With default space ipfs_hash
+        )); // SpaceId 2
+        assert_ok!(_create_post(
+            None, // From ACCOUNT1
+            Some(Some(SPACE2)),
+            None, // With RegularPost extension
+            None // With default post ipfs_hash
+        )); // PostId 1 on SpaceId 2
+
+        assert_ok!(_delete_default_role());
+
+        assert_noop!(_create_post(
+            Some(Origin::signed(ACCOUNT2)),
+            Some(Some(SPACE1)),
+            Some(self::extension_shared_post(POST1)),
+            None
+        ), Error::<TestRuntime>::NoPermissionToCreatePosts);
     });
 }
 
@@ -2691,7 +2820,7 @@ fn accept_pending_ownership_should_work() {
 #[test]
 fn accept_pending_ownership_should_fail_space_not_found() {
     ExtBuilder::build_with_pending_ownership_transfer().execute_with(|| {
-        // TODO: after adding new test externality
+        assert_noop!(_accept_default_pending_ownership(), Error::<TestRuntime>::SpaceNotFound);
     });
 }
 
@@ -2747,7 +2876,7 @@ fn reject_pending_ownership_should_work_when_rejected_by_current_owner() {
 #[test]
 fn reject_pending_ownership_should_fail_space_not_found() {
     ExtBuilder::build_with_pending_ownership_transfer().execute_with(|| {
-        // TODO: after adding new test externality
+        assert_noop!(_reject_default_pending_ownership(), Error::<TestRuntime>::SpaceNotFound);
     });
 }
 
