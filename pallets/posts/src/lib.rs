@@ -32,10 +32,6 @@ pub struct Post<T: Trait> {
     pub ipfs_hash: Vec<u8>,
     pub edit_history: Vec<PostHistoryRecord<T>>,
 
-    pub direct_replies_count: u16,
-    pub total_replies_count: u32,
-
-    pub shares_count: u16,
     pub upvotes_count: u16,
     pub downvotes_count: u16,
 
@@ -75,9 +71,14 @@ impl Default for PostExtension {
     }
 }
 
-#[impl_trait_for_tuples::impl_for_tuples(5)]
+#[impl_trait_for_tuples::impl_for_tuples(10)]
 pub trait AfterPostCreated<T: Trait> {
     fn after_post_created(post: &Post<T>, space: &mut Space<T>);
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(10)]
+pub trait AfterCommentCreated<T: Trait> {
+    fn after_comment_created(post: &Post<T>, ancestors: &[Post<T>]);
 }
 
 /// The pallet's configuration trait.
@@ -94,6 +95,8 @@ pub trait Trait: system::Trait
     type PostScores: PostScores<Self>;
 
     type AfterPostCreated: AfterPostCreated<Self>;
+
+    type AfterCommentCreated: AfterCommentCreated<Self>;
 }
 
 pub trait PostScores<T: Trait> {
@@ -231,7 +234,7 @@ decl_module! {
       }
 
       match extension {
-        PostExtension::RegularPost => {},
+        PostExtension::RegularPost => (),
 
         PostExtension::SharedPost(post_id) => {
           let original_post = &mut Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
@@ -249,30 +252,24 @@ decl_module! {
         },
 
         PostExtension::Comment(comment_ext) => {
-          root_post.inc_total_replies();
+          let mut commented_post_id = root_post.id;
+          let mut ancestors: Vec<Post<T>> = Vec::new();
 
           if let Some(parent_id) = comment_ext.parent_id {
-            let mut parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+            let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
             ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
-            parent_comment.inc_direct_replies();
 
-            let mut ancestors = Self::get_post_ancestors(parent_id);
-            ancestors[0] = parent_comment;
+            ancestors = Self::get_post_ancestors(parent_id);
             ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
-            for mut post in ancestors {
-              post.inc_total_replies();
-              <PostById<T>>::insert(post.id, post.clone());
-            }
 
-            ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
-          } else {
-            root_post.inc_direct_replies();
-            ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
+            commented_post_id = parent_id;
           }
-
           T::PostScores::score_root_post_on_new_comment(creator.clone(), root_post)?;
 
+          ReplyIdsByPostId::mutate(commented_post_id, |ids| ids.push(new_post_id));
           PostById::insert(comment_ext.root_post_id, root_post);
+
+          T::AfterCommentCreated::after_comment_created(&new_post, &ancestors);
         }
       }
 

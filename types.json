@@ -71,10 +71,6 @@
     "ipfs_hash": "IpfsHash",
     "edit_history": "Vec<PostHistoryRecord>",
 
-    "direct_replies_count": "u16",
-    "total_replies_count": "u32",
-
-    "shares_count": "u16",
     "upvotes_count": "u16",
     "downvotes_count": "u16",
 
@@ -103,6 +99,15 @@
   "CommentExt": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
+  },
+
+
+  "PostStats": {
+    "direct_replies_count": "u16",
+    "total_replies_count": "u32",
+    "shares_count": "u16",
+    "upvotes_count": "u16",
+    "downvotes_count": "u16"
   },
 
 

@@ -161,8 +161,13 @@ mod tests {
         type Event = ();
         type MaxCommentDepth = MaxCommentDepth;
         type PostScores = Scores;
-        type AfterPostCreated = SpaceStats;
+        type AfterPostCreated = (SpaceStats, PostStats);
+        type AfterCommentCreated = PostStats;
     }
+
+    parameter_types! {}
+
+    impl pallet_post_stats::Trait for TestRuntime {}
 
     parameter_types! {}
 
@@ -265,6 +270,7 @@ mod tests {
 
     type System = system::Module<TestRuntime>;
     type Posts = pallet_posts::Module<TestRuntime>;
+    type PostStats = pallet_post_stats::Module<TestRuntime>;
     type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;
     type Profiles = pallet_profiles::Module<TestRuntime>;
     type Reactions = pallet_reactions::Module<TestRuntime>;
@@ -1343,8 +1349,7 @@ mod tests {
             assert_eq!(post.ipfs_hash, self::post_ipfs_hash());
             assert!(post.edit_history.is_empty());
 
-            assert_eq!(post.total_replies_count, 0);
-            assert_eq!(post.shares_count, 0);
+            assert!(PostStats::post_stats_by_post_id(POST1).is_none());
             assert_eq!(post.upvotes_count, 0);
             assert_eq!(post.downvotes_count, 0);
 
@@ -1612,10 +1617,12 @@ mod tests {
             assert_ok!(_create_default_comment()); // PostId 2 by ACCOUNT1 which is permitted by default
 
             // Check storages
-            let root_post = Posts::post_by_id(POST1).unwrap();
+            let root_post_stats = PostStats::post_stats_by_post_id(POST1).unwrap();
+
             assert_eq!(Posts::reply_ids_by_post_id(POST1), vec![POST2]);
-            assert_eq!(root_post.total_replies_count, 1);
-            assert_eq!(root_post.direct_replies_count, 1);
+            assert_eq!(root_post_stats.total_replies_count, 1);
+            assert_eq!(root_post_stats.direct_replies_count, 1);
+
 
             // Check whether data stored correctly
             let comment = Posts::post_by_id(POST2).unwrap();
@@ -1627,8 +1634,7 @@ mod tests {
             assert!(comment.updated.is_none());
             assert_eq!(comment.ipfs_hash, self::comment_ipfs_hash());
             assert!(comment.edit_history.is_empty());
-            assert_eq!(comment.total_replies_count, 0);
-            assert_eq!(comment.shares_count, 0);
+            assert!(PostStats::post_stats_by_post_id(POST2).is_none());
             assert_eq!(comment.upvotes_count, 0);
             assert_eq!(comment.downvotes_count, 0);
             assert_eq!(comment.score, 0);
@@ -1645,12 +1651,14 @@ mod tests {
             // Check storages
             assert_eq!(Posts::reply_ids_by_post_id(POST1), vec![POST2]);
             assert_eq!(Posts::reply_ids_by_post_id(POST2), vec![POST3]);
-            let root_post = Posts::post_by_id(POST1).unwrap();
-            let parent_post = Posts::post_by_id(POST2).unwrap();
-            assert_eq!(root_post.total_replies_count, 2);
-            assert_eq!(root_post.direct_replies_count, 1);
-            assert_eq!(parent_post.total_replies_count, 1);
-            assert_eq!(parent_post.direct_replies_count, 1);
+
+            let root_post_stats = PostStats::post_stats_by_post_id(POST1).unwrap();
+            let parent_post_stats = PostStats::post_stats_by_post_id(POST2).unwrap();
+
+            assert_eq!(root_post_stats.total_replies_count, 2);
+            assert_eq!(root_post_stats.direct_replies_count, 1);
+            assert_eq!(parent_post_stats.total_replies_count, 1);
+            assert_eq!(parent_post_stats.direct_replies_count, 1);
 
             // Check whether data stored correctly
             let comment_ext = Posts::post_by_id(POST3).unwrap().get_comment_ext().unwrap();
@@ -2375,7 +2383,7 @@ mod tests {
             assert_eq!(Posts::shared_post_ids_by_original_post_id(POST1), vec![POST2]);
 
             // Check whether data stored correctly
-            assert_eq!(Posts::post_by_id(POST1).unwrap().shares_count, 1);
+            assert_eq!(PostStats::post_stats_by_post_id(POST1).unwrap().shares_count, 1);
 
             let shared_post = Posts::post_by_id(POST2).unwrap();
 
@@ -2427,7 +2435,7 @@ mod tests {
             assert_eq!(Posts::shared_post_ids_by_original_post_id(POST1), vec![POST2]);
 
             // Check whether data stored correctly
-            assert_eq!(Posts::post_by_id(POST1).unwrap().shares_count, 1);
+            assert_eq!(PostStats::post_stats_by_post_id(POST1).unwrap().shares_count, 1);
 
             let shared_post = Posts::post_by_id(POST2).unwrap();
             assert_eq!(shared_post.space_id, Some(SPACE1));

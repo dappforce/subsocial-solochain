@@ -41,6 +41,7 @@ std = [
     "transaction-payment/std",
     "pallet-permissions/std",
     "pallet-posts/std",
+    "pallet-post-stats/std",
     "pallet-profiles/std",
     "pallet-profile-follows/std",
     "pallet-reactions/std",
@@ -226,6 +227,10 @@ path = "../pallets/permissions"
 [dependencies.pallet-posts]
 default-features = false
 path = "../pallets/posts"
+
+[dependencies.pallet-post-stats]
+default-features = false
+path = "../pallets/post-stats"
 
 [dependencies.pallet-profiles]
 default-features = false

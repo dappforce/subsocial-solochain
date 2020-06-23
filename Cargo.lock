@@ -699,6 +699,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-permissions",
+ "pallet-post-stats",
  "pallet-posts",
  "pallet-profile-follows",
  "pallet-profiles",
@@ -2755,6 +2756,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-post-stats"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-posts",
+ "pallet-reactions",
+ "pallet-spaces",
+ "parity-scale-codec",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-posts"
 version = "2.0.0"
 dependencies = [
@@ -2813,6 +2827,7 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "impl-trait-for-tuples",
  "pallet-permissions",
  "pallet-posts",
  "pallet-spaces",
@@ -5214,6 +5229,7 @@ dependencies = [
  "pallet-grandpa",
  "pallet-indices",
  "pallet-permissions",
+ "pallet-post-stats",
  "pallet-posts",
  "pallet-profile-follows",
  "pallet-profiles",

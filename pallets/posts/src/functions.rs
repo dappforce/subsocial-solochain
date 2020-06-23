@@ -23,9 +23,6 @@ impl<T: Trait> Post<T> {
             extension,
             ipfs_hash,
             edit_history: Vec::new(),
-            direct_replies_count: 0,
-            total_replies_count: 0,
-            shares_count: 0,
             upvotes_count: 0,
             downvotes_count: 0,
             score: 0
@@ -76,32 +73,6 @@ impl<T: Trait> Post<T> {
         Spaces::require_space(space_id)
     }
 
-    // TODO use macros to generate inc/dec fns for Space, Post.
-
-    pub fn inc_direct_replies(&mut self) {
-        self.direct_replies_count = self.direct_replies_count.saturating_add(1);
-    }
-
-    pub fn dec_direct_replies(&mut self) {
-        self.direct_replies_count = self.direct_replies_count.saturating_sub(1);
-    }
-
-    pub fn inc_total_replies(&mut self) {
-        self.total_replies_count = self.total_replies_count.saturating_add(1);
-    }
-
-    pub fn dec_total_replies(&mut self) {
-        self.total_replies_count = self.total_replies_count.saturating_sub(1);
-    }
-
-    pub fn inc_shares(&mut self) {
-        self.shares_count = self.shares_count.saturating_add(1);
-    }
-
-    pub fn dec_shares(&mut self) {
-        self.shares_count = self.shares_count.saturating_sub(1);
-    }
-
     pub fn inc_upvotes(&mut self) {
         self.upvotes_count = self.upvotes_count.saturating_add(1);
     }
@@ -147,8 +118,6 @@ impl<T: Trait> Module<T> {
         original_post: &mut Post<T>,
         shared_post_id: PostId
     ) -> DispatchResult {
-        original_post.inc_shares();
-
         T::PostScores::score_post_on_new_share(account.clone(), original_post)?;
 
         let original_post_id = original_post.id;
