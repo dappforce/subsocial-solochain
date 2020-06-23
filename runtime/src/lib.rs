@@ -327,6 +327,7 @@ impl pallet_posts::Trait for Runtime {
   type Event = Event;
   type MaxCommentDepth = MaxCommentDepth;
   type PostScores = Scores;
+  type AfterPostCreated = SpaceStats;
 }
 
 parameter_types! {}
@@ -400,8 +401,8 @@ parameter_types! {}
 
 impl pallet_space_follows::Trait for Runtime {
   type Event = Event;
-  type BeforeSpaceFollowed = Scores;
-  type BeforeSpaceUnfollowed = Scores;
+  type BeforeSpaceFollowed = (SpaceStats, Scores);
+  type BeforeSpaceUnfollowed = (SpaceStats, Scores);
 }
 
 parameter_types! {}
@@ -409,6 +410,10 @@ parameter_types! {}
 impl pallet_space_ownership::Trait for Runtime {
   type Event = Event;
 }
+
+parameter_types! {}
+
+impl pallet_space_stats::Trait for Runtime {}
 
 parameter_types! {
   pub const MinHandleLen: u32 = 5;
@@ -451,6 +456,7 @@ construct_runtime!(
     Scores: pallet_scores::{Module, Call, Storage, Event<T>},
     SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
     SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
+    SpaceStats: pallet_space_stats::{Module, Storage},
     Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
   }
 );

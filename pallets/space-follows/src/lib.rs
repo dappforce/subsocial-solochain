@@ -85,12 +85,10 @@ decl_module! {
       let space = &mut Spaces::require_space(space_id)?;
       ensure!(Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::NotSpaceFollower);
 
-      space.dec_followers();
-
       let mut social_account = Profiles::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
       social_account.dec_following_spaces();
 
-      T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space)?;
+      T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space);
 
       <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
       <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
@@ -105,13 +103,12 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
-        space.inc_followers();
-
         let mut social_account = Profiles::get_or_new_social_account(follower.clone());
         social_account.inc_following_spaces();
 
         T::BeforeSpaceFollowed::before_space_followed(
-            follower.clone(), social_account.reputation, space)?;
+            follower.clone(), social_account.reputation, space
+        );
 
         let space_id = space.id;
         <SpaceFollowers<T>>::mutate(space_id, |followers| followers.push(follower.clone()));
@@ -141,23 +138,13 @@ impl<T: Trait> BeforeSpaceCreated<T> for Module<T> {
 }
 
 /// Handler that will be called right before the space is followed.
+#[impl_trait_for_tuples::impl_for_tuples(5)]
 pub trait BeforeSpaceFollowed<T: Trait> {
-    fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult;
-}
-
-impl<T: Trait> BeforeSpaceFollowed<T> for () {
-    fn before_space_followed(_follower: T::AccountId, _follower_reputation: u32, _space: &mut Space<T>) -> DispatchResult {
-        Ok(())
-    }
+    fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>);
 }
 
 /// Handler that will be called right before the space is unfollowed.
+#[impl_trait_for_tuples::impl_for_tuples(5)]
 pub trait BeforeSpaceUnfollowed<T: Trait> {
-    fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
-}
-
-impl<T: Trait> BeforeSpaceUnfollowed<T> for () {
-    fn before_space_unfollowed(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
-        Ok(())
-    }
+    fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>);
 }

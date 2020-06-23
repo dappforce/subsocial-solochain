@@ -707,6 +707,7 @@ dependencies = [
  "pallet-scores",
  "pallet-space-follows",
  "pallet-space-ownership",
+ "pallet-space-stats",
  "pallet-spaces",
  "pallet-timestamp",
  "pallet-utils",
@@ -2883,6 +2884,7 @@ dependencies = [
  "df-traits",
  "frame-support",
  "frame-system",
+ "impl-trait-for-tuples",
  "pallet-profiles",
  "pallet-spaces",
  "pallet-utils",
@@ -2900,6 +2902,20 @@ dependencies = [
  "pallet-utils",
  "parity-scale-codec",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-space-stats"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-posts",
+ "pallet-space-follows",
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -5207,6 +5223,7 @@ dependencies = [
  "pallet-scores",
  "pallet-space-follows",
  "pallet-space-ownership",
+ "pallet-space-stats",
  "pallet-spaces",
  "pallet-sudo",
  "pallet-timestamp",

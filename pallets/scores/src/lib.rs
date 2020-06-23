@@ -346,22 +346,23 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> BeforeSpaceFollowed<T> for Module<T> {
-    fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult {
+    fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) {
         // Change a space score only if the follower is NOT a space owner.
         if !space.is_owner(&follower) {
             let space_owner = space.owner.clone();
             let action = ScoringAction::FollowSpace;
             let score_diff = Self::score_diff_for_action(follower_reputation, action);
-            space.change_score(score_diff);
-            return Self::change_social_account_reputation(
-                space_owner, follower, score_diff, action)
+            if Self::change_social_account_reputation(
+                space_owner, follower, score_diff, action
+            ).is_ok() {
+                space.change_score(score_diff);
+            }
         }
-        Ok(())
     }
 }
 
 impl<T: Trait> BeforeSpaceUnfollowed<T> for Module<T> {
-    fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
+    fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) {
         // Change a space score only if the follower is NOT a space owner.
         if !space.is_owner(&follower) {
             let space_owner = space.owner.clone();
@@ -370,12 +371,13 @@ impl<T: Trait> BeforeSpaceUnfollowed<T> for Module<T> {
                 (follower.clone(), space_owner.clone(), action)
             ) {
                 // Subtract a score diff that was added when this user followed this space in the past:
-                space.change_score(-score_diff);
-                return Self::change_social_account_reputation(
-                    space_owner, follower, -score_diff, action)
+                if Self::change_social_account_reputation(
+                    space_owner, follower, -score_diff, action
+                ).is_ok() {
+                    space.change_score(-score_diff);
+                }
             }
         }
-        Ok(())
     }
 }
 

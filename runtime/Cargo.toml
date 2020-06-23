@@ -49,6 +49,7 @@ std = [
     "pallet-spaces/std",
     "pallet-space-follows/std",
     "pallet-space-ownership/std",
+    "pallet-space-stats/std",
     "pallet-utils/std"
 ]
 
@@ -257,6 +258,10 @@ path = "../pallets/space-follows"
 [dependencies.pallet-space-ownership]
 default-features = false
 path = "../pallets/space-ownership"
+
+[dependencies.pallet-space-stats]
+default-features = false
+path = "../pallets/space-stats"
 
 [dependencies.pallet-utils]
 default-features = false

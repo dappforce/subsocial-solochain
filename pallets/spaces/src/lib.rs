@@ -30,9 +30,6 @@ pub struct Space<T: Trait> {
     pub handle: Option<Vec<u8>>,
     pub ipfs_hash: Vec<u8>,
 
-    pub posts_count: u16,
-    pub followers_count: u32,
-
     pub edit_history: Vec<SpaceHistoryRecord<T>>,
 
     pub score: i32,
@@ -245,8 +242,6 @@ impl<T: Trait> Space<T> {
             owner: created_by,
             handle,
             ipfs_hash,
-            posts_count: 0,
-            followers_count: 0,
             edit_history: Vec::new(),
             score: 0,
             permissions: None,
@@ -264,22 +259,6 @@ impl<T: Trait> Space<T> {
     pub fn ensure_space_owner(&self, account: T::AccountId) -> DispatchResult {
         ensure!(self.is_owner(&account), Error::<T>::NotASpaceOwner);
         Ok(())
-    }
-
-    pub fn inc_posts(&mut self) {
-        self.posts_count = self.posts_count.saturating_add(1);
-    }
-
-    pub fn dec_posts(&mut self) {
-        self.posts_count = self.posts_count.saturating_sub(1);
-    }
-
-    pub fn inc_followers(&mut self) {
-        self.followers_count = self.followers_count.saturating_add(1);
-    }
-
-    pub fn dec_followers(&mut self) {
-        self.followers_count = self.followers_count.saturating_sub(1);
     }
 
     #[allow(clippy::comparison_chain)]

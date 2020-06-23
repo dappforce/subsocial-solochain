@@ -11,7 +11,7 @@ use sp_std::prelude::*;
 use system::ensure_signed;
 
 use pallet_permissions::SpacePermission;
-use pallet_spaces::{Module as Spaces, SpaceById};
+use pallet_spaces::{Module as Spaces, Space, SpaceById};
 use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen};
 
 pub mod functions;
@@ -75,6 +75,11 @@ impl Default for PostExtension {
     }
 }
 
+#[impl_trait_for_tuples::impl_for_tuples(5)]
+pub trait AfterPostCreated<T: Trait> {
+    fn after_post_created(post: &Post<T>, space: &mut Space<T>);
+}
+
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
@@ -87,6 +92,8 @@ pub trait Trait: system::Trait
     type MaxCommentDepth: Get<u32>;
 
     type PostScores: PostScores<Self>;
+
+    type AfterPostCreated: AfterPostCreated<Self>;
 }
 
 pub trait PostScores<T: Trait> {
@@ -197,7 +204,7 @@ decl_module! {
       let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, ipfs_hash);
 
       // Get space from either from space_id_opt or extension if a Comment provided
-      let mut space = new_post.get_space()?;
+      let space = &mut new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 
       let root_post = &mut new_post.get_root_post()?;
@@ -224,9 +231,7 @@ decl_module! {
       }
 
       match extension {
-        PostExtension::RegularPost => {
-          space.inc_posts();
-        },
+        PostExtension::RegularPost => {},
 
         PostExtension::SharedPost(post_id) => {
           let original_post = &mut Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
@@ -240,7 +245,6 @@ decl_module! {
             Error::<T>::NoPermissionToShare.into()
           )?;
 
-          space.inc_posts();
           Self::share_post(creator.clone(), original_post, new_post_id)?;
         },
 
@@ -272,13 +276,15 @@ decl_module! {
         }
       }
 
+      PostById::insert(new_post_id, new_post.clone());
+      NextPostId::mutate(|n| { *n += 1; });
+
+      T::AfterPostCreated::after_post_created(&new_post, space);
+
       if new_post.is_root_post() {
         SpaceById::insert(space.id, space.clone());
         PostIdsBySpaceId::mutate(space.id, |ids| ids.push(new_post_id));
       }
-
-      PostById::insert(new_post_id, new_post);
-      NextPostId::mutate(|n| { *n += 1; });
 
       Self::deposit_event(RawEvent::PostCreated(creator, new_post_id));
     }

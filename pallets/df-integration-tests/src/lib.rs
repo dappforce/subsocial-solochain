@@ -161,6 +161,7 @@ mod tests {
         type Event = ();
         type MaxCommentDepth = MaxCommentDepth;
         type PostScores = Scores;
+        type AfterPostCreated = SpaceStats;
     }
 
     parameter_types! {}
@@ -234,8 +235,8 @@ mod tests {
 
     impl pallet_space_follows::Trait for TestRuntime {
         type Event = ();
-        type BeforeSpaceFollowed = Scores;
-        type BeforeSpaceUnfollowed = Scores;
+        type BeforeSpaceFollowed = (SpaceStats, Scores);
+        type BeforeSpaceUnfollowed = (SpaceStats, Scores);
     }
 
     parameter_types! {}
@@ -243,6 +244,10 @@ mod tests {
     impl pallet_space_ownership::Trait for TestRuntime {
         type Event = ();
     }
+
+    parameter_types! {}
+
+    impl pallet_space_stats::Trait for TestRuntime {}
 
     parameter_types! {
         pub const MinHandleLen: u32 = 5;
@@ -267,6 +272,7 @@ mod tests {
     type Scores = pallet_scores::Module<TestRuntime>;
     type SpaceFollows = pallet_space_follows::Module<TestRuntime>;
     type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
+    type SpaceStats = pallet_space_stats::Module<TestRuntime>;
     type Spaces = pallet_spaces::Module<TestRuntime>;
 
     pub type AccountId = u64;
@@ -902,6 +908,7 @@ mod tests {
 
             // Check whether data stored correctly
             let space = Spaces::space_by_id(SPACE1).unwrap();
+            let space_stats = SpaceStats::space_stats_by_space_id(SPACE1).unwrap();
 
             assert_eq!(space.created.account, ACCOUNT1);
             assert!(space.updated.is_none());
@@ -911,8 +918,8 @@ mod tests {
             assert_eq!(space.handle, Some(self::space_handle()));
             assert_eq!(space.ipfs_hash, self::space_ipfs_hash());
 
-            assert_eq!(space.posts_count, 0);
-            assert_eq!(space.followers_count, 1);
+            assert_eq!(space_stats.posts_count, 0);
+            assert_eq!(space_stats.followers_count, 1);
             assert!(space.edit_history.is_empty());
             assert_eq!(space.score, 0);
         });
@@ -1342,6 +1349,8 @@ mod tests {
             assert_eq!(post.downvotes_count, 0);
 
             assert_eq!(post.score, 0);
+
+            assert_eq!(SpaceStats::space_stats_by_space_id(SPACE1).unwrap().posts_count, 1);
         });
     }
 
@@ -2799,7 +2808,7 @@ mod tests {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
-            assert_eq!(Spaces::space_by_id(SPACE1).unwrap().followers_count, 2);
+            assert_eq!(SpaceStats::space_stats_by_space_id(SPACE1).unwrap().followers_count, 2);
             assert_eq!(SpaceFollows::spaces_followed_by_account(ACCOUNT2), vec![SPACE1]);
             assert_eq!(SpaceFollows::space_followers(SPACE1), vec![ACCOUNT1, ACCOUNT2]);
             assert_eq!(SpaceFollows::space_followed_by_account((ACCOUNT2, SPACE1)), true);
@@ -2842,7 +2851,7 @@ mod tests {
             // Follow SpaceId 1 by ACCOUNT2
             assert_ok!(_default_unfollow_space());
 
-            assert_eq!(Spaces::space_by_id(SPACE1).unwrap().followers_count, 1);
+            assert_eq!(SpaceStats::space_stats_by_space_id(SPACE1).unwrap().followers_count, 1);
             assert!(SpaceFollows::spaces_followed_by_account(ACCOUNT2).is_empty());
             assert_eq!(SpaceFollows::space_followers(SPACE1), vec![ACCOUNT1]);
         });

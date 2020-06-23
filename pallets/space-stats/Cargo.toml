@@ -1,12 +1,12 @@
 [package]
-name = "pallet-posts"
+name = "pallet-space-stats"
 version = "2.0.0"
 authors = ["DappForce <dappforce@pm.me>"]
 edition = "2018"
 license = "GPL-3.0-only"
 homepage = "https://subsocial.network"
 repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Post management pallet"
+description = "Space statistics pallet"
 keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
 categories = ["cryptography::cryptocurrencies"]
 
@@ -17,14 +17,11 @@ std = [
     'sp-runtime/std',
     'frame-support/std',
     'system/std',
-    'sp-std/std',
     'pallet-utils/std',
-    'pallet-permissions/std',
-    'pallet-spaces/std'
+    'pallet-spaces/std',
+    'pallet-space-follows/std',
+    'pallet-posts/std'
 ]
-
-[dependencies.impl-trait-for-tuples]
-version = '0.1.3'
 
 [dependencies.codec]
 default-features = false
@@ -51,23 +48,22 @@ package = 'frame-system'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
 version = '2.0.0'
 
-[dependencies.sp-std]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
-
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
 version = '2.0.0'
 
-[dependencies.pallet-permissions]
-default-features = false
-path = '../permissions'
-version = '2.0.0'
-
 [dependencies.pallet-spaces]
 default-features = false
 path = '../spaces'
+version = '2.0.0'
+
+[dependencies.pallet-space-follows]
+default-features = false
+path = '../space-follows'
+version = '2.0.0'
+
+[dependencies.pallet-posts]
+default-features = false
+path = '../posts'
 version = '2.0.0'

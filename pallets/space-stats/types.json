@@ -1,0 +1,6 @@
+{
+  "SpaceStats": {
+    "posts_count": "u16",
+    "followers_count": "u32"
+  }
+}
