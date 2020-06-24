@@ -254,29 +254,24 @@ decl_module! {
 
         PostExtension::Comment(comment_ext) => {
           root_post.inc_total_replies();
+          let mut commented_post_id = root_post.id;
 
           if let Some(parent_id) = comment_ext.parent_id {
-            let mut parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+            let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
             ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
-            parent_comment.inc_direct_replies();
 
-            let mut ancestors = Self::get_post_ancestors(parent_id);
-            ancestors[0] = parent_comment;
+            let ancestors = Self::get_post_ancestors(parent_id);
             ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
-            for mut post in ancestors {
-              post.inc_total_replies();
-              <PostById<T>>::insert(post.id, post.clone());
-            }
 
-            ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
-          } else {
-            root_post.inc_direct_replies();
-            ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
+            commented_post_id = parent_id;
           }
 
           T::PostScores::score_root_post_on_new_comment(creator.clone(), root_post)?;
 
-          PostById::insert(comment_ext.root_post_id, root_post);
+          Self::for_each_post_ancestor(commented_post_id, |post| post.inc_total_replies())?;
+          PostById::insert(root_post.id, root_post);
+          Self::mutate_post_by_id(commented_post_id, |post| post.inc_direct_replies())?;
+          ReplyIdsByPostId::mutate(commented_post_id, |ids| ids.push(new_post_id));
         }
       }
 

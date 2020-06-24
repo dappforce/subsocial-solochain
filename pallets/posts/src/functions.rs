@@ -179,6 +179,22 @@ impl<T: Trait> Module<T> {
         Self::is_root_post_hidden(post_id).map(|v| !v)
     }
 
+    pub fn mutate_post_by_id<F: FnOnce(&mut Post<T>)> (
+        post_id: PostId,
+        f: F
+    ) -> Result<Post<T>, DispatchError> {
+        <PostById<T>>::mutate(post_id, |post_opt| {
+            if let Some(ref mut post) = post_opt.clone() {
+                f(post);
+                *post_opt = Some(post.clone());
+
+                return Ok(post.clone());
+            }
+
+            Err(Error::<T>::PostNotFound.into())
+        })
+    }
+
     // TODO refactor to a tail recursion
     pub fn get_post_ancestors(post_id: PostId) -> Vec<Post<T>> {
         let mut ancestors: Vec<Post<T>> = Vec::new();
@@ -191,5 +207,20 @@ impl<T: Trait> Module<T> {
         }
 
         ancestors
+    }
+
+    pub fn for_each_post_ancestor (
+        post_id: PostId,
+        f: fn(&mut Post<T>)
+    ) -> DispatchResult {
+        let post = Self::mutate_post_by_id(post_id, f)?;
+
+        if let PostExtension::Comment(comment_ext) = post.extension {
+            if let Some(parent_id) = comment_ext.parent_id {
+                Self::for_each_post_ancestor(parent_id, f)?;
+            }
+        }
+
+        Ok(())
     }
 }
