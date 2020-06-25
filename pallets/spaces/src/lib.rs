@@ -29,6 +29,7 @@ pub struct Space<T: Trait> {
     pub owner: T::AccountId,
     pub handle: Option<Vec<u8>>,
     pub content: Content,
+    pub parent_id: Option<SpaceId>,
 
     pub posts_count: u16,
     pub followers_count: u32,
@@ -47,6 +48,7 @@ pub struct SpaceUpdate {
     pub handle: Option<Option<Vec<u8>>>,
     pub content: Option<Content>,
     pub hidden: Option<bool>,
+    pub parent_id: Option<Option<SpaceId>>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -93,6 +95,8 @@ decl_error! {
     NotASpaceOwner,
     /// User has no permission to update this space.
     NoPermissionToUpdateSpace,
+    /// User has no permission to create subspaces on this space
+    NoPermissionToCreateSubspaces,
   }
 }
 
@@ -132,7 +136,12 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, content: Content) {
+    pub fn create_space(
+      origin,
+      parent_id_opt: Option<SpaceId>,
+      handle_opt: Option<Vec<u8>>,
+      content: Content
+    ) {
       let owner = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -142,8 +151,20 @@ decl_module! {
         handle_in_lowercase = Self::lowercase_and_validate_a_handle(original_handle)?;
       }
 
+      // TODO: add tests for this case
+      if let Some(parent_id) = parent_id_opt {
+        let space = Self::require_space(parent_id)?;
+
+        Self::ensure_account_has_space_permission(
+          owner.clone(),
+          &space,
+          SpacePermission::CreateSubspaces,
+          Error::<T>::NoPermissionToCreateSubspaces.into()
+        )?;
+      }
+
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, owner.clone(), content, handle_opt);
+      let new_space = &mut Space::new(space_id, owner.clone(), content, handle_opt, parent_id_opt);
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
 
@@ -164,7 +185,8 @@ decl_module! {
       let has_updates =
         update.handle.is_some() ||
         update.content.is_some() ||
-        update.hidden.is_some();
+        update.hidden.is_some() ||
+        update.parent_id.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForSpace);
 
@@ -183,9 +205,31 @@ decl_module! {
         old_data: SpaceUpdate {
             handle: None,
             content: None,
-            hidden: None
+            hidden: None,
+            parent_id: None
         }
       };
+
+      // TODO: add tests for this case
+      if let Some(parent_id_opt) = update.parent_id {
+        if parent_id_opt != space.parent_id {
+
+          if let Some(parent_id) = parent_id_opt {
+            let parent_space = Self::require_space(parent_id)?;
+
+            Self::ensure_account_has_space_permission(
+              owner.clone(),
+              &parent_space,
+              SpacePermission::CreateSubspaces,
+              Error::<T>::NoPermissionToCreateSubspaces.into()
+            )?;
+          }
+
+          new_history_record.old_data.parent_id = Some(space.parent_id);
+          space.parent_id = parent_id_opt;
+          fields_updated += 1;
+        }
+      }
 
       if let Some(content) = update.content {
         if content != space.content {
@@ -236,6 +280,7 @@ impl<T: Trait> Space<T> {
         created_by: T::AccountId,
         content: Content,
         handle: Option<Vec<u8>>,
+        parent_id: Option<SpaceId>,
     ) -> Self {
         Space {
             id,
@@ -245,6 +290,7 @@ impl<T: Trait> Space<T> {
             owner: created_by,
             handle,
             content,
+            parent_id,
             posts_count: 0,
             followers_count: 0,
             edit_history: Vec::new(),
