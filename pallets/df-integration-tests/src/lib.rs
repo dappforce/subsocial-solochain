@@ -418,7 +418,8 @@ mod tests {
         parent_id: Option<Option<SpaceId>>,
         handle: Option<Option<Vec<u8>>>,
         content: Option<Content>,
-        hidden: Option<bool>
+        hidden: Option<bool>,
+        parent_id: Option<Option<SpaceId>>
     ) -> SpaceUpdate {
         SpaceUpdate {
             parent_id,
@@ -1090,6 +1091,7 @@ mod tests {
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
+                None,
             );
 
             assert_ok!(_update_space(
@@ -1331,6 +1333,7 @@ mod tests {
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
+                None,
             );
 
             assert_ok!(_delete_default_role());

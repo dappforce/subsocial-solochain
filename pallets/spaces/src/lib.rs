@@ -50,6 +50,7 @@ pub struct SpaceUpdate {
     pub handle: Option<Option<Vec<u8>>>,
     pub content: Option<Content>,
     pub hidden: Option<bool>,
+    pub parent_id: Option<Option<SpaceId>>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -187,7 +188,8 @@ decl_module! {
         update.parent_id.is_some() ||
         update.handle.is_some() ||
         update.content.is_some() ||
-        update.hidden.is_some();
+        update.hidden.is_some() ||
+        update.parent_id.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForSpace);
 
@@ -207,7 +209,8 @@ decl_module! {
             parent_id: None,
             handle: None,
             content: None,
-            hidden: None
+            hidden: None,
+            parent_id: None
         }
       };
 
@@ -282,6 +285,7 @@ impl<T: Trait> Space<T> {
         created_by: T::AccountId,
         content: Content,
         handle: Option<Vec<u8>>,
+        parent_id: Option<SpaceId>,
     ) -> Self {
         Space {
             id,
