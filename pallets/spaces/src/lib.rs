@@ -421,5 +421,5 @@ impl<T: Trait> BeforeSpaceCreated<T> for () {
 
 #[impl_trait_for_tuples::impl_for_tuples(10)]
 pub trait AfterSpaceUpdated<T: Trait> {
-    fn after_space_updated(sender: T::AccountId, space: &Space<T>, updates: SpaceUpdate);
+    fn after_space_updated(sender: T::AccountId, space: &Space<T>, old_data: SpaceUpdate);
 }

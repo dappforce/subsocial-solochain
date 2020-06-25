@@ -161,7 +161,12 @@ mod tests {
         type Event = ();
         type MaxCommentDepth = MaxCommentDepth;
         type PostScores = Scores;
+        type AfterPostUpdated = PostHistory;
     }
+
+    parameter_types! {}
+
+    impl pallet_post_history::Trait for TestRuntime {}
 
     parameter_types! {}
 
@@ -265,6 +270,7 @@ mod tests {
 
     type System = system::Module<TestRuntime>;
     type Posts = pallet_posts::Module<TestRuntime>;
+    type PostHistory = pallet_post_history::Module<TestRuntime>;
     type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;
     type Profiles = pallet_profiles::Module<TestRuntime>;
     type Reactions = pallet_reactions::Module<TestRuntime>;
@@ -1371,7 +1377,6 @@ mod tests {
             assert_eq!(post.extension, self::extension_regular_post());
 
             assert_eq!(post.content, self::post_content_ipfs());
-            assert!(post.edit_history.is_empty());
 
             assert_eq!(post.total_replies_count, 0);
             assert_eq!(post.shares_count, 0);
@@ -1379,6 +1384,8 @@ mod tests {
             assert_eq!(post.downvotes_count, 0);
 
             assert_eq!(post.score, 0);
+
+            assert!(PostHistory::post_history_by_post_id(POST1).is_empty());
         });
     }
 
@@ -1479,9 +1486,10 @@ mod tests {
             assert_eq!(post.hidden, true);
 
             // Check whether history recorded correctly
-            assert!(post.edit_history[0].old_data.space_id.is_none());
-            assert_eq!(post.edit_history[0].old_data.content, Some(self::post_content_ipfs()));
-            assert_eq!(post.edit_history[0].old_data.hidden, Some(false));
+            let post_history = PostHistory::post_history_by_post_id(POST1)[0].clone();
+            assert!(post_history.old_data.space_id.is_none());
+            assert_eq!(post_history.old_data.content, Some(self::post_content_ipfs()));
+            assert_eq!(post_history.old_data.hidden, Some(false));
         });
     }
 
@@ -1662,12 +1670,13 @@ mod tests {
             assert_eq!(comment.created.account, ACCOUNT1);
             assert!(comment.updated.is_none());
             assert_eq!(comment.content, self::comment_content_ipfs());
-            assert!(comment.edit_history.is_empty());
             assert_eq!(comment.total_replies_count, 0);
             assert_eq!(comment.shares_count, 0);
             assert_eq!(comment.upvotes_count, 0);
             assert_eq!(comment.downvotes_count, 0);
             assert_eq!(comment.score, 0);
+
+            assert!(PostHistory::post_history_by_post_id(POST2).is_empty());
         });
     }
 
@@ -1786,7 +1795,7 @@ mod tests {
             assert_eq!(comment.content, self::reply_content_ipfs());
 
             // Check whether history recorded correctly
-            assert_eq!(comment.edit_history[0].old_data.content, Some(self::comment_content_ipfs()));
+            assert_eq!(PostHistory::post_history_by_post_id(POST2)[0].old_data.content, Some(self::comment_content_ipfs()));
         });
     }
 

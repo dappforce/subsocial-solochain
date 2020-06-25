@@ -327,7 +327,12 @@ impl pallet_posts::Trait for Runtime {
   type Event = Event;
   type MaxCommentDepth = MaxCommentDepth;
   type PostScores = Scores;
+  type AfterPostUpdated = PostHistory;
 }
+
+parameter_types! {}
+
+impl pallet_post_history::Trait for Runtime {}
 
 parameter_types! {}
 
@@ -449,6 +454,7 @@ construct_runtime!(
     // Subsocial custom pallets:
     Permissions: pallet_permissions::{Module, Call /* TODO inspect: do we need Call for permissions? */},
     Posts: pallet_posts::{Module, Call, Storage, Event<T>},
+    PostHistory: pallet_post_history::{Module, Storage},
     ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
     Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
     Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},

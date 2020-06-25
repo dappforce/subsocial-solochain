@@ -2,9 +2,7 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
-use frame_support::{
-    decl_module, decl_storage
-};
+use frame_support::{decl_module, decl_storage};
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::Vec;
 

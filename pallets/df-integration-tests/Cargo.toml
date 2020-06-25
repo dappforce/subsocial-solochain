@@ -21,6 +21,7 @@ std = [
     'pallet-timestamp/std',
     "pallet-permissions/std",
     "pallet-posts/std",
+    "pallet-post-history/std",
     "pallet-profiles/std",
     "pallet-profile-follows/std",
     "pallet-reactions/std",
@@ -77,6 +78,10 @@ path = "../permissions"
 [dependencies.pallet-posts]
 default-features = false
 path = "../posts"
+
+[dependencies.pallet-post-history]
+default-features = false
+path = "../post-history"
 
 [dependencies.pallet-profiles]
 default-features = false

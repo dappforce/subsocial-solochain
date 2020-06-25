@@ -699,6 +699,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-permissions",
+ "pallet-post-history",
  "pallet-posts",
  "pallet-profile-follows",
  "pallet-profiles",
@@ -2748,6 +2749,20 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-post-history"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-posts",
  "pallet-utils",
  "parity-scale-codec",
  "sp-runtime",
@@ -5213,6 +5228,7 @@ dependencies = [
  "pallet-grandpa",
  "pallet-indices",
  "pallet-permissions",
+ "pallet-post-history",
  "pallet-posts",
  "pallet-profile-follows",
  "pallet-profiles",
