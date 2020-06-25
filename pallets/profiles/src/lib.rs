@@ -29,21 +29,13 @@ pub struct Profile<T: Trait> {
     pub updated: Option<WhoAndWhen<T>>,
 
     pub username: Vec<u8>,
-    pub content: Content,
-
-    pub edit_history: Vec<ProfileHistoryRecord<T>>,
+    pub content: Content
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ProfileUpdate {
     pub username: Option<Vec<u8>>,
     pub content: Option<Content>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct ProfileHistoryRecord<T: Trait> {
-    pub edited: WhoAndWhen<T>,
-    pub old_data: ProfileUpdate,
 }
 
 /// The pallet's configuration trait.
@@ -58,6 +50,8 @@ pub trait Trait: system::Trait
 
     /// Maximal length of profile username
     type MaxUsernameLen: Get<u32>;
+
+    type AfterProfileUpdated: AfterProfileUpdated<Self>;
 }
 
 // This pallet's storage items.
@@ -125,8 +119,7 @@ decl_module! {
           created: WhoAndWhen::<T>::new(owner.clone()),
           updated: None,
           username: username.clone(),
-          content,
-          edit_history: Vec::new()
+          content
         }
       );
       <AccountByProfileUsername<T>>::insert(username, owner.clone());
@@ -147,15 +140,12 @@ decl_module! {
       let mut social_account = Self::social_account_by_id(owner.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
       let mut profile = social_account.profile.ok_or(Error::<T>::AccountHasNoProfile)?;
       let mut is_update_applied = false;
-      let mut new_history_record = ProfileHistoryRecord {
-        edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: ProfileUpdate {username: None, content: None}
-      };
+      let mut old_data = ProfileUpdate::default();
 
       if let Some(content) = update.content {
         if content != profile.content {
           Utils::<T>::is_valid_content(content.clone())?;
-          new_history_record.old_data.content = Some(profile.content);
+          old_data.content = Some(profile.content);
           profile.content = content;
           is_update_applied = true;
         }
@@ -166,7 +156,7 @@ decl_module! {
           Self::is_username_valid(username.clone())?;
           <AccountByProfileUsername<T>>::remove(profile.username.clone());
           <AccountByProfileUsername<T>>::insert(username.clone(), owner.clone());
-          new_history_record.old_data.username = Some(profile.username);
+          old_data.username = Some(profile.username);
           profile.username = username;
           is_update_applied = true;
         }
@@ -174,9 +164,10 @@ decl_module! {
 
       if is_update_applied {
         profile.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-        profile.edit_history.push(new_history_record);
-        social_account.profile = Some(profile);
+        social_account.profile = Some(profile.clone());
+
         <SocialAccountById<T>>::insert(owner.clone(), social_account);
+        T::AfterProfileUpdated::after_profile_updated(owner.clone(), &profile, old_data);
 
         Self::deposit_event(RawEvent::ProfileUpdated(owner));
       }
@@ -221,6 +212,15 @@ impl<T: Trait> SocialAccount<T> {
     }
 }
 
+impl Default for ProfileUpdate {
+    fn default() -> Self {
+        ProfileUpdate {
+            username: None,
+            content: None
+        }
+    }
+}
+
 impl<T: Trait> Module<T> {
     pub fn get_or_new_social_account(account: T::AccountId) -> SocialAccount<T> {
         Self::social_account_by_id(account).unwrap_or(
@@ -242,4 +242,9 @@ impl<T: Trait> Module<T> {
         ensure!(username.iter().all(|&x| is_valid_handle_char(x)), Error::<T>::UsernameContainsInvalidChars);
         Ok(())
     }
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(10)]
+pub trait AfterProfileUpdated<T: Trait> {
+    fn after_profile_updated(account: T::AccountId, post: &Profile<T>, old_data: ProfileUpdate);
 }

@@ -185,7 +185,12 @@ mod tests {
         type Event = ();
         type MinUsernameLen = MinUsernameLen;
         type MaxUsernameLen = MaxUsernameLen;
+        type AfterProfileUpdated = ProfileHistory;
     }
+
+    parameter_types! {}
+
+    impl pallet_profile_history::Trait for TestRuntime {}
 
     parameter_types! {}
 
@@ -273,6 +278,7 @@ mod tests {
     type PostHistory = pallet_post_history::Module<TestRuntime>;
     type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;
     type Profiles = pallet_profiles::Module<TestRuntime>;
+    type ProfileHistory = pallet_profile_history::Module<TestRuntime>;
     type Reactions = pallet_reactions::Module<TestRuntime>;
     type Roles = pallet_roles::Module<TestRuntime>;
     type Scores = pallet_scores::Module<TestRuntime>;
@@ -2629,8 +2635,9 @@ mod tests {
             assert!(profile.updated.is_none());
             assert_eq!(profile.username, self::alice_username());
             assert_eq!(profile.content, self::profile_content_ipfs());
-            assert!(profile.edit_history.is_empty());
             assert_eq!(Profiles::account_by_profile_username(self::alice_username()), Some(ACCOUNT1));
+
+            assert!(ProfileHistory::profile_history_by_account(ACCOUNT1).is_empty());
         });
     }
 
@@ -2736,8 +2743,9 @@ mod tests {
             assert_eq!(Profiles::account_by_profile_username(self::bob_username()), Some(ACCOUNT1));
 
             // Check whether profile history is written correctly
-            assert_eq!(profile.edit_history[0].old_data.username, Some(self::alice_username()));
-            assert_eq!(profile.edit_history[0].old_data.content, Some(self::profile_content_ipfs()));
+            let profile_history = ProfileHistory::profile_history_by_account(ACCOUNT1)[0].clone();
+            assert_eq!(profile_history.old_data.username, Some(self::alice_username()));
+            assert_eq!(profile_history.old_data.content, Some(self::profile_content_ipfs()));
         });
     }
 

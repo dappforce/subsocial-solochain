@@ -44,6 +44,7 @@ std = [
     "pallet-post-history/std",
     "pallet-profiles/std",
     "pallet-profile-follows/std",
+    "pallet-profile-history/std",
     "pallet-reactions/std",
     "pallet-roles/std",
     "pallet-scores/std",
@@ -239,6 +240,10 @@ path = "../pallets/profiles"
 [dependencies.pallet-profile-follows]
 default-features = false
 path = "../pallets/profile-follows"
+
+[dependencies.pallet-profile-history]
+default-features = false
+path = "../pallets/profile-history"
 
 [dependencies.pallet-reactions]
 default-features = false

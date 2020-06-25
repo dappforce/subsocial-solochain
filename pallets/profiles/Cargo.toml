@@ -22,6 +22,9 @@ std = [
     'pallet-permissions/std'
 ]
 
+[dependencies.impl-trait-for-tuples]
+version = "0.1.3"
+
 [dependencies.codec]
 default-features = false
 features = ['derive']

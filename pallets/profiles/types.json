@@ -12,18 +12,11 @@
     "updated": "Option<WhoAndWhen>",
 
     "username": "Text",
-    "content": "Content",
-
-    "edit_history": "Vec<ProfileHistoryRecord>"
+    "content": "Content"
   },
 
   "ProfileUpdate": {
     "username": "Option<Text>",
     "content": "Option<Content>"
-  },
-
-  "ProfileHistoryRecord": {
-    "edited": "WhoAndWhen",
-    "old_data": "ProfileUpdate"
   }
 }

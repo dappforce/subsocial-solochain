@@ -351,7 +351,12 @@ impl pallet_profiles::Trait for Runtime {
   type Event = Event;
   type MinUsernameLen = MinUsernameLen;
   type MaxUsernameLen = MaxUsernameLen;
+  type AfterProfileUpdated = ProfileHistory;
 }
+
+parameter_types! {}
+
+impl pallet_profile_history::Trait for Runtime {}
 
 parameter_types! {}
 
@@ -457,6 +462,7 @@ construct_runtime!(
     PostHistory: pallet_post_history::{Module, Storage},
     ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
     Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
+    ProfileHistory: pallet_profile_history::{Module, Storage},
     Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},
     Roles: pallet_roles::{Module, Call, Storage, Event<T>},
     Scores: pallet_scores::{Module, Call, Storage, Event<T>},
