@@ -12,8 +12,6 @@
     "content": "Content",
     "hidden": "bool",
 
-    "edit_history": "Vec<PostHistoryRecord>",
-
     "direct_replies_count": "u16",
     "total_replies_count": "u32",
 
@@ -28,11 +26,6 @@
     "space_id": "Option<SpaceId>",
     "content": "Option<Content>",
     "hidden": "Option<bool>"
-  },
-
-  "PostHistoryRecord": {
-    "edited": "WhoAndWhen",
-    "old_data": "PostUpdate"
   },
 
   "PostExtension": {

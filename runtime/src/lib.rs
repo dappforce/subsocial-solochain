@@ -327,7 +327,12 @@ impl pallet_posts::Trait for Runtime {
   type Event = Event;
   type MaxCommentDepth = MaxCommentDepth;
   type PostScores = Scores;
+  type AfterPostUpdated = PostHistory;
 }
+
+parameter_types! {}
+
+impl pallet_post_history::Trait for Runtime {}
 
 parameter_types! {}
 
@@ -346,7 +351,12 @@ impl pallet_profiles::Trait for Runtime {
   type Event = Event;
   type MinUsernameLen = MinUsernameLen;
   type MaxUsernameLen = MaxUsernameLen;
+  type AfterProfileUpdated = ProfileHistory;
 }
+
+parameter_types! {}
+
+impl pallet_profile_history::Trait for Runtime {}
 
 parameter_types! {}
 
@@ -422,7 +432,12 @@ impl pallet_spaces::Trait for Runtime {
   type Roles = Roles;
   type SpaceFollows = SpaceFollows;
   type BeforeSpaceCreated = SpaceFollows;
+  type AfterSpaceUpdated = SpaceHistory;
 }
+
+parameter_types! {}
+
+impl pallet_space_history::Trait for Runtime {}
 
 construct_runtime!(
   pub enum Runtime where
@@ -444,12 +459,15 @@ construct_runtime!(
     // Subsocial custom pallets:
     Permissions: pallet_permissions::{Module, Call /* TODO inspect: do we need Call for permissions? */},
     Posts: pallet_posts::{Module, Call, Storage, Event<T>},
+    PostHistory: pallet_post_history::{Module, Storage},
     ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
     Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
+    ProfileHistory: pallet_profile_history::{Module, Storage},
     Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},
     Roles: pallet_roles::{Module, Call, Storage, Event<T>},
     Scores: pallet_scores::{Module, Call, Storage, Event<T>},
     SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
+    SpaceHistory: pallet_space_history::{Module, Storage},
     SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
     Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
   }

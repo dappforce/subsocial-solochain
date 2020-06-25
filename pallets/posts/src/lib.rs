@@ -31,8 +31,6 @@ pub struct Post<T: Trait> {
     pub content: Content,
     pub hidden: bool,
 
-    pub edit_history: Vec<PostHistoryRecord<T>>,
-
     pub direct_replies_count: u16,
     pub total_replies_count: u32,
 
@@ -48,12 +46,6 @@ pub struct PostUpdate {
     pub space_id: Option<SpaceId>,
     pub content: Option<Content>,
     pub hidden: Option<bool>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct PostHistoryRecord<T: Trait> {
-    pub edited: WhoAndWhen<T>,
-    pub old_data: PostUpdate,
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
@@ -88,6 +80,8 @@ pub trait Trait: system::Trait
     type MaxCommentDepth: Get<u32>;
 
     type PostScores: PostScores<Self>;
+
+    type AfterPostUpdated: AfterPostUpdated<Self>;
 }
 
 pub trait PostScores<T: Trait> {
@@ -102,6 +96,11 @@ impl<T: Trait> PostScores<T> for () {
     fn score_root_post_on_new_comment(_account: T::AccountId, _root_post: &mut Post<T>) -> DispatchResult {
         Ok(())
     }
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(10)]
+pub trait AfterPostUpdated<T: Trait> {
+    fn after_post_updated(account: T::AccountId, space: &Post<T>, old_data: PostUpdate);
 }
 
 // This pallet's storage items.
@@ -327,15 +326,12 @@ decl_module! {
       )?;
 
       let mut fields_updated = 0;
-      let mut new_history_record = PostHistoryRecord {
-        edited: WhoAndWhen::<T>::new(editor.clone()),
-        old_data: PostUpdate {space_id: None, content: None, hidden: None}
-      };
+      let mut old_data = PostUpdate::default();
 
       if let Some(content) = update.content {
         if content != post.content {
           Utils::<T>::is_valid_content(content.clone())?;
-          new_history_record.old_data.content = Some(post.content);
+          old_data.content = Some(post.content);
           post.content = content;
           fields_updated += 1;
         }
@@ -343,7 +339,7 @@ decl_module! {
 
       if let Some(hidden) = update.hidden {
         if hidden != post.hidden {
-          new_history_record.old_data.hidden = Some(post.hidden);
+          old_data.hidden = Some(post.hidden);
           post.hidden = hidden;
           fields_updated += 1;
         }
@@ -363,7 +359,7 @@ decl_module! {
 
             // Add post_id to its new space:
             PostIdsBySpaceId::mutate(space_id, |ids| ids.push(post_id));
-            new_history_record.old_data.space_id = post.space_id;
+            old_data.space_id = post.space_id;
             post.space_id = Some(space_id);
             fields_updated += 1;
           }
@@ -373,8 +369,9 @@ decl_module! {
       // Update this post only if at least one field should be updated:
       if fields_updated > 0 {
         post.updated = Some(WhoAndWhen::<T>::new(editor.clone()));
-        post.edit_history.push(new_history_record);
-        <PostById<T>>::insert(post_id, post);
+
+        <PostById<T>>::insert(post_id, post.clone());
+        T::AfterPostUpdated::after_post_updated(editor.clone(), &post, old_data);
 
         Self::deposit_event(RawEvent::PostUpdated(editor, post_id));
       }

@@ -22,7 +22,6 @@ impl<T: Trait> Post<T> {
             space_id: space_id_opt,
             content,
             hidden: false,
-            edit_history: Vec::new(),
             direct_replies_count: 0,
             total_replies_count: 0,
             shares_count: 0,
@@ -124,6 +123,16 @@ impl<T: Trait> Post<T> {
             self.score = self.score.saturating_add(diff.abs() as i32);
         } else if diff < 0 {
             self.score = self.score.saturating_sub(diff.abs() as i32);
+        }
+    }
+}
+
+impl Default for PostUpdate {
+    fn default() -> Self {
+        PostUpdate {
+            space_id: None,
+            content: None,
+            hidden: None
         }
     }
 }

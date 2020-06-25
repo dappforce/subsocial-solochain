@@ -1,12 +1,12 @@
 [package]
-name = "pallet-spaces"
+name = "pallet-profile-history"
 version = "2.0.0"
 authors = ["DappForce <dappforce@pm.me>"]
 edition = "2018"
 license = "GPL-3.0-only"
 homepage = "https://subsocial.network"
 repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Space management pallet"
+description = "Pallet that stores profile updates history"
 keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
 categories = ["cryptography::cryptocurrencies"]
 
@@ -19,12 +19,8 @@ std = [
     'system/std',
     'sp-std/std',
     'pallet-utils/std',
-    'df-traits/std',
-    'pallet-permissions/std'
+    'pallet-profiles/std'
 ]
-
-[dependencies.impl-trait-for-tuples]
-version = "0.1.3"
 
 [dependencies.codec]
 default-features = false
@@ -57,17 +53,12 @@ git = 'https://github.com/paritytech/substrate.git'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
 version = '2.0.0'
 
-[dependencies.df-traits]
-default-features = false
-path = '../traits'
-version = '2.0.0'
-
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
 version = '2.0.0'
 
-[dependencies.pallet-permissions]
+[dependencies.pallet-profiles]
 default-features = false
-path = '../permissions'
+path = '../profiles'
 version = '2.0.0'

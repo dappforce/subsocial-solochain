@@ -21,13 +21,16 @@ std = [
     'pallet-timestamp/std',
     "pallet-permissions/std",
     "pallet-posts/std",
+    "pallet-post-history/std",
     "pallet-profiles/std",
+    "pallet-profile-history/std",
     "pallet-profile-follows/std",
     "pallet-reactions/std",
     "pallet-roles/std",
     "pallet-scores/std",
     "pallet-spaces/std",
     "pallet-space-follows/std",
+    "pallet-space-history/std",
     "pallet-space-ownership/std",
     "pallet-utils/std"
 ]
@@ -77,9 +80,17 @@ path = "../permissions"
 default-features = false
 path = "../posts"
 
+[dependencies.pallet-post-history]
+default-features = false
+path = "../post-history"
+
 [dependencies.pallet-profiles]
 default-features = false
 path = "../profiles"
+
+[dependencies.pallet-profile-history]
+default-features = false
+path = "../profile-history"
 
 [dependencies.pallet-profile-follows]
 default-features = false
@@ -104,6 +115,10 @@ path = "../spaces"
 [dependencies.pallet-space-follows]
 default-features = false
 path = "../space-follows"
+
+[dependencies.pallet-space-history]
+default-features = false
+path = "../space-history"
 
 [dependencies.pallet-space-ownership]
 default-features = false

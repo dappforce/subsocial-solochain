@@ -161,7 +161,12 @@ mod tests {
         type Event = ();
         type MaxCommentDepth = MaxCommentDepth;
         type PostScores = Scores;
+        type AfterPostUpdated = PostHistory;
     }
+
+    parameter_types! {}
+
+    impl pallet_post_history::Trait for TestRuntime {}
 
     parameter_types! {}
 
@@ -180,7 +185,12 @@ mod tests {
         type Event = ();
         type MinUsernameLen = MinUsernameLen;
         type MaxUsernameLen = MaxUsernameLen;
+        type AfterProfileUpdated = ProfileHistory;
     }
+
+    parameter_types! {}
+
+    impl pallet_profile_history::Trait for TestRuntime {}
 
     parameter_types! {}
 
@@ -256,16 +266,24 @@ mod tests {
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
+        type AfterSpaceUpdated = SpaceHistory;
     }
+
+    parameter_types! {}
+
+    impl pallet_space_history::Trait for TestRuntime {}
 
     type System = system::Module<TestRuntime>;
     type Posts = pallet_posts::Module<TestRuntime>;
+    type PostHistory = pallet_post_history::Module<TestRuntime>;
     type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;
     type Profiles = pallet_profiles::Module<TestRuntime>;
+    type ProfileHistory = pallet_profile_history::Module<TestRuntime>;
     type Reactions = pallet_reactions::Module<TestRuntime>;
     type Roles = pallet_roles::Module<TestRuntime>;
     type Scores = pallet_scores::Module<TestRuntime>;
     type SpaceFollows = pallet_space_follows::Module<TestRuntime>;
+    type SpaceHistory = pallet_space_history::Module<TestRuntime>;
     type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
     type Spaces = pallet_spaces::Module<TestRuntime>;
 
@@ -918,7 +936,7 @@ mod tests {
 
             assert_eq!(space.posts_count, 0);
             assert_eq!(space.followers_count, 1);
-            assert!(space.edit_history.is_empty());
+            assert!(SpaceHistory::space_history_by_space_id(space.id).is_empty());
             assert_eq!(space.score, 0);
         });
     }
@@ -1075,9 +1093,10 @@ mod tests {
             assert_eq!(space.hidden, true);
 
             // Check whether history recorded correctly
-            assert_eq!(space.edit_history[0].old_data.handle, Some(Some(self::space_handle())));
-            assert_eq!(space.edit_history[0].old_data.content, Some(self::space_content_ipfs()));
-            assert_eq!(space.edit_history[0].old_data.hidden, Some(false));
+            let edit_history = &SpaceHistory::space_history_by_space_id(space.id)[0];
+            assert_eq!(edit_history.old_data.handle, Some(Some(self::space_handle())));
+            assert_eq!(edit_history.old_data.content, Some(self::space_content_ipfs()));
+            assert_eq!(edit_history.old_data.hidden, Some(false));
         });
     }
 
@@ -1367,7 +1386,6 @@ mod tests {
             assert_eq!(post.extension, self::extension_regular_post());
 
             assert_eq!(post.content, self::post_content_ipfs());
-            assert!(post.edit_history.is_empty());
 
             assert_eq!(post.total_replies_count, 0);
             assert_eq!(post.shares_count, 0);
@@ -1375,6 +1393,8 @@ mod tests {
             assert_eq!(post.downvotes_count, 0);
 
             assert_eq!(post.score, 0);
+
+            assert!(PostHistory::post_history_by_post_id(POST1).is_empty());
         });
     }
 
@@ -1475,9 +1495,10 @@ mod tests {
             assert_eq!(post.hidden, true);
 
             // Check whether history recorded correctly
-            assert!(post.edit_history[0].old_data.space_id.is_none());
-            assert_eq!(post.edit_history[0].old_data.content, Some(self::post_content_ipfs()));
-            assert_eq!(post.edit_history[0].old_data.hidden, Some(false));
+            let post_history = PostHistory::post_history_by_post_id(POST1)[0].clone();
+            assert!(post_history.old_data.space_id.is_none());
+            assert_eq!(post_history.old_data.content, Some(self::post_content_ipfs()));
+            assert_eq!(post_history.old_data.hidden, Some(false));
         });
     }
 
@@ -1658,12 +1679,13 @@ mod tests {
             assert_eq!(comment.created.account, ACCOUNT1);
             assert!(comment.updated.is_none());
             assert_eq!(comment.content, self::comment_content_ipfs());
-            assert!(comment.edit_history.is_empty());
             assert_eq!(comment.total_replies_count, 0);
             assert_eq!(comment.shares_count, 0);
             assert_eq!(comment.upvotes_count, 0);
             assert_eq!(comment.downvotes_count, 0);
             assert_eq!(comment.score, 0);
+
+            assert!(PostHistory::post_history_by_post_id(POST2).is_empty());
         });
     }
 
@@ -1782,7 +1804,7 @@ mod tests {
             assert_eq!(comment.content, self::reply_content_ipfs());
 
             // Check whether history recorded correctly
-            assert_eq!(comment.edit_history[0].old_data.content, Some(self::comment_content_ipfs()));
+            assert_eq!(PostHistory::post_history_by_post_id(POST2)[0].old_data.content, Some(self::comment_content_ipfs()));
         });
     }
 
@@ -2616,8 +2638,9 @@ mod tests {
             assert!(profile.updated.is_none());
             assert_eq!(profile.username, self::alice_username());
             assert_eq!(profile.content, self::profile_content_ipfs());
-            assert!(profile.edit_history.is_empty());
             assert_eq!(Profiles::account_by_profile_username(self::alice_username()), Some(ACCOUNT1));
+
+            assert!(ProfileHistory::profile_history_by_account(ACCOUNT1).is_empty());
         });
     }
 
@@ -2723,8 +2746,9 @@ mod tests {
             assert_eq!(Profiles::account_by_profile_username(self::bob_username()), Some(ACCOUNT1));
 
             // Check whether profile history is written correctly
-            assert_eq!(profile.edit_history[0].old_data.username, Some(self::alice_username()));
-            assert_eq!(profile.edit_history[0].old_data.content, Some(self::profile_content_ipfs()));
+            let profile_history = ProfileHistory::profile_history_by_account(ACCOUNT1)[0].clone();
+            assert_eq!(profile_history.old_data.username, Some(self::alice_username()));
+            assert_eq!(profile_history.old_data.content, Some(self::profile_content_ipfs()));
         });
     }
 

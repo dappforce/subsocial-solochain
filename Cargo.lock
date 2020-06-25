@@ -699,13 +699,16 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-permissions",
+ "pallet-post-history",
  "pallet-posts",
  "pallet-profile-follows",
+ "pallet-profile-history",
  "pallet-profiles",
  "pallet-reactions",
  "pallet-roles",
  "pallet-scores",
  "pallet-space-follows",
+ "pallet-space-history",
  "pallet-space-ownership",
  "pallet-spaces",
  "pallet-timestamp",
@@ -2754,6 +2757,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-post-history"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-posts",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-posts"
 version = "2.0.0"
 dependencies = [
@@ -2781,11 +2798,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-profile-history"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-profiles",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-profiles"
 version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "impl-trait-for-tuples",
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",
@@ -2891,6 +2922,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-space-history"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-space-ownership"
 version = "2.0.0"
 dependencies = [
@@ -2909,6 +2953,7 @@ dependencies = [
  "df-traits",
  "frame-support",
  "frame-system",
+ "impl-trait-for-tuples",
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",
@@ -5198,14 +5243,17 @@ dependencies = [
  "pallet-grandpa",
  "pallet-indices",
  "pallet-permissions",
+ "pallet-post-history",
  "pallet-posts",
  "pallet-profile-follows",
+ "pallet-profile-history",
  "pallet-profiles",
  "pallet-randomness-collective-flip",
  "pallet-reactions",
  "pallet-roles",
  "pallet-scores",
  "pallet-space-follows",
+ "pallet-space-history",
  "pallet-space-ownership",
  "pallet-spaces",
  "pallet-sudo",

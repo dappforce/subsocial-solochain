@@ -35,8 +35,6 @@ pub struct Space<T: Trait> {
     pub posts_count: u16,
     pub followers_count: u32,
 
-    pub edit_history: Vec<SpaceHistoryRecord<T>>,
-
     pub score: i32,
 
     /// Allows to override the default permissions for this space.
@@ -51,12 +49,6 @@ pub struct SpaceUpdate {
     pub content: Option<Content>,
     pub hidden: Option<bool>,
     pub parent_id: Option<Option<SpaceId>>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct SpaceHistoryRecord<T: Trait> {
-    pub edited: WhoAndWhen<T>,
-    pub old_data: SpaceUpdate,
 }
 
 /// The pallet's configuration trait.
@@ -77,6 +69,8 @@ pub trait Trait: system::Trait
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 
     type BeforeSpaceCreated: BeforeSpaceCreated<Self>;
+
+    type AfterSpaceUpdated: AfterSpaceUpdated<Self>;
 }
 
 decl_error! {
@@ -203,16 +197,7 @@ decl_module! {
       )?;
 
       let mut fields_updated = 0;
-      let mut new_history_record = SpaceHistoryRecord {
-        edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: SpaceUpdate {
-            parent_id: None,
-            handle: None,
-            content: None,
-            hidden: None,
-            parent_id: None
-        }
-      };
+      let mut old_data = SpaceUpdate::default();
 
       // TODO: add tests for this case
       if let Some(parent_id_opt) = update.parent_id {
@@ -229,7 +214,7 @@ decl_module! {
             )?;
           }
 
-          new_history_record.old_data.parent_id = Some(space.parent_id);
+          old_data.parent_id = Some(space.parent_id);
           space.parent_id = parent_id_opt;
           fields_updated += 1;
         }
@@ -238,7 +223,8 @@ decl_module! {
       if let Some(content) = update.content {
         if content != space.content {
           Utils::<T>::is_valid_content(content.clone())?;
-          new_history_record.old_data.content = Some(space.content);
+
+          old_data.content = Some(space.content);
           space.content = content;
           fields_updated += 1;
         }
@@ -246,7 +232,7 @@ decl_module! {
 
       if let Some(hidden) = update.hidden {
         if hidden != space.hidden {
-          new_history_record.old_data.hidden = Some(space.hidden);
+          old_data.hidden = Some(space.hidden);
           space.hidden = hidden;
           fields_updated += 1;
         }
@@ -261,7 +247,7 @@ decl_module! {
           if let Some(old_handle) = space.handle.clone() {
             SpaceIdByHandle::remove(old_handle);
           }
-          new_history_record.old_data.handle = Some(space.handle);
+          old_data.handle = Some(space.handle);
           space.handle = handle_opt;
           fields_updated += 1;
         }
@@ -270,8 +256,10 @@ decl_module! {
       // Update this space only if at least one field should be updated:
       if fields_updated > 0 {
         space.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-        space.edit_history.push(new_history_record);
-        <SpaceById<T>>::insert(space_id, space);
+
+        <SpaceById<T>>::insert(space_id, space.clone());
+        T::AfterSpaceUpdated::after_space_updated(owner.clone(), &space, old_data);
+
         Self::deposit_event(RawEvent::SpaceUpdated(owner, space_id));
       }
     }
@@ -298,7 +286,6 @@ impl<T: Trait> Space<T> {
             hidden: false,
             posts_count: 0,
             followers_count: 0,
-            edit_history: Vec::new(),
             score: 0,
             permissions: None,
         }
@@ -339,6 +326,17 @@ impl<T: Trait> Space<T> {
             self.score = self.score.saturating_add(diff.abs() as i32);
         } else if diff < 0 {
             self.score = self.score.saturating_sub(diff.abs() as i32);
+        }
+    }
+}
+
+impl Default for SpaceUpdate {
+    fn default() -> Self {
+        SpaceUpdate {
+            handle: None,
+            content: None,
+            hidden: None,
+            parent_id: None
         }
     }
 }
@@ -423,4 +421,9 @@ impl<T: Trait> BeforeSpaceCreated<T> for () {
     fn before_space_created(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(10)]
+pub trait AfterSpaceUpdated<T: Trait> {
+    fn after_space_updated(sender: T::AccountId, space: &Space<T>, old_data: SpaceUpdate);
 }
