@@ -256,7 +256,12 @@ mod tests {
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
+        type AfterSpaceUpdated = SpaceHistory;
     }
+
+    parameter_types! {}
+
+    impl pallet_space_history::Trait for TestRuntime {}
 
     type System = system::Module<TestRuntime>;
     type Posts = pallet_posts::Module<TestRuntime>;
@@ -266,6 +271,7 @@ mod tests {
     type Roles = pallet_roles::Module<TestRuntime>;
     type Scores = pallet_scores::Module<TestRuntime>;
     type SpaceFollows = pallet_space_follows::Module<TestRuntime>;
+    type SpaceHistory = pallet_space_history::Module<TestRuntime>;
     type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
     type Spaces = pallet_spaces::Module<TestRuntime>;
 
@@ -917,7 +923,7 @@ mod tests {
 
             assert_eq!(space.posts_count, 0);
             assert_eq!(space.followers_count, 1);
-            assert!(space.edit_history.is_empty());
+            assert!(SpaceHistory::space_history_by_space_id(space.id).is_empty());
             assert_eq!(space.score, 0);
         });
     }
@@ -1074,9 +1080,10 @@ mod tests {
             assert_eq!(space.hidden, true);
 
             // Check whether history recorded correctly
-            assert_eq!(space.edit_history[0].old_data.handle, Some(Some(self::space_handle())));
-            assert_eq!(space.edit_history[0].old_data.content, Some(self::space_content_ipfs()));
-            assert_eq!(space.edit_history[0].old_data.hidden, Some(false));
+            let edit_history = &SpaceHistory::space_history_by_space_id(space.id)[0];
+            assert_eq!(edit_history.old_data.handle, Some(Some(self::space_handle())));
+            assert_eq!(edit_history.old_data.content, Some(self::space_content_ipfs()));
+            assert_eq!(edit_history.old_data.hidden, Some(false));
         });
     }
 

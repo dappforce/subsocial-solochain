@@ -12,8 +12,6 @@
     "posts_count": "u16",
     "followers_count": "u32",
 
-    "edit_history": "Vec<SpaceHistoryRecord>",
-
     "score": "i32",
 
     "permissions": "Option<SpacePermissions>"
@@ -23,10 +21,5 @@
     "handle": "Option<Option<Text>>",
     "content": "Option<Content>",
     "hidden": "Option<bool>"
-  },
-
-  "SpaceHistoryRecord": {
-    "edited": "WhoAndWhen",
-    "old_data": "SpaceUpdate"
   }
 }

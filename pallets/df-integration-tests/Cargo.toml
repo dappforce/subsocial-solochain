@@ -28,6 +28,7 @@ std = [
     "pallet-scores/std",
     "pallet-spaces/std",
     "pallet-space-follows/std",
+    "pallet-space-history/std",
     "pallet-space-ownership/std",
     "pallet-utils/std"
 ]
@@ -104,6 +105,10 @@ path = "../spaces"
 [dependencies.pallet-space-follows]
 default-features = false
 path = "../space-follows"
+
+[dependencies.pallet-space-history]
+default-features = false
+path = "../space-history"
 
 [dependencies.pallet-space-ownership]
 default-features = false

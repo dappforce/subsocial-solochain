@@ -422,7 +422,12 @@ impl pallet_spaces::Trait for Runtime {
   type Roles = Roles;
   type SpaceFollows = SpaceFollows;
   type BeforeSpaceCreated = SpaceFollows;
+  type AfterSpaceUpdated = SpaceHistory;
 }
+
+parameter_types! {}
+
+impl pallet_space_history::Trait for Runtime {}
 
 construct_runtime!(
   pub enum Runtime where
@@ -450,6 +455,7 @@ construct_runtime!(
     Roles: pallet_roles::{Module, Call, Storage, Event<T>},
     Scores: pallet_scores::{Module, Call, Storage, Event<T>},
     SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
+    SpaceHistory: pallet_space_history::{Module, Storage},
     SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
     Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
   }

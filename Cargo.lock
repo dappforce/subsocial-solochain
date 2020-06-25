@@ -706,6 +706,7 @@ dependencies = [
  "pallet-roles",
  "pallet-scores",
  "pallet-space-follows",
+ "pallet-space-history",
  "pallet-space-ownership",
  "pallet-spaces",
  "pallet-timestamp",
@@ -2891,6 +2892,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-space-history"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-space-ownership"
 version = "2.0.0"
 dependencies = [
@@ -2909,6 +2923,7 @@ dependencies = [
  "df-traits",
  "frame-support",
  "frame-system",
+ "impl-trait-for-tuples",
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",
@@ -5206,6 +5221,7 @@ dependencies = [
  "pallet-roles",
  "pallet-scores",
  "pallet-space-follows",
+ "pallet-space-history",
  "pallet-space-ownership",
  "pallet-spaces",
  "pallet-sudo",
