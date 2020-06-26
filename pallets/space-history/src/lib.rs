@@ -24,7 +24,7 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceHistoryModule {
-        pub SpaceHistoryBySpaceId get(fn space_history_by_space_id): map SpaceId => Vec<SpaceHistoryRecord<T>>;
+        pub EditHistory get(fn edit_history): map SpaceId => Vec<SpaceHistoryRecord<T>>;
     }
 }
 
@@ -47,6 +47,6 @@ impl<T: Trait> AfterSpaceUpdated<T> for Module<T> {
         let mut new_history_record = SpaceHistoryRecord::<T>::new(sender);
         new_history_record.old_data = old_data;
 
-        <SpaceHistoryBySpaceId<T>>::mutate(space.id, |ids| ids.push(new_history_record));
+        <EditHistory<T>>::mutate(space.id, |ids| ids.push(new_history_record));
     }
 }

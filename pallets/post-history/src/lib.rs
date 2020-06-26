@@ -24,7 +24,7 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as PostHistoryModule {
-        pub PostHistoryByPostId get(fn post_history_by_post_id): map PostId => Vec<PostHistoryRecord<T>>;
+        pub EditHistory get(fn edit_history): map PostId => Vec<PostHistoryRecord<T>>;
     }
 }
 
@@ -46,6 +46,6 @@ impl<T: Trait> AfterPostUpdated<T> for Module<T> {
         let mut new_history_record = PostHistoryRecord::<T>::new(sender);
         new_history_record.old_data = old_data;
 
-        <PostHistoryByPostId<T>>::mutate(post.id, |ids| ids.push(new_history_record));
+        <EditHistory<T>>::mutate(post.id, |ids| ids.push(new_history_record));
     }
 }

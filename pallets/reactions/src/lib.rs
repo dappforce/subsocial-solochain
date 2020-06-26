@@ -53,7 +53,7 @@ pub trait Trait: system::Trait
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as ReactionsModule {
         pub NextReactionId get(fn next_reaction_id): ReactionId = 1;
         pub ReactionById get(fn reaction_by_id): map ReactionId => Option<Reaction<T>>;
         pub ReactionIdsByPostId get(fn reaction_ids_by_post_id): map PostId => Vec<ReactionId>;

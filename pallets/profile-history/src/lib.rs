@@ -23,8 +23,8 @@ pub trait Trait: system::Trait
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
-        pub ProfileHistoryByAccount get(fn profile_history_by_account): map T::AccountId => Vec<ProfileHistoryRecord<T>>;
+    trait Store for Module<T: Trait> as ProfileHistoryModule {
+        pub EditHistory get(fn edit_history): map T::AccountId => Vec<ProfileHistoryRecord<T>>;
     }
 }
 
@@ -46,6 +46,6 @@ impl<T: Trait> AfterProfileUpdated<T> for Module<T> {
         let mut new_history_record = ProfileHistoryRecord::<T>::new(sender.clone());
         new_history_record.old_data = old_data;
 
-        <ProfileHistoryByAccount<T>>::mutate(sender, |ids| ids.push(new_history_record));
+        <EditHistory<T>>::mutate(sender, |ids| ids.push(new_history_record));
     }
 }
