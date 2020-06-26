@@ -1,0 +1,126 @@
+[build-dependencies.build-script-utils]
+git = "https://github.com/paritytech/substrate.git"
+package = "substrate-build-script-utils"
+rev = "3e651110aa06aa835790df63410a29676243fc54"
+version = "2.0.0"
+
+[[bin]]
+name = "subsocial-node"
+
+[package]
+name = "subsocial-node"
+version = "2.0.0-rc3"
+build = "build.rs"
+authors = ["DappForce <dappforce@pm.me>"]
+edition = "2018"
+license = "GPL-3.0-only"
+homepage = "https://subsocial.network"
+repository = "https://github.com/dappforce/dappforce-subsocial-node"
+description = "Reference implementation of Subsocial node"
+keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
+categories = ["cryptography::cryptocurrencies"]
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+futures = '0.3.4'
+log = '0.4.8'
+parking_lot = '0.10.0'
+structopt = '0.3.8'
+hex-literal = "0.2.1"
+
+[dependencies.subsocial-runtime]
+path = "runtime"
+version = "2.0.0-rc3"
+
+[dependencies.sc-basic-authorship]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-cli]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-client-api]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
+
+[dependencies.sc-consensus]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-consensus-aura]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-executor]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-finality-grandpa]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-network]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-service]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sc-transaction-pool]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
+
+[dependencies.sp-consensus]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sp-consensus-aura]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '0.8.0-rc3'
+
+[dependencies.sp-core]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
+
+[dependencies.sp-finality-grandpa]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
+
+[dependencies.sp-inherents]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
+
+[dependencies.sp-runtime]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
+
+[dependencies.sp-transaction-pool]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
+
+# [dependencies.telemetry]
+# package = "sc-telemetry"
+# git = "https://github.com/paritytech/substrate.git"
+# rev = "3e651110aa06aa835790df63410a29676243fc54"
+# version = "2.0.0"
