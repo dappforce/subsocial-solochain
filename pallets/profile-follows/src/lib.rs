@@ -25,7 +25,7 @@ pub trait Trait: system::Trait
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as ProfileFollowsModule {
         pub AccountFollowers get(fn account_followers): map T::AccountId => Vec<T::AccountId>;
         pub AccountFollowedByAccount get(fn account_followed_by_account): map (T::AccountId, T::AccountId) => bool;
         pub AccountsFollowedByAccount get(fn accounts_followed_by_account): map T::AccountId => Vec<T::AccountId>;

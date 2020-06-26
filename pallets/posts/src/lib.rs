@@ -105,7 +105,7 @@ pub trait AfterPostUpdated<T: Trait> {
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as PostsModule {
         pub NextPostId get(fn next_post_id): PostId = 1;
         pub PostById get(fn post_by_id): map PostId => Option<Post<T>>;
         pub ReplyIdsByPostId get(fn reply_ids_by_post_id): map PostId => Vec<PostId>;

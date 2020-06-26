@@ -935,7 +935,7 @@ mod tests {
 
             assert_eq!(space.posts_count, 0);
             assert_eq!(space.followers_count, 1);
-            assert!(SpaceHistory::space_history_by_space_id(space.id).is_empty());
+            assert!(SpaceHistory::edit_history(space.id).is_empty());
             assert_eq!(space.score, 0);
         });
     }
@@ -1092,7 +1092,7 @@ mod tests {
             assert_eq!(space.hidden, true);
 
             // Check whether history recorded correctly
-            let edit_history = &SpaceHistory::space_history_by_space_id(space.id)[0];
+            let edit_history = &SpaceHistory::edit_history(space.id)[0];
             assert_eq!(edit_history.old_data.handle, Some(Some(self::space_handle())));
             assert_eq!(edit_history.old_data.content, Some(self::space_content_ipfs()));
             assert_eq!(edit_history.old_data.hidden, Some(false));
@@ -1391,7 +1391,7 @@ mod tests {
 
             assert_eq!(post.score, 0);
 
-            assert!(PostHistory::post_history_by_post_id(POST1).is_empty());
+            assert!(PostHistory::edit_history(POST1).is_empty());
         });
     }
 
@@ -1492,7 +1492,7 @@ mod tests {
             assert_eq!(post.hidden, true);
 
             // Check whether history recorded correctly
-            let post_history = PostHistory::post_history_by_post_id(POST1)[0].clone();
+            let post_history = PostHistory::edit_history(POST1)[0].clone();
             assert!(post_history.old_data.space_id.is_none());
             assert_eq!(post_history.old_data.content, Some(self::post_content_ipfs()));
             assert_eq!(post_history.old_data.hidden, Some(false));
@@ -1682,7 +1682,7 @@ mod tests {
             assert_eq!(comment.downvotes_count, 0);
             assert_eq!(comment.score, 0);
 
-            assert!(PostHistory::post_history_by_post_id(POST2).is_empty());
+            assert!(PostHistory::edit_history(POST2).is_empty());
         });
     }
 
@@ -1801,7 +1801,7 @@ mod tests {
             assert_eq!(comment.content, self::reply_content_ipfs());
 
             // Check whether history recorded correctly
-            assert_eq!(PostHistory::post_history_by_post_id(POST2)[0].old_data.content, Some(self::comment_content_ipfs()));
+            assert_eq!(PostHistory::edit_history(POST2)[0].old_data.content, Some(self::comment_content_ipfs()));
         });
     }
 
@@ -2637,7 +2637,7 @@ mod tests {
             assert_eq!(profile.content, self::profile_content_ipfs());
             assert_eq!(Profiles::account_by_profile_username(self::alice_username()), Some(ACCOUNT1));
 
-            assert!(ProfileHistory::profile_history_by_account(ACCOUNT1).is_empty());
+            assert!(ProfileHistory::edit_history(ACCOUNT1).is_empty());
         });
     }
 
@@ -2743,7 +2743,7 @@ mod tests {
             assert_eq!(Profiles::account_by_profile_username(self::bob_username()), Some(ACCOUNT1));
 
             // Check whether profile history is written correctly
-            let profile_history = ProfileHistory::profile_history_by_account(ACCOUNT1)[0].clone();
+            let profile_history = ProfileHistory::edit_history(ACCOUNT1)[0].clone();
             assert_eq!(profile_history.old_data.username, Some(self::alice_username()));
             assert_eq!(profile_history.old_data.content, Some(self::profile_content_ipfs()));
         });

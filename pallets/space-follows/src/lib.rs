@@ -44,7 +44,7 @@ decl_error! {
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as SpaceFollowsModule {
         pub SpaceFollowers get(fn space_followers): map SpaceId => Vec<T::AccountId>;
         pub SpaceFollowedByAccount get(fn space_followed_by_account): map (T::AccountId, SpaceId) => bool;
         pub SpacesFollowedByAccount get(fn spaces_followed_by_account): map T::AccountId => Vec<SpaceId>;

@@ -96,7 +96,7 @@ decl_error! {
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as SpacesModule {
 
         // TODO reserve space id 0 (zero) for 'Abyss'.
 
