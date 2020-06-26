@@ -1,8 +1,7 @@
-[build-dependencies.build-script-utils]
-git = "https://github.com/paritytech/substrate.git"
-package = "substrate-build-script-utils"
-rev = "3e651110aa06aa835790df63410a29676243fc54"
-version = "2.0.0"
+[build-dependencies.substrate-build-script-utils]
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc3'
+version = '2.0.0-rc3'
 
 [[bin]]
 name = "subsocial-node"
@@ -31,7 +30,7 @@ structopt = '0.3.8'
 hex-literal = "0.2.1"
 
 [dependencies.subsocial-runtime]
-path = "runtime"
+path = "../runtime"
 version = "2.0.0-rc3"
 
 [dependencies.sc-basic-authorship]
@@ -119,8 +118,7 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc3'
 version = '2.0.0-rc3'
 
-# [dependencies.telemetry]
-# package = "sc-telemetry"
-# git = "https://github.com/paritytech/substrate.git"
-# rev = "3e651110aa06aa835790df63410a29676243fc54"
-# version = "2.0.0"
+[dependencies.sc-telemetry]
+git = "https://github.com/paritytech/substrate.git"
+tag = 'v2.0.0-rc3'
+version = "2.0.0-rc3"
