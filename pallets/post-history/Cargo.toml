@@ -1,14 +1,14 @@
 [package]
-name = "pallet-post-history"
-version = "2.0.0"
-authors = ["DappForce <dappforce@pm.me>"]
-edition = "2018"
-license = "GPL-3.0-only"
-homepage = "https://subsocial.network"
-repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Pallet that stores post updates history"
-keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
-categories = ["cryptography::cryptocurrencies"]
+name = 'pallet-post-history'
+version = '2.0.0-rc4'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'Pallet that stores post updates history'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
 
 [features]
 default = ['std']
@@ -16,52 +16,51 @@ std = [
     'codec/std',
     'sp-runtime/std',
     'frame-support/std',
-    'system/std',
+    'frame-system/std',
     'sp-std/std',
     'pallet-utils/std',
-    'pallet-posts/std'
+    'pallet-posts/std',
 ]
 
 [dependencies]
-impl-trait-for-tuples = "0.1.3"
+impl-trait-for-tuples = '0.1.3'
 
 [dependencies.codec]
 default-features = false
 features = ['derive']
 package = 'parity-scale-codec'
-version = '1.0.0'
+version = '1.3.1'
 
 [dependencies.sp-runtime]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.frame-support]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
-[dependencies.system]
+[dependencies.frame-system]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-package = 'frame-system'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.sp-std]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-posts]
 default-features = false
 path = '../posts'
-version = '2.0.0'
+version = '2.0.0-rc4'

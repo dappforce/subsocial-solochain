@@ -10,6 +10,10 @@ use sp_std::{
     collections::btree_set::BTreeSet,
     prelude::*,
 };
+use frame_system::{self as system};
+
+#[cfg(test)]
+mod mock;
 
 #[cfg(test)]
 mod tests;

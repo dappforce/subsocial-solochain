@@ -142,7 +142,7 @@ impl<T: Trait> Module<T> {
     /// Check that there is a `Post` with such `post_id` in the storage
     /// or return`PostNotFound` error.
     pub fn ensure_post_exists(post_id: PostId) -> DispatchResult {
-        ensure!(<PostById<T>>::exists(post_id), Error::<T>::PostNotFound);
+        ensure!(<PostById<T>>::contains_key(post_id), Error::<T>::PostNotFound);
         Ok(())
     }
 

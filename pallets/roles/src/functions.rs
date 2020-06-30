@@ -9,7 +9,7 @@ impl<T: Trait> Module<T> {
   /// Check that there is a `Role` with such `role_id` in the storage
   /// or return`RoleNotFound` error.
   pub fn ensure_role_exists(role_id: RoleId) -> DispatchResult {
-      ensure!(<RoleById<T>>::exists(role_id), Error::<T>::RoleNotFound);
+      ensure!(<RoleById<T>>::contains_key(role_id), Error::<T>::RoleNotFound);
       Ok(())
   }
 

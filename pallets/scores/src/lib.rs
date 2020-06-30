@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{
@@ -8,6 +7,7 @@ use frame_support::{
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
+use frame_system::{self as system};
 
 use pallet_posts::{PostScores, Post, PostById, PostExtension, PostId};
 use pallet_profile_follows::{BeforeAccountFollowed, BeforeAccountUnfollowed};
@@ -16,8 +16,6 @@ use pallet_reactions::{PostReactionScores, ReactionKind};
 use pallet_space_follows::{BeforeSpaceFollowed, BeforeSpaceUnfollowed};
 use pallet_spaces::{Space, SpaceById};
 use pallet_utils::log_2;
-
-// mod tests;
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub enum ScoringAction {
@@ -82,10 +80,10 @@ decl_storage! {
 
         // TODO shorten name? (refactor)
         pub AccountReputationDiffByAccount get(fn account_reputation_diff_by_account):
-            map (/* actor */ T::AccountId, /* subject */ T::AccountId, ScoringAction) => Option<i16>;
+            map hasher(twox_64_concat) (/* actor */ T::AccountId, /* subject */ T::AccountId, ScoringAction) => Option<i16>;
 
         pub PostScoreByAccount get(fn post_score_by_account):
-            map (/* actor */ T::AccountId, /* subject */ PostId, ScoringAction) => Option<i16>;
+            map hasher(twox_64_concat) (/* actor */ T::AccountId, /* subject */ PostId, ScoringAction) => Option<i16>;
     }
 }
 
@@ -111,6 +109,9 @@ decl_module! {
         const UpvoteCommentActionWeight: i16 = T::UpvoteCommentActionWeight::get();
         const DownvoteCommentActionWeight: i16 = T::DownvoteCommentActionWeight::get();
         const ShareCommentActionWeight: i16 = T::ShareCommentActionWeight::get();
+
+        // Initializing errors
+        type Error = Error<T>;
 
         // Initializing events
         fn deposit_event() = default;

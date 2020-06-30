@@ -6,10 +6,12 @@ use pallet_utils::{SpaceId, WhoAndWhen};
 use sp_runtime::{RuntimeDebug, traits::Zero};
 use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 pub mod functions;
-mod tests;
+
+// #[cfg(test)]
+// mod tests;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceOwners<T: Trait> {

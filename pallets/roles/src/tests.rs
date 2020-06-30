@@ -30,12 +30,11 @@ impl_outer_origin! {
 pub struct Test;
 
 parameter_types! {
-  pub const BlockHashCount: u64 = 250;
-  pub const MaximumBlockWeight: Weight = 1024;
-  pub const MaximumBlockLength: u32 = 2 * 1024;
-  pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	pub const BlockHashCount: u64 = 250;
+	pub const MaximumBlockWeight: Weight = 1024;
+	pub const MaximumBlockLength: u32 = 2 * 1024;
+	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
-
 impl system::Trait for Test {
     type Origin = Origin;
     type Call = ();
@@ -49,10 +48,17 @@ impl system::Trait for Test {
     type Event = ();
     type BlockHashCount = BlockHashCount;
     type MaximumBlockWeight = MaximumBlockWeight;
+    type DbWeight = ();
+    type BlockExecutionWeight = ();
+    type ExtrinsicBaseWeight = ();
+    type MaximumExtrinsicWeight = MaximumBlockWeight;
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type ModuleToIndex = ();
+    type AccountData = ();
+    type OnNewAccount = ();
+    type OnKilledAccount = ();
 }
 
 parameter_types! {

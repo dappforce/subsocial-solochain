@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 pub use super::*;
 
 use sp_core::H256;

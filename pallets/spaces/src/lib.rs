@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{
@@ -8,15 +7,12 @@ use frame_support::{
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use df_traits::{SpaceForRoles, SpaceForRolesProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen, Content};
-
-// #[cfg(tests)]
-// mod tests;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -101,9 +97,9 @@ decl_storage! {
         // TODO reserve space id 0 (zero) for 'Abyss'.
 
         pub NextSpaceId get(fn next_space_id): SpaceId = 1;
-        pub SpaceById get(fn space_by_id): map SpaceId => Option<Space<T>>;
-        pub SpaceIdByHandle get(fn space_id_by_handle): map Vec<u8> => Option<SpaceId>;
-        pub SpaceIdsByOwner get(fn space_ids_by_owner): map T::AccountId => Vec<SpaceId>;
+        pub SpaceById get(fn space_by_id): map hasher(twox_64_concat) SpaceId => Option<Space<T>>;
+        pub SpaceIdByHandle get(fn space_id_by_handle): map hasher(twox_64_concat) Vec<u8> => Option<SpaceId>;
+        pub SpaceIdsByOwner get(fn space_ids_by_owner): map hasher(twox_64_concat) T::AccountId => Vec<SpaceId>;
     }
 }
 
@@ -127,9 +123,13 @@ decl_module! {
     /// Maximal length of space handle
     const MaxHandleLen: u32 = T::MaxHandleLen::get();
 
+    // Initializing errors
+    type Error = Error<T>;
+
     // Initializing events
     fn deposit_event() = default;
 
+    #[weight = 100_000]
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
@@ -173,6 +173,7 @@ decl_module! {
       Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
     }
 
+    #[weight = 100_000]
     pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) {
       let owner = ensure_signed(origin)?;
 
@@ -342,7 +343,7 @@ impl<T: Trait> Module<T> {
     /// Check that there is a `Space` with such `space_id` in the storage
     /// or return`SpaceNotFound` error.
     pub fn ensure_space_exists(space_id: SpaceId) -> DispatchResult {
-        ensure!(<SpaceById<T>>::exists(space_id), Error::<T>::SpaceNotFound);
+        ensure!(<SpaceById<T>>::contains_key(space_id), Error::<T>::SpaceNotFound);
         Ok(())
     }
 

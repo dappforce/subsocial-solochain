@@ -1,17 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     ensure,
 };
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use pallet_spaces::{Module as Spaces, SpaceById};
 use pallet_utils::SpaceId;
-
-// mod tests;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -38,7 +35,7 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceOwnershipModule {
-        pub PendingSpaceOwner get(fn pending_space_owner): map SpaceId => Option<T::AccountId>;
+        pub PendingSpaceOwner get(fn pending_space_owner): map hasher(twox_64_concat) SpaceId => Option<T::AccountId>;
     }
 }
 
@@ -56,9 +53,13 @@ decl_event!(
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
+    // Initializing errors
+    type Error = Error<T>;
+
     // Initializing events
     fn deposit_event() = default;
 
+    #[weight = 10_000]
     pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) {
       let who = ensure_signed(origin)?;
 
@@ -72,6 +73,7 @@ decl_module! {
       Self::deposit_event(RawEvent::SpaceOwnershipTransferCreated(who, space_id, transfer_to));
     }
 
+    #[weight = 10_000]
     pub fn accept_pending_ownership(origin, space_id: SpaceId) {
       let who = ensure_signed(origin)?;
 
@@ -87,6 +89,7 @@ decl_module! {
       Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
     }
 
+    #[weight = 10_000]
     pub fn reject_pending_ownership(origin, space_id: SpaceId) {
       let who = ensure_signed(origin)?;
 

@@ -1,6 +1,6 @@
 [package]
 name = "df-integration-tests"
-version = "2.0.0"
+version = "2.0.0-rc4"
 authors = ["DappForce <dappforce@pm.me>"]
 edition = "2018"
 license = "GPL-3.0-only"
@@ -15,62 +15,61 @@ default = ['std']
 std = [
     'sp-runtime/std',
     'frame-support/std',
-    'system/std',
+    'frame-system/std',
     'sp-io/std',
     'sp-std/std',
     'pallet-timestamp/std',
-    "pallet-permissions/std",
-    "pallet-posts/std",
-    "pallet-post-history/std",
-    "pallet-profiles/std",
-    "pallet-profile-history/std",
-    "pallet-profile-follows/std",
-    "pallet-reactions/std",
-    "pallet-roles/std",
-    "pallet-scores/std",
-    "pallet-spaces/std",
-    "pallet-space-follows/std",
-    "pallet-space-history/std",
-    "pallet-space-ownership/std",
-    "pallet-utils/std"
+    'pallet-permissions/std',
+    'pallet-posts/std',
+    'pallet-post-history/std',
+    'pallet-profiles/std',
+    'pallet-profile-history/std',
+    'pallet-profile-follows/std',
+    'pallet-reactions/std',
+    'pallet-roles/std',
+    'pallet-scores/std',
+    'pallet-spaces/std',
+    'pallet-space-follows/std',
+    'pallet-space-history/std',
+    'pallet-space-ownership/std',
+    'pallet-utils/std'
 ]
 
 [dependencies.sp-runtime]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.frame-support]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
-[dependencies.system]
+[dependencies.frame-system]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-package = 'frame-system'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.sp-io]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.sp-std]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-timestamp]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-permissions]
 default-features = false
@@ -131,5 +130,5 @@ path = "../utils"
 [dev-dependencies.sp-core]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'

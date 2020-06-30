@@ -1,14 +1,14 @@
 [package]
-name = "pallet-scores"
-version = "2.0.0"
-authors = ["DappForce <dappforce@pm.me>"]
-edition = "2018"
-license = "GPL-3.0-only"
-homepage = "https://subsocial.network"
-repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Pallet to update scores of spaces, posts, comments and accounts (profiles)"
-keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
-categories = ["cryptography::cryptocurrencies"]
+name = 'pallet-scores'
+version = '2.0.0-rc4'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'Pallet to update scores of spaces, posts, comments and accounts (profiles)'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
 
 [features]
 default = ['std']
@@ -16,7 +16,7 @@ std = [
     'codec/std',
     'sp-runtime/std',
     'frame-support/std',
-    'system/std',
+    'frame-system/std',
     'sp-std/std',
     'pallet-utils/std',
     'pallet-profiles/std',
@@ -31,70 +31,69 @@ std = [
 default-features = false
 features = ['derive']
 package = 'parity-scale-codec'
-version = '1.0.0'
+version = '1.3.1'
 
 [dependencies.sp-runtime]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.frame-support]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
-[dependencies.system]
+[dependencies.frame-system]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-package = 'frame-system'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.sp-std]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-profiles]
 default-features = false
 path = '../profiles'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-profile-follows]
 default-features = false
 path = '../profile-follows'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-posts]
 default-features = false
 path = '../posts'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-spaces]
 default-features = false
 path = '../spaces'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-space-follows]
 default-features = false
 path = '../space-follows'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-reactions]
 default-features = false
 path = '../reactions'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dev-dependencies.sp-core]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'

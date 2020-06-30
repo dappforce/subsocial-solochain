@@ -1,14 +1,14 @@
 [package]
-name = "df-traits"
-version = "2.0.0"
-authors = ["DappForce <dappforce@pm.me>"]
-edition = "2018"
-license = "GPL-3.0-only"
-homepage = "https://subsocial.network"
-repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Common traits for Subsocial pallets"
-keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
-categories = ["cryptography::cryptocurrencies"]
+name = 'df-traits'
+version = '2.0.0-rc4'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'Common traits for Subsocial pallets'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
 
 [features]
 default = ['std']
@@ -21,15 +21,15 @@ std = [
 [dependencies.frame-support]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-permissions]
 default-features = false
 path = '../permissions'
-version = '2.0.0'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '2.0.0'
+version = '2.0.0-rc4'

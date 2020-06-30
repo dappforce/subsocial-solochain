@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{
@@ -8,11 +7,9 @@ use frame_support::{
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen, Content};
-
-// mod tests;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Trait> {
@@ -57,8 +54,8 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as ProfilesModule {
-        pub SocialAccountById get(fn social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
-        pub AccountByProfileUsername get(fn account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
+        pub SocialAccountById get(fn social_account_by_id): map hasher(twox_64_concat) T::AccountId => Option<SocialAccount<T>>;
+        pub AccountByProfileUsername get(fn account_by_profile_username): map hasher(blake2_128_concat) Vec<u8> => Option<T::AccountId>;
     }
 }
 
@@ -103,9 +100,13 @@ decl_module! {
     /// Maximal length of profile username
     const MaxUsernameLen: u32 = T::MaxUsernameLen::get();
 
+    // Initializing errors
+    type Error = Error<T>;
+
     // Initializing events
     fn deposit_event() = default;
 
+    #[weight = 10_000]
     pub fn create_profile(origin, username: Vec<u8>, content: Content) {
       let owner = ensure_signed(origin)?;
 
@@ -128,6 +129,7 @@ decl_module! {
       Self::deposit_event(RawEvent::ProfileCreated(owner));
     }
 
+    #[weight = 30_000]
     pub fn update_profile(origin, update: ProfileUpdate) {
       let owner = ensure_signed(origin)?;
 

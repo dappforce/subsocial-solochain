@@ -1,10 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{decl_module, decl_storage};
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::Vec;
+use frame_system::{self as system};
 
 use pallet_utils::{SpaceId, WhoAndWhen};
 use pallet_spaces::{Space, SpaceUpdate, AfterSpaceUpdated};
@@ -24,7 +24,7 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceHistoryModule {
-        pub EditHistory get(fn edit_history): map SpaceId => Vec<SpaceHistoryRecord<T>>;
+        pub EditHistory get(fn edit_history): map hasher(twox_64_concat) SpaceId => Vec<SpaceHistoryRecord<T>>;
     }
 }
 
