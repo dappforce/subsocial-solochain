@@ -107,7 +107,7 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 10_000]
-    pub fn create_profile(origin, username: Vec<u8>, content: Content) {
+    pub fn create_profile(origin, username: Vec<u8>, content: Content) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       let mut social_account = Self::get_or_new_social_account(owner.clone());
@@ -127,10 +127,11 @@ decl_module! {
       <SocialAccountById<T>>::insert(owner.clone(), social_account);
 
       Self::deposit_event(RawEvent::ProfileCreated(owner));
+      Ok(())
     }
 
     #[weight = 30_000]
-    pub fn update_profile(origin, update: ProfileUpdate) {
+    pub fn update_profile(origin, update: ProfileUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
@@ -173,6 +174,7 @@ decl_module! {
 
         Self::deposit_event(RawEvent::ProfileUpdated(owner));
       }
+      Ok(())
     }
   }
 }

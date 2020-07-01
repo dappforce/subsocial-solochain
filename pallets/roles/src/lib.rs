@@ -1,7 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage,
+    ensure,
+    traits::Get,
+    dispatch::DispatchResult
+};
 use sp_runtime::RuntimeDebug;
 use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
 use frame_system::{self as system, ensure_signed};
@@ -133,7 +138,7 @@ decl_module! {
       time_to_live: Option<T::BlockNumber>,
       content: Content,
       permissions: Vec<SpacePermission>
-    ) {
+    ) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
@@ -152,12 +157,13 @@ decl_module! {
       RoleIdsBySpaceId::mutate(space_id, |role_ids| { role_ids.push(new_role.id) });
 
       Self::deposit_event(RawEvent::RoleCreated(who, space_id, new_role.id));
+      Ok(())
     }
 
     /// Update an existing role by its id.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     #[weight = 100_000]
-    pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) {
+    pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let has_updates =
@@ -206,12 +212,13 @@ decl_module! {
         <RoleById<T>>::insert(role_id, role);
         Self::deposit_event(RawEvent::RoleUpdated(who, role_id));
       }
+      Ok(())
     }
 
     /// Delete a role from all associated storage items.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     #[weight = 100_000]
-    pub fn delete_role(origin, role_id: RoleId) {
+    pub fn delete_role(origin, role_id: RoleId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let role = Self::require_role(role_id)?;
@@ -237,12 +244,13 @@ decl_module! {
       <UsersByRoleId<T>>::remove(role_id);
 
       Self::deposit_event(RawEvent::RoleDeleted(who, role_id));
+      Ok(())
     }
 
     /// Grant a role to a list of users.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     #[weight = 100_000]
-    pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
+    pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
@@ -262,12 +270,13 @@ decl_module! {
       }
 
       Self::deposit_event(RawEvent::RoleGranted(who, role_id, users_set.iter().cloned().collect()));
+      Ok(())
     }
 
     /// Revoke a role from a list of users.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     #[weight = 100_000]
-    pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
+    pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
@@ -279,6 +288,7 @@ decl_module! {
       role.revoke_from_users(users.clone());
 
       Self::deposit_event(RawEvent::RoleRevoked(who, role_id, users));
+      Ok(())
     }
   }
 }

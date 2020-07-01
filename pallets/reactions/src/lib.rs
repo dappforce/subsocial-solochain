@@ -103,7 +103,7 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 100_000]
-    pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) {
+    pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       let post = &mut Posts::require_post(post_id)?;
@@ -147,11 +147,13 @@ decl_module! {
 
       ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
+
       Self::deposit_event(RawEvent::PostReactionCreated(owner, post_id, reaction_id));
+      Ok(())
     }
 
     #[weight = 100_000]
-    pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) {
+    pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       ensure!(
@@ -187,10 +189,11 @@ decl_module! {
       <PostById<T>>::insert(post_id, post);
 
       Self::deposit_event(RawEvent::PostReactionUpdated(owner, post_id, reaction_id));
+      Ok(())
     }
 
     #[weight = 100_000]
-    pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) {
+    pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       ensure!(
@@ -217,6 +220,7 @@ decl_module! {
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));
+      Ok(())
     }
   }
 }

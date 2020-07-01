@@ -190,7 +190,7 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 100_000]
-    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) {
+    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) -> DispatchResult {
       let creator = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -283,10 +283,11 @@ decl_module! {
       NextPostId::mutate(|n| { *n += 1; });
 
       Self::deposit_event(RawEvent::PostCreated(creator, new_post_id));
+      Ok(())
     }
 
     #[weight = 100_000]
-    pub fn update_post(origin, post_id: PostId, update: PostUpdate) {
+    pub fn update_post(origin, post_id: PostId, update: PostUpdate) -> DispatchResult {
       let editor = ensure_signed(origin)?;
 
       let has_updates =
@@ -378,6 +379,7 @@ decl_module! {
 
         Self::deposit_event(RawEvent::PostUpdated(editor, post_id));
       }
+      Ok(())
     }
   }
 }

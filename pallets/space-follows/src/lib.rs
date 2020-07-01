@@ -67,7 +67,7 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 100_000]
-    pub fn follow_space(origin, space_id: SpaceId) {
+    pub fn follow_space(origin, space_id: SpaceId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
       ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AlreadySpaceFollower);
@@ -77,10 +77,12 @@ decl_module! {
 
       Self::add_space_follower(follower, space)?;
       <SpaceById<T>>::insert(space_id, space);
+
+      Ok(())
     }
 
     #[weight = 100_000]
-    pub fn unfollow_space(origin, space_id: SpaceId) {
+    pub fn unfollow_space(origin, space_id: SpaceId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
       let space = &mut Spaces::require_space(space_id)?;
@@ -100,6 +102,7 @@ decl_module! {
       <SpaceById<T>>::insert(space_id, space);
 
       Self::deposit_event(RawEvent::SpaceUnfollowed(follower, space_id));
+      Ok(())
     }
   }
 }

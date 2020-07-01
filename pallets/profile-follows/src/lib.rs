@@ -67,7 +67,7 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 10_000]
-    pub fn follow_account(origin, account: T::AccountId) {
+    pub fn follow_account(origin, account: T::AccountId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
       ensure!(follower != account, Error::<T>::AccountCannotFollowItself);
@@ -90,10 +90,11 @@ decl_module! {
       <AccountFollowedByAccount<T>>::insert((follower.clone(), account.clone()), true);
 
       Self::deposit_event(RawEvent::AccountFollowed(follower, account));
+      Ok(())
     }
 
     #[weight = 10_000]
-    pub fn unfollow_account(origin, account: T::AccountId) {
+    pub fn unfollow_account(origin, account: T::AccountId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
       ensure!(follower != account, Error::<T>::AccountCannotUnfollowItself);
@@ -114,6 +115,7 @@ decl_module! {
       <AccountFollowedByAccount<T>>::remove((follower.clone(), account.clone()));
 
       Self::deposit_event(RawEvent::AccountUnfollowed(follower, account));
+      Ok(())
     }
   }
 }

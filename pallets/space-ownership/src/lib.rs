@@ -3,6 +3,7 @@
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     ensure,
+    dispatch::DispatchResult
 };
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
@@ -60,7 +61,7 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 10_000]
-    pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) {
+    pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let space = Spaces::<T>::require_space(space_id)?;
@@ -70,11 +71,13 @@ decl_module! {
       Spaces::<T>::ensure_space_exists(space_id)?;
 
       <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
+
       Self::deposit_event(RawEvent::SpaceOwnershipTransferCreated(who, space_id, transfer_to));
+      Ok(())
     }
 
     #[weight = 10_000]
-    pub fn accept_pending_ownership(origin, space_id: SpaceId) {
+    pub fn accept_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let mut space = Spaces::require_space(space_id)?;
@@ -86,11 +89,13 @@ decl_module! {
 
       space.owner = who.clone();
       <SpaceById<T>>::insert(space_id, space);
+
       Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
+      Ok(())
     }
 
     #[weight = 10_000]
-    pub fn reject_pending_ownership(origin, space_id: SpaceId) {
+    pub fn reject_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let space = Spaces::<T>::require_space(space_id)?;
@@ -98,7 +103,9 @@ decl_module! {
       ensure!(who == transfer_to || who == space.owner, Error::<T>::NotAllowedToRejectOwnershipTransfer);
 
       <PendingSpaceOwner<T>>::remove(space_id);
+
       Self::deposit_event(RawEvent::SpaceOwnershipTransferRejected(who, space_id));
+      Ok(())
     }
   }
 }
