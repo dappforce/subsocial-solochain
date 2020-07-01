@@ -374,7 +374,7 @@ decl_module! {
       if fields_updated > 0 {
         post.updated = Some(WhoAndWhen::<T>::new(editor.clone()));
 
-        <PostById<T>>::insert(post_id, post.clone());
+        <PostById<T>>::insert(post.id, post.clone());
         T::AfterPostUpdated::after_post_updated(editor.clone(), &post, old_data);
 
         Self::deposit_event(RawEvent::PostUpdated(editor, post_id));

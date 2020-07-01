@@ -41,9 +41,9 @@ pub use frame_support::{
 };
 
 use pallet_permissions::{
-	SpacePermission as SP,
+	// SpacePermission as SP,
 	SpacePermissions,
-	SpacePermissionSet
+	// SpacePermissionSet
 };
 
 /// An index to a block.

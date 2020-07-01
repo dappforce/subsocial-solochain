@@ -43,8 +43,8 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceFollowsModule {
         pub SpaceFollowers get(fn space_followers): map hasher(twox_64_concat) SpaceId => Vec<T::AccountId>;
-        pub SpaceFollowedByAccount get(fn space_followed_by_account): map hasher(twox_64_concat) (T::AccountId, SpaceId) => bool;
-        pub SpacesFollowedByAccount get(fn spaces_followed_by_account): map hasher(twox_64_concat) T::AccountId => Vec<SpaceId>;
+        pub SpaceFollowedByAccount get(fn space_followed_by_account): map hasher(blake2_128_concat) (T::AccountId, SpaceId) => bool;
+        pub SpacesFollowedByAccount get(fn spaces_followed_by_account): map hasher(blake2_128_concat) T::AccountId => Vec<SpaceId>;
     }
 }
 

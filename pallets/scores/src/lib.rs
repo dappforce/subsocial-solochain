@@ -80,10 +80,10 @@ decl_storage! {
 
         // TODO shorten name? (refactor)
         pub AccountReputationDiffByAccount get(fn account_reputation_diff_by_account):
-            map hasher(twox_64_concat) (/* actor */ T::AccountId, /* subject */ T::AccountId, ScoringAction) => Option<i16>;
+            map hasher(blake2_128_concat) (/* actor */ T::AccountId, /* subject */ T::AccountId, ScoringAction) => Option<i16>;
 
         pub PostScoreByAccount get(fn post_score_by_account):
-            map hasher(twox_64_concat) (/* actor */ T::AccountId, /* subject */ PostId, ScoringAction) => Option<i16>;
+            map hasher(blake2_128_concat) (/* actor */ T::AccountId, /* subject */ PostId, ScoringAction) => Option<i16>;
     }
 }
 

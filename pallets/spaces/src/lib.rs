@@ -98,8 +98,8 @@ decl_storage! {
 
         pub NextSpaceId get(fn next_space_id): SpaceId = 1;
         pub SpaceById get(fn space_by_id): map hasher(twox_64_concat) SpaceId => Option<Space<T>>;
-        pub SpaceIdByHandle get(fn space_id_by_handle): map hasher(twox_64_concat) Vec<u8> => Option<SpaceId>;
-        pub SpaceIdsByOwner get(fn space_ids_by_owner): map hasher(twox_64_concat) T::AccountId => Vec<SpaceId>;
+        pub SpaceIdByHandle get(fn space_id_by_handle): map hasher(blake2_128_concat) Vec<u8> => Option<SpaceId>;
+        pub SpaceIdsByOwner get(fn space_ids_by_owner): map hasher(blake2_128_concat) T::AccountId => Vec<SpaceId>;
     }
 }
 

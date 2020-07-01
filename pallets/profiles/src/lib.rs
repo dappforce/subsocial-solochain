@@ -54,7 +54,7 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as ProfilesModule {
-        pub SocialAccountById get(fn social_account_by_id): map hasher(twox_64_concat) T::AccountId => Option<SocialAccount<T>>;
+        pub SocialAccountById get(fn social_account_by_id): map hasher(blake2_128_concat) T::AccountId => Option<SocialAccount<T>>;
         pub AccountByProfileUsername get(fn account_by_profile_username): map hasher(blake2_128_concat) Vec<u8> => Option<T::AccountId>;
     }
 }
