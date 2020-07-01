@@ -24,7 +24,8 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceHistoryModule {
-        pub EditHistory get(fn edit_history): map hasher(twox_64_concat) SpaceId => Vec<SpaceHistoryRecord<T>>;
+        pub EditHistory get(fn edit_history):
+            map hasher(twox_64_concat) SpaceId => Vec<SpaceHistoryRecord<T>>;
     }
 }
 

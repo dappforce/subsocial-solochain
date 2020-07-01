@@ -37,7 +37,8 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceOwnershipModule {
-        pub PendingSpaceOwner get(fn pending_space_owner): map hasher(twox_64_concat) SpaceId => Option<T::AccountId>;
+        pub PendingSpaceOwner get(fn pending_space_owner):
+            map hasher(twox_64_concat) SpaceId => Option<T::AccountId>;
     }
 }
 

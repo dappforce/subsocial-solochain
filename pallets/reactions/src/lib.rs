@@ -53,9 +53,14 @@ pub trait Trait: system::Trait
 decl_storage! {
     trait Store for Module<T: Trait> as ReactionsModule {
         pub NextReactionId get(fn next_reaction_id): ReactionId = 1;
+
         pub ReactionById get(fn reaction_by_id): map hasher(twox_64_concat) ReactionId => Option<Reaction<T>>;
-        pub ReactionIdsByPostId get(fn reaction_ids_by_post_id): map hasher(twox_64_concat) PostId => Vec<ReactionId>;
-        pub PostReactionIdByAccount get(fn post_reaction_id_by_account): map hasher(blake2_128_concat) (T::AccountId, PostId) => ReactionId;
+
+        pub ReactionIdsByPostId get(fn reaction_ids_by_post_id):
+            map hasher(twox_64_concat) PostId => Vec<ReactionId>;
+
+        pub PostReactionIdByAccount get(fn post_reaction_id_by_account):
+            map hasher(twox_64_concat) (T::AccountId, PostId) => ReactionId;
     }
 }
 

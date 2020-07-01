@@ -105,12 +105,18 @@ pub trait AfterPostUpdated<T: Trait> {
 decl_storage! {
     trait Store for Module<T: Trait> as PostsModule {
         pub NextPostId get(fn next_post_id): PostId = 1;
+
         pub PostById get(fn post_by_id): map hasher(twox_64_concat) PostId => Option<Post<T>>;
-        pub ReplyIdsByPostId get(fn reply_ids_by_post_id): map hasher(twox_64_concat) PostId => Vec<PostId>;
-        pub PostIdsBySpaceId get(fn post_ids_by_space_id): map hasher(twox_64_concat) SpaceId => Vec<PostId>;
+
+        pub ReplyIdsByPostId get(fn reply_ids_by_post_id):
+            map hasher(twox_64_concat) PostId => Vec<PostId>;
+
+        pub PostIdsBySpaceId get(fn post_ids_by_space_id):
+            map hasher(twox_64_concat) SpaceId => Vec<PostId>;
 
         // TODO rename 'Shared...' to 'Sharing...'
-        pub SharedPostIdsByOriginalPostId get(fn shared_post_ids_by_original_post_id): map hasher(twox_64_concat) PostId => Vec<PostId>;
+        pub SharedPostIdsByOriginalPostId get(fn shared_post_ids_by_original_post_id):
+            map hasher(twox_64_concat) PostId => Vec<PostId>;
     }
 }
 

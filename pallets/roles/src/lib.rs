@@ -105,13 +105,16 @@ decl_storage! {
         pub RoleById get(fn role_by_id): map hasher(twox_64_concat) RoleId => Option<Role<T>>;
 
         /// A list of all users (account or space ids) that have this role.
-        pub UsersByRoleId get(fn users_by_role_id): map hasher(twox_64_concat) RoleId => Vec<User<T::AccountId>>;
+        pub UsersByRoleId get(fn users_by_role_id):
+            map hasher(twox_64_concat) RoleId => Vec<User<T::AccountId>>;
 
         /// A list of all role ids available in this space.
-        pub RoleIdsBySpaceId get(fn role_ids_by_space_id): map hasher(twox_64_concat) SpaceId => Vec<RoleId>;
+        pub RoleIdsBySpaceId get(fn role_ids_by_space_id):
+            map hasher(twox_64_concat) SpaceId => Vec<RoleId>;
 
         /// A list of all role ids granted to this user (account or space) within this space.
-        pub RoleIdsByUserInSpace get(fn role_ids_by_user_in_space): map hasher(blake2_128_concat) (User<T::AccountId>, SpaceId) => Vec<RoleId>;
+        pub RoleIdsByUserInSpace get(fn role_ids_by_user_in_space):
+            map hasher(blake2_128_concat) (User<T::AccountId>, SpaceId) => Vec<RoleId>;
     }
 }
 

@@ -24,7 +24,8 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as ProfileHistoryModule {
-        pub EditHistory get(fn edit_history): map hasher(blake2_128_concat) T::AccountId => Vec<ProfileHistoryRecord<T>>;
+        pub EditHistory get(fn edit_history):
+            map hasher(blake2_128_concat) T::AccountId => Vec<ProfileHistoryRecord<T>>;
     }
 }
 
