@@ -90,7 +90,7 @@ parameter_types! {
     // No permissions disabled by default
     none: None,
 
-    everyone: Some(BTreeSet::from_iter(vec![
+    everyone: /*Some(BTreeSet::from_iter(vec![
       SP::ReportUsers,
 
       SP::UpdateOwnSubspaces,
@@ -112,12 +112,12 @@ parameter_types! {
       SP::Upvote,
       SP::Downvote,
       SP::Share,
-    ].into_iter())),
+    ].into_iter()))*/None,
 
     // Followers can do everything that everyone else can.
     follower: None,
 
-    space_owner: Some(BTreeSet::from_iter(vec![
+    space_owner: /*Some(BTreeSet::from_iter(vec![
       SP::ManageRoles,
       SP::RepresentSpaceInternally,
       SP::RepresentSpaceExternally,
@@ -142,7 +142,7 @@ parameter_types! {
       SP::BlockSubspaces,
       SP::BlockPosts,
       SP::BlockComments,
-    ].into_iter())),
+    ].into_iter()))*/None,
   };
 }
 
@@ -162,7 +162,7 @@ impl Trait for Test {
 }
 
 type System = system::Module<Test>;
-type Roles = Module<Test>;
+pub(crate) type Roles = Module<Test>;
 
 pub type AccountId = u64;
 pub type BlockNumber = u64;
@@ -234,55 +234,55 @@ impl ExtBuilder {
 }
 
 
-const ACCOUNT1: AccountId = 1;
-const ACCOUNT2: AccountId = 2;
-const ACCOUNT3: AccountId = 3;
+pub(crate) const ACCOUNT1: AccountId = 1;
+pub(crate) const ACCOUNT2: AccountId = 2;
+pub(crate) const ACCOUNT3: AccountId = 3;
 
-const ROLE1: RoleId = 1;
-const ROLE2: RoleId = 2;
-const ROLE3: RoleId = 3;
-const ROLE4: RoleId = 4;
+pub(crate) const ROLE1: RoleId = 1;
+pub(crate) const ROLE2: RoleId = 2;
+pub(crate) const ROLE3: RoleId = 3;
+pub(crate) const ROLE4: RoleId = 4;
 
-const SPACE1: SpaceId = 1;
-const SPACE2: SpaceId = 2;
+pub(crate) const SPACE1: SpaceId = 1;
+pub(crate) const SPACE2: SpaceId = 2;
 
-fn default_role_content_ipfs() -> Content {
+pub(crate) fn default_role_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
 
-fn updated_role_content_ipfs() -> Content {
+pub(crate) fn updated_role_content_ipfs() -> Content {
     Content::IPFS(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
 }
 
-fn invalid_role_content_ipfs() -> Content {
+pub(crate) fn invalid_role_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6DaazhR8".to_vec())
 }
 
 /// Permissions Set that includes next permission: ManageRoles
-fn permission_set_default() -> Vec<SpacePermission> {
+pub(crate) fn permission_set_default() -> Vec<SpacePermission> {
     vec![SP::ManageRoles]
 }
 
 /// Permissions Set that includes next permissions: ManageRoles, CreatePosts
-fn permission_set_updated() -> Vec<SpacePermission> {
+pub(crate) fn permission_set_updated() -> Vec<SpacePermission> {
     vec![SP::ManageRoles, SP::CreatePosts]
 }
 
 /// Permissions Set that includes random permissions
-fn permission_set_random() -> Vec<SpacePermission> {
+pub(crate) fn permission_set_random() -> Vec<SpacePermission> {
     vec![SP::CreatePosts, SP::UpdateOwnPosts, SP::UpdateAnyPost, SP::BlockUsers, SP::BlockComments]
 }
 
-fn valid_space_ids() -> Vec<SpaceId> {
+pub(crate) fn valid_space_ids() -> Vec<SpaceId> {
     vec![SPACE1]
 }
 
 /// Permissions Set that includes nothing
-fn permission_set_empty() -> Vec<SpacePermission> {
+pub(crate) fn permission_set_empty() -> Vec<SpacePermission> {
     vec![]
 }
 
-fn role_update(disabled: Option<bool>, content: Option<Content>, permissions: Option<BTreeSet<SpacePermission>>) -> RoleUpdate {
+pub(crate) fn role_update(disabled: Option<bool>, content: Option<Content>, permissions: Option<BTreeSet<SpacePermission>>) -> RoleUpdate {
     RoleUpdate {
         disabled,
         content,
@@ -291,11 +291,11 @@ fn role_update(disabled: Option<bool>, content: Option<Content>, permissions: Op
 }
 
 
-fn _create_default_role() -> DispatchResult {
+pub(crate) fn _create_default_role() -> DispatchResult {
     _create_role(None, None, None, None, None)
 }
 
-fn _create_role(
+pub(crate) fn _create_role(
     origin: Option<Origin>,
     space_id: Option<SpaceId>,
     time_to_live: Option<Option<BlockNumber>>,
@@ -311,11 +311,11 @@ fn _create_role(
     )
 }
 
-fn _update_default_role() -> DispatchResult {
+pub(crate) fn _update_default_role() -> DispatchResult {
     _update_role(None, None, None)
 }
 
-fn _update_role(
+pub(crate) fn _update_role(
     origin: Option<Origin>,
     role_id: Option<RoleId>,
     update: Option<RoleUpdate>
@@ -333,11 +333,11 @@ fn _update_role(
     )
 }
 
-fn _grant_default_role() -> DispatchResult {
+pub(crate) fn _grant_default_role() -> DispatchResult {
     _grant_role(None, None, None)
 }
 
-fn _grant_role(
+pub(crate) fn _grant_role(
     origin: Option<Origin>,
     role_id: Option<RoleId>,
     users: Option<Vec<User<AccountId>>>
@@ -349,11 +349,11 @@ fn _grant_role(
     )
 }
 
-fn _revoke_default_role() -> DispatchResult {
+pub(crate) fn _revoke_default_role() -> DispatchResult {
     _revoke_role(None, None, None)
 }
 
-fn _revoke_role(
+pub(crate) fn _revoke_role(
     origin: Option<Origin>,
     role_id: Option<RoleId>,
     users: Option<Vec<User<AccountId>>>
@@ -365,11 +365,11 @@ fn _revoke_role(
     )
 }
 
-fn _delete_default_role() -> DispatchResult {
+pub(crate) fn _delete_default_role() -> DispatchResult {
     _delete_role(None, None)
 }
 
-fn _delete_role(
+pub(crate) fn _delete_role(
     origin: Option<Origin>,
     role_id: Option<RoleId>
 ) -> DispatchResult {
