@@ -2,8 +2,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult, ensure,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::DispatchResult,
+    traits::Get
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -102,7 +103,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 100_000]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(6, 5)]
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
@@ -152,7 +153,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(3, 2)]
     pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
@@ -192,7 +193,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(4, 4)]
     pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

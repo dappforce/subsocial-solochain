@@ -1,8 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult, ensure,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::DispatchResult,
+    traits::Get
 };
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
@@ -66,7 +67,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 100_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(5, 5)]
     pub fn follow_space(origin, space_id: SpaceId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
@@ -81,7 +82,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(5, 5)]
     pub fn unfollow_space(origin, space_id: SpaceId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 

@@ -131,7 +131,7 @@ decl_module! {
     /// `content` points to the off-chain content with such additional info about this role
     /// as its name, description, color, etc.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    #[weight = 100_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 3)]
     pub fn create_role(
       origin,
       space_id: SpaceId,
@@ -162,7 +162,7 @@ decl_module! {
 
     /// Update an existing role by its id.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    #[weight = 100_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 1)]
     pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -217,7 +217,7 @@ decl_module! {
 
     /// Delete a role from all associated storage items.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    #[weight = 100_000]
+    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(6, 5)]
     pub fn delete_role(origin, role_id: RoleId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -249,7 +249,7 @@ decl_module! {
 
     /// Grant a role to a list of users.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    #[weight = 100_000]
+    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(4, 2)]
     pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -275,7 +275,7 @@ decl_module! {
 
     /// Revoke a role from a list of users.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    #[weight = 100_000]
+    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(4, 2)]
     pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 

@@ -2,8 +2,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::{DispatchError, DispatchResult},
+    traits::Get
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -129,7 +130,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 100_000]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(4, 4)]
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
@@ -174,7 +175,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(2, 3)]
     pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

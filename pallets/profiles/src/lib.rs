@@ -2,8 +2,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult, ensure, traits::Get,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::DispatchResult,
+    traits::Get
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -106,7 +107,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 10_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 2)]
     pub fn create_profile(origin, username: Vec<u8>, content: Content) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
@@ -130,7 +131,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 30_000]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(1, 2)]
     pub fn update_profile(origin, update: ProfileUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

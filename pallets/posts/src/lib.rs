@@ -189,7 +189,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 100_000]
+    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(8, 8)]
     pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) -> DispatchResult {
       let creator = ensure_signed(origin)?;
 
@@ -286,7 +286,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(4, 2)]
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) -> DispatchResult {
       let editor = ensure_signed(origin)?;
 
