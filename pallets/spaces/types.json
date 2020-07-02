@@ -10,6 +10,7 @@
     "content": "Content",
 
     "posts_count": "u16",
+    "hidden_posts_count": "u16",
     "followers_count": "u32",
 
     "score": "i32",

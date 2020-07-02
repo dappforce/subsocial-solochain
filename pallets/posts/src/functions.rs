@@ -1,6 +1,5 @@
 use frame_support::dispatch::DispatchResult;
 
-use pallet_spaces::Space;
 use pallet_utils::SpaceId;
 
 use super::*;
@@ -74,6 +73,18 @@ impl<T: Trait> Post<T> {
         let root_post = self.get_root_post()?;
         let space_id = root_post.space_id.ok_or(Error::<T>::PostHasNoSpaceId)?;
         Spaces::require_space(space_id)
+    }
+
+    pub fn try_get_space(&self) -> Option<Space<T>> {
+        if self.is_comment() {
+            return None
+        }
+
+        if let Some(space_id) = self.space_id {
+            return Spaces::require_space(space_id).ok()
+        }
+
+        None
     }
 
     // TODO use macros to generate inc/dec fns for Space, Post.

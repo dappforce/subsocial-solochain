@@ -10,7 +10,7 @@ use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
 use pallet_permissions::SpacePermission;
-use pallet_spaces::{Module as Spaces, SpaceById};
+use pallet_spaces::{Module as Spaces, Space, SpaceById};
 use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen, Content};
 
 pub mod functions;
@@ -289,7 +289,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000 + T::DbWeight::get().reads_writes(4, 2)]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(5, 3)]
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) -> DispatchResult {
       let editor = ensure_signed(origin)?;
 
@@ -332,6 +332,7 @@ decl_module! {
         permission_error
       )?;
 
+      let mut space_opt: Option<Space<T>> = None;
       let mut fields_updated = 0;
       let mut old_data = PostUpdate::default();
 
@@ -346,6 +347,16 @@ decl_module! {
 
       if let Some(hidden) = update.hidden {
         if hidden != post.hidden {
+          space_opt = post.try_get_space().map(|mut space| {
+            if hidden {
+                space.inc_hidden_posts();
+            } else {
+                space.dec_hidden_posts();
+            }
+
+            space
+          });
+
           old_data.hidden = Some(post.hidden);
           post.hidden = hidden;
           fields_updated += 1;
@@ -360,6 +371,8 @@ decl_module! {
           if space_id != post_space_id {
             Spaces::<T>::ensure_space_exists(space_id)?;
             // TODO check that the current user has CreatePosts permission in new space_id.
+            // TODO test whether new_space.posts_count increases
+            // TODO test whether new_space.hidden_posts_count increases if post is hidden
 
             // Remove post_id from its old space:
             PostIdsBySpaceId::mutate(post_space_id, |post_ids| vec_remove_on(post_ids, post_id));
@@ -376,6 +389,10 @@ decl_module! {
       // Update this post only if at least one field should be updated:
       if fields_updated > 0 {
         post.updated = Some(WhoAndWhen::<T>::new(editor.clone()));
+
+        if let Some(space) = space_opt {
+            <SpaceById<T>>::insert(space.id, space);
+        }
 
         <PostById<T>>::insert(post.id, post.clone());
         T::AfterPostUpdated::after_post_updated(editor.clone(), &post, old_data);
