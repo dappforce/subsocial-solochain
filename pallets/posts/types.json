@@ -16,6 +16,8 @@
 
     "direct_replies_count": "u16",
     "total_replies_count": "u32",
+    "direct_hidden_replies_count": "u16",
+    "total_hidden_replies_count": "u32",
 
     "shares_count": "u16",
     "upvotes_count": "u16",

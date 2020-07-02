@@ -34,6 +34,9 @@ pub struct Post<T: Trait> {
     pub direct_replies_count: u16,
     pub total_replies_count: u32,
 
+    pub direct_hidden_replies_count: u16,
+    pub total_hidden_replies_count: u32,
+
     pub shares_count: u16,
     pub upvotes_count: u16,
     pub downvotes_count: u16,
