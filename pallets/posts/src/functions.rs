@@ -239,9 +239,9 @@ impl<T: Trait> Module<T> {
         ancestors
     }
 
-    pub fn for_each_post_ancestor (
+    pub fn for_each_post_ancestor<F: FnMut(&mut Post<T>) + Copy> (
         post_id: PostId,
-        f: fn(&mut Post<T>)
+        f: F
     ) -> DispatchResult {
         let post = Self::mutate_post_by_id(post_id, f)?;
 
