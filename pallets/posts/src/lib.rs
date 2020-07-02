@@ -24,6 +24,8 @@ pub struct Post<T: Trait> {
     pub updated: Option<WhoAndWhen<T>>,
     pub hidden: bool,
 
+    pub owner: T::AccountId,
+
     pub space_id: Option<SpaceId>,
     pub extension: PostExtension,
 
@@ -98,7 +100,7 @@ impl<T: Trait> PostScores<T> for () {
 
 #[impl_trait_for_tuples::impl_for_tuples(10)]
 pub trait AfterPostUpdated<T: Trait> {
-    fn after_post_updated(account: T::AccountId, space: &Post<T>, old_data: PostUpdate);
+    fn after_post_updated(account: T::AccountId, post: &Post<T>, old_data: PostUpdate);
 }
 
 // This pallet's storage items.

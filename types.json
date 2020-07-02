@@ -69,6 +69,8 @@
     "updated": "Option<WhoAndWhen>",
     "hidden": "bool",
 
+    "owner": "AccountId",
+
     "space_id": "Option<SpaceId>",
     "extension": "PostExtension",
 
