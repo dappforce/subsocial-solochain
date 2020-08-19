@@ -3,7 +3,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
-    dispatch::{DispatchResult, DispatchError},
+    dispatch::DispatchResult,
     traits::Get
 };
 use sp_runtime::RuntimeDebug;
@@ -25,14 +25,11 @@ pub struct SocialAccount<T: Trait> {
 pub struct Profile<T: Trait> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
-
-    pub handle: Vec<u8>,
     pub content: Content
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ProfileUpdate {
-    pub handle: Option<Vec<u8>>,
     pub content: Option<Content>,
 }
 
@@ -51,9 +48,6 @@ decl_storage! {
     trait Store for Module<T: Trait> as ProfilesModule {
         pub SocialAccountById get(fn social_account_by_id):
             map hasher(blake2_128_concat) T::AccountId => Option<SocialAccount<T>>;
-
-        pub AccountByProfileHandle get(fn account_by_profile_handle):
-            map hasher(blake2_128_concat) Vec<u8> => Option<T::AccountId>;
     }
 }
 
@@ -76,8 +70,6 @@ decl_error! {
         NoUpdatesForProfile,
         /// Account has no profile yet.
         AccountHasNoProfile,
-        /// Profile handle is not unique.
-        ProfileHandleIsNotUnique,
     }
 }
 
@@ -91,7 +83,7 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 100_000 + T::DbWeight::get().reads_writes(1, 2)]
-    pub fn create_profile(origin, handle: Vec<u8>, content: Content) -> DispatchResult {
+    pub fn create_profile(origin, content: Content) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -99,17 +91,13 @@ decl_module! {
       let mut social_account = Self::get_or_new_social_account(owner.clone());
       ensure!(social_account.profile.is_none(), Error::<T>::ProfileAlreadyCreated);
 
-      let handle_in_lowercase = Self::lowercase_and_validate_profile_handle(handle.clone())?;
-
       social_account.profile = Some(
         Profile {
           created: WhoAndWhen::<T>::new(owner.clone()),
           updated: None,
-          handle,
           content
         }
       );
-      <AccountByProfileHandle<T>>::insert(handle_in_lowercase, owner.clone());
       <SocialAccountById<T>>::insert(owner.clone(), social_account);
 
       Self::deposit_event(RawEvent::ProfileCreated(owner));
@@ -120,9 +108,7 @@ decl_module! {
     pub fn update_profile(origin, update: ProfileUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
-      let has_updates =
-        update.handle.is_some() ||
-        update.content.is_some();
+      let has_updates = update.content.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForProfile);
 
@@ -136,20 +122,6 @@ decl_module! {
           Utils::<T>::is_valid_content(content.clone())?;
           old_data.content = Some(profile.content);
           profile.content = content;
-          is_update_applied = true;
-        }
-      }
-
-      if let Some(handle) = update.handle {
-        if handle != profile.handle {
-          let handle_in_lowercase = Self::lowercase_and_validate_profile_handle(handle.clone())?;
-
-          // Note that stored handle is in lowercase unlike profile.handle, but both are valid
-          <AccountByProfileHandle<T>>::remove(profile.handle.to_ascii_lowercase());
-          <AccountByProfileHandle<T>>::insert(handle_in_lowercase, owner.clone());
-
-          old_data.handle = Some(profile.handle);
-          profile.handle = handle;
           is_update_applied = true;
         }
       }
@@ -208,7 +180,6 @@ impl<T: Trait> SocialAccount<T> {
 impl Default for ProfileUpdate {
     fn default() -> Self {
         ProfileUpdate {
-            handle: None,
             content: None
         }
     }
@@ -225,14 +196,6 @@ impl<T: Trait> Module<T> {
                 profile: None,
             }
         )
-    }
-
-    pub fn lowercase_and_validate_profile_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
-        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
-
-        ensure!(Self::account_by_profile_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::ProfileHandleIsNotUnique);
-
-        Ok(handle_in_lowercase)
     }
 }
 

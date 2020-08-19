@@ -495,7 +495,7 @@ mod tests {
     }
 
     fn comment_content_ipfs() -> Content {
-        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkA8".to_vec())
     }
 
     fn reply_content_ipfs() -> Content {
@@ -506,11 +506,11 @@ mod tests {
         Content::IPFS( b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
     }
 
-    fn alice_handle() -> Vec<u8> {
+    fn _alice_handle() -> Vec<u8> {
         b"al_ice".to_vec()
     }
 
-    fn bob_handle() -> Vec<u8> {
+    fn _bob_handle() -> Vec<u8> {
         b"bob1337".to_vec()
     }
 
@@ -759,30 +759,26 @@ mod tests {
     }
 
     fn _create_default_profile() -> DispatchResult {
-        _create_profile(None, None, None)
+        _create_profile(None, None)
     }
 
     fn _create_profile(
         origin: Option<Origin>,
-        handle: Option<Vec<u8>>,
         content: Option<Content>
     ) -> DispatchResult {
         Profiles::create_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-            handle.unwrap_or_else(self::alice_handle),
             content.unwrap_or_else(self::profile_content_ipfs),
         )
     }
 
     fn _update_profile(
         origin: Option<Origin>,
-        handle: Option<Vec<u8>>,
         content: Option<Content>
     ) -> DispatchResult {
         Profiles::update_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             ProfileUpdate {
-                handle,
                 content,
             },
         )
@@ -882,7 +878,7 @@ mod tests {
     const ROLE2: RoleId = 2;
 
     fn default_role_content_ipfs() -> Content {
-        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkR1".to_vec())
     }
 
     /// Permissions Set that includes next permission: ManageRoles
@@ -1521,7 +1517,7 @@ mod tests {
     #[test]
     fn update_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec());
+            let new_content_ipfs = self::space_content_ipfs();
 
             // Post update with ID 1 should be fine
             assert_ok!(_update_post(
@@ -1530,7 +1526,7 @@ mod tests {
                 Some(
                     self::post_update(
                         None,
-                        Some(content_ipfs.clone()),
+                        Some(new_content_ipfs.clone()),
                         Some(true)
                     )
                 )
@@ -1539,7 +1535,7 @@ mod tests {
             // Check whether post updates correctly
             let post = Posts::post_by_id(POST1).unwrap();
             assert_eq!(post.space_id, Some(SPACE1));
-            assert_eq!(post.content, content_ipfs);
+            assert_eq!(post.content, new_content_ipfs);
             assert_eq!(post.hidden, true);
 
             // Check whether history recorded correctly
@@ -1555,9 +1551,7 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::space_content_ipfs()),
                 Some(true),
             );
 
@@ -1573,9 +1567,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::space_content_ipfs()),
                 Some(true),
             );
             assert_ok!(_create_post(
@@ -1599,9 +1591,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::space_content_ipfs()),
                 Some(true),
             );
             assert_ok!(_create_default_post()); // PostId 1
@@ -1690,9 +1680,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::space_content_ipfs()),
                 Some(true),
             );
             assert_ok!(_create_default_post());
@@ -2724,9 +2712,7 @@ mod tests {
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert_eq!(profile.created.account, ACCOUNT1);
             assert!(profile.updated.is_none());
-            assert_eq!(profile.handle, self::alice_handle());
             assert_eq!(profile.content, self::profile_content_ipfs());
-            assert_eq!(Profiles::account_by_profile_handle(self::alice_handle()), Some(ACCOUNT1));
 
             assert!(ProfileHistory::edit_history(ACCOUNT1).is_empty());
         });
@@ -2748,67 +2734,8 @@ mod tests {
 
             assert_noop!(_create_profile(
                 None,
-                None,
                 Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_is_taken() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                None,
-                None
-            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_too_short() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooShort);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_too_long() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooLong);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_contains_invalid_chars() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"{}sername".to_vec();
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -2819,23 +2746,16 @@ mod tests {
             // AccountId 1
             assert_ok!(_update_profile(
                 None,
-                Some(self::bob_handle()),
                 Some(self::space_content_ipfs())
             ));
 
             // Check whether profile updated correctly
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert!(profile.updated.is_some());
-            assert_eq!(profile.handle, self::bob_handle());
             assert_eq!(profile.content, self::space_content_ipfs());
-
-            // Check storages
-            assert!(Profiles::account_by_profile_handle(self::alice_handle()).is_none());
-            assert_eq!(Profiles::account_by_profile_handle(self::bob_handle()), Some(ACCOUNT1));
 
             // Check whether profile history is written correctly
             let profile_history = ProfileHistory::edit_history(ACCOUNT1)[0].clone();
-            assert_eq!(profile_history.old_data.handle, Some(self::alice_handle()));
             assert_eq!(profile_history.old_data.content, Some(self::profile_content_ipfs()));
         });
     }
@@ -2845,8 +2765,7 @@ mod tests {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_handle()),
-                None
+                Some(self::space_content_ipfs())
             ), ProfilesError::<TestRuntime>::SocialAccountNotFound);
         });
     }
@@ -2857,8 +2776,7 @@ mod tests {
             assert_ok!(ProfileFollows::follow_account(Origin::signed(ACCOUNT1), ACCOUNT2));
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_handle()),
-                None
+                Some(self::space_content_ipfs())
             ), ProfilesError::<TestRuntime>::AccountHasNoProfile);
         });
     }
@@ -2870,72 +2788,8 @@ mod tests {
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                None,
                 None
             ), ProfilesError::<TestRuntime>::NoUpdatesForProfile);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_is_taken() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_ok!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(self::bob_handle()),
-                None
-            ));
-            assert_noop!(_update_profile(
-                None,
-                Some(self::bob_handle()),
-                None
-            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_too_short() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_update_profile(
-                None,
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooShort);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_too_long() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_update_profile(
-                None,
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooLong);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_contains_invalid_chars() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"{}sername".to_vec();
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_update_profile(
-                None,
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -2946,7 +2800,6 @@ mod tests {
 
             assert_ok!(_create_default_profile());
             assert_noop!(_update_profile(
-                None,
                 None,
                 Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
