@@ -1,0 +1,19 @@
+{
+  "BadgeId": "u64",
+  "SpaceAwardId": "u64",
+
+  "Badge": {
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "content": "Content",
+    "space_id": "SpaceId"
+  },
+
+  "SpaceAward": {
+    "created": "WhoAndWhen",
+    "badge_id": "BadgeId",
+    "recipient": "SpaceId",
+    "expires_at": "Option<BlockNumber>",
+    "approved": "bool"
+  }
+}

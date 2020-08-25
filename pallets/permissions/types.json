@@ -45,7 +45,10 @@
       "SuggestEntityStatus",
       "UpdateEntityStatus",
 
-      "UpdateSpaceSettings"
+      "UpdateSpaceSettings",
+
+      "ManageBadges",
+      "ManageAwards"
     ]
   },
 

@@ -28,6 +28,7 @@ std = [
     'transaction-payment/std',
     'pallet-scheduler/std',
     'pallet-utility/std',
+#    'pallet-badges/std',
 #    'pallet-faucet/std',
 #    'pallet-donations/std',
 #    'pallet-moderation/std',
@@ -224,6 +225,11 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
+
+#[dependencies.pallet-badges]
+#default-features = false
+#path = '../pallets/badges'
+#version = '0.1.0'
 
 #[dependencies.pallet-faucet]
 #default-features = false

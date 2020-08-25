@@ -80,6 +80,9 @@ pub enum SpacePermission {
 
   /// Allows to update space settings across different pallets.
   UpdateSpaceSettings,
+
+  ManageBadges,
+  ManageAwards,
 }
 
 pub type SpacePermissionSet = BTreeSet<SpacePermission>;
