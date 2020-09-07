@@ -28,7 +28,7 @@ std = [
     'transaction-payment/std',
     'pallet-scheduler/std',
     'pallet-utility/std',
-    'pallet-faucet/std',
+#    'pallet-faucet/std',
 #    'pallet-donations/std',
 #    'pallet-moderation/std',
     'pallet-permissions/std',
@@ -44,9 +44,9 @@ std = [
     'pallet-space-follows/std',
     'pallet-space-ownership/std',
     'pallet-space-history/std',
+#    'pallet-session-keys/std',
 #    'pallet-subscriptions/std',
     'pallet-utils/std',
-#    'session-keys/std',
 ]
 
 [dependencies.aura]
@@ -225,16 +225,16 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dependencies.pallet-faucet]
-default-features = false
-path = '../pallets/faucet'
-version = '0.1.0'
+#[dependencies.pallet-faucet]
+#default-features = false
+#path = '../pallets/faucet'
+#version = '0.1.0'
 
 #[dependencies.pallet-donations]
 #default-features = false
 #path = '../pallets/donations'
 #version = '0.4.0'
-#
+
 #[dependencies.pallet-moderation]
 #default-features = false
 #path = '../pallets/moderation'
@@ -315,9 +315,8 @@ default-features = false
 path = '../pallets/utils'
 version = '0.4.0'
 
-#[dependencies.session-keys]
+#[dependencies.pallet-session-keys]
 #default-features = false
-#package = 'pallet-session-keys'
 #path = '../pallets/session-keys'
 #version = '0.4.0'
 

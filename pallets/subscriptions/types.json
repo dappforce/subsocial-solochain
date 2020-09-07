@@ -6,6 +6,7 @@
     "_enum": {
       "Daily": "Null",
       "Weekly": "Null",
+      "Monthly": "Null",
       "Quarterly": "Null",
       "Yearly": "Null",
       "Custom": "BlockNumber"

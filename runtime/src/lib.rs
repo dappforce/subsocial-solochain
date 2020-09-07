@@ -357,8 +357,6 @@ parameter_types! {
       SP::UpdateEntityStatus,
 
       SP::UpdateSpaceSettings,
-
-      SP::ManageSubscriptionPlans,
     ].into_iter())),
   };
 }
@@ -492,6 +490,7 @@ impl Filter<Call> for BaseFilter {
 		}
 	}
 }
+
 /*
 parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
@@ -534,6 +533,7 @@ impl pallet_moderation::Trait for Runtime {
 parameter_types! {
 	pub const DailyPeriodInBlocks: BlockNumber = DAYS;
 	pub const WeeklyPeriodInBlocks: BlockNumber = DAYS * 7;
+	pub const MonthlyPeriodInBlocks: BlockNumber = DAYS * 30;
 	pub const QuarterlyPeriodInBlocks: BlockNumber = DAYS * 30 * 3;
 	pub const YearlyPeriodInBlocks: BlockNumber = DAYS * 365;
 }
@@ -544,14 +544,16 @@ impl pallet_subscriptions::Trait for Runtime {
 	type Scheduler = Scheduler;
 	type DailyPeriodInBlocks = DailyPeriodInBlocks;
 	type WeeklyPeriodInBlocks = WeeklyPeriodInBlocks;
+	type MonthlyPeriodInBlocks = MonthlyPeriodInBlocks;
 	type QuarterlyPeriodInBlocks = QuarterlyPeriodInBlocks;
 	type YearlyPeriodInBlocks = YearlyPeriodInBlocks;
 }
-*/
+
 impl pallet_faucet::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 }
+*/
 
 construct_runtime!(
 	pub enum Runtime where
@@ -571,7 +573,7 @@ construct_runtime!(
 		Utility: pallet_utility::{Module, Call, Event},
 
 		// Subsocial custom pallets:
-		Faucet: pallet_faucet::{Module, Call, Storage, Event<T>},
+
 		Permissions: pallet_permissions::{Module, Call},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
@@ -587,7 +589,9 @@ construct_runtime!(
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
 
-		// New experimental pallets. Not recommended to use in production.
+		// New experimental pallets. Not recommended to use in production yet.
+
+		// Faucet: pallet_faucet::{Module, Call, Storage, Event<T>},
 		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},

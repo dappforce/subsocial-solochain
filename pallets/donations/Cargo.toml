@@ -6,7 +6,7 @@ edition = '2018'
 license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/dappforce-subsocial-node'
-description = 'Donate to account, spaces, posts and comments you like'
+description = 'Donate tokens to accounts, spaces, posts or comments you want to support'
 keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 

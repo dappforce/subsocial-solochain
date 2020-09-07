@@ -44,7 +44,7 @@ pub struct Donation<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct DonationSettings<BalanceOf> {
-    pub donations_allowed: bool,
+    pub donations_allowed: bool, // TODO rename to donations_enabled ?
     pub min_amount: Option<BalanceOf>,
     pub max_amount: Option<BalanceOf>,
 

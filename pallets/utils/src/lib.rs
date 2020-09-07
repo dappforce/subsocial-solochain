@@ -83,10 +83,10 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait
     /// A valid length of IPFS CID in bytes.
     type IpfsCidLen: Get<u32>;
 
-    /// Minimal length of space/profile handle
+    /// Min length of a space handle.
     type MinHandleLen: Get<u32>;
 
-    /// Maximal length of space/profile handle
+    /// Max length of a space handle.
     type MaxHandleLen: Get<u32>;
 }
 
@@ -108,13 +108,11 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        /// A valid length of IPFS CID in bytes.
+
         const IpfsCidLen: u32 = T::IpfsCidLen::get();
 
-        /// Minimal length of space/profile handle
         const MinHandleLen: u32 = T::MinHandleLen::get();
 
-        /// Maximal length of space/profile handle
         const MaxHandleLen: u32 = T::MaxHandleLen::get();
 
         // Initializing errors
@@ -127,15 +125,15 @@ decl_module! {
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// Account is blocked within this space (common error)
+        /// Account is blocked in a given space.
         AccountIsBlocked,
-        /// Content is blocked within this space (common error)
+        /// Content is blocked in a given space.
         ContentIsBlocked,
         /// IPFS CID is invalid.
         InvalidIpfsCid,
-        /// Unsupported yet type of content 'Raw' is used
+        /// `Raw` content type is not yet supported.
         RawContentTypeNotSupported,
-        /// Unsupported yet type of content 'Hyper' is used
+        /// `Hyper` content type is not yet supported.
         HypercoreContentTypeNotSupported,
         /// Space handle is too short.
         HandleIsTooShort,
@@ -143,7 +141,7 @@ decl_error! {
         HandleIsTooLong,
         /// Space handle contains invalid characters.
         HandleContainsInvalidChars,
-        /// Content type is `None`
+        /// Content type is `None`.
         ContentIsEmpty,
     }
 }
@@ -184,6 +182,7 @@ impl<T: Trait> Module<T> {
             Content::None => Ok(()),
             Content::Raw(_) => Err(Error::<T>::RawContentTypeNotSupported.into()),
             Content::IPFS(ipfs_cid) => {
+
                 // TODO write tests for IPFS CID v0 and v1.
 
                 ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);
@@ -205,15 +204,16 @@ impl<T: Trait> Module<T> {
         Ok(users_set)
     }
 
-    /// An example of a valid handle: `good_handle`.
+    /// Check if a handle contains only valid chars: 0-9, a-z, _.
+    /// An example of a valid handle: `good_handle_123`.
     fn is_valid_handle_char(c: u8) -> bool {
         matches!(c, b'0'..=b'9' | b'a'..=b'z' | b'_')
     }
 
-    /// Check if a handle length fits into min/max values.
-    /// Lowercase a provided handle.
-    /// Check if a handle consists of valid chars: 0-9, a-z, _.
-    /// Check if a handle is unique across all spaces' handles (required one a storage read).
+    /// Check if a handle length fits into min/max length requirements.
+    /// Lowercase a handle.
+    /// Check if a handle contains only valid chars: 0-9, a-z, _.
+    /// Check if a handle is unique across all spaces' handles (requires one storage read).
     pub fn lowercase_and_validate_a_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
         // Check min and max lengths of a handle:
         ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
@@ -221,14 +221,17 @@ impl<T: Trait> Module<T> {
 
         let handle_in_lowercase = handle.to_ascii_lowercase();
 
-        // Check if a handle consists of valid chars: 0-9, a-z, _.
-        ensure!(handle_in_lowercase.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
+        // Check if a handle contains only valid chars: 0-9, a-z, _.
+        let is_only_valid_chars = handle_in_lowercase.iter().all(|&x| Self::is_valid_handle_char(x));
+        ensure!(is_only_valid_chars, Error::<T>::HandleContainsInvalidChars);
 
+        // Return a lower-cased version of a handle.
         Ok(handle_in_lowercase)
     }
 
+    /// Ensure that a given content is not `None`.
     pub fn ensure_content_is_some(content: &Content) -> DispatchResult {
-        ensure!(!content.is_none(), Error::<T>::ContentIsEmpty);
+        ensure!(content.is_some(), Error::<T>::ContentIsEmpty);
         Ok(())
     }
 }

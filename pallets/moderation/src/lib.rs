@@ -1,7 +1,7 @@
 //! # Moderation Module
 //!
 //! The Moderation module allows any user (account) to report an account, space, post or even
-//! IPFS CID, if they think it's a spam, abuse or inappropriate for a particular space.
+//! IPFS CID, if they think it's a spam, abuse or inappropriate for a specific space.
 //!
 //! Moderators of a space can review reported entities and suggest a moderation status for them:
 //! `Block` or `Allowed`. A space owner can make a final decision: either block or allow any entity
@@ -13,8 +13,8 @@
 //!
 //! The next rules applied to the blocked entities:
 //!
-//! - A post cannot be added to a space if an IPFS CID of this post is blocked within this space.
-//! - An account cannot create posts in a space if this account is blocked within this space.
+//! - A post cannot be added to a space if an IPFS CID of this post is blocked in this space.
+//! - An account cannot create posts in a space if this account is blocked in this space.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -68,11 +68,12 @@ pub struct Report<T: Trait> {
     /// An id of reported entity: account, space, post or IPFS CID.
     reported_entity: EntityId<T::AccountId>,
     /// Within what space (scope) this entity has been reported.
-    reported_within: SpaceId,
-    /// A reason should describe why this entity should be blocked within this space.
+    reported_within: SpaceId, // TODO rename: reported_in_space
+    /// A reason should describe why this entity should be blocked in this space.
     reason: Content,
 }
 
+// TODO rename to SuggestedEntityStatus
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SuggestedStatus<T: Trait> {
     /// An account id of a moderator who suggested this status.
@@ -118,18 +119,20 @@ decl_storage! {
 
         /// Report details by its id (key).
         pub ReportById get(fn report_by_id):
-            map hasher(twox_64_concat) ReportId => Option<Report<T>>;
+            map hasher(twox_64_concat) ReportId
+            => Option<Report<T>>;
 
-        /// Report id if entity (key 1) was reported by account (key 2)
+        /// Report id if entity (key 1) was reported by a specific account (key 2)
         pub ReportIdByAccount get(fn report_id_by_account):
             map hasher(twox_64_concat) (EntityId<T::AccountId>, T::AccountId)
             => Option<ReportId>;
 
-        /// Ids of all reports sent to this space (key).
+        /// Ids of all reports in this space (key).
         pub ReportIdsBySpaceId get(fn report_ids_by_space_id):
-            map hasher(twox_64_concat) SpaceId => Vec<ReportId>;
+            map hasher(twox_64_concat) SpaceId
+            => Vec<ReportId>;
 
-        /// Ids of all reports related to a particular entity (key 1) sent to this space (key 2).
+        /// Ids of all reports related to a specific entity (key 1) sent to this space (key 2).
         pub ReportIdsByEntityInSpace get(fn report_ids_by_entity_in_space): double_map
             hasher(twox_64_concat) EntityId<T::AccountId>,
             hasher(twox_64_concat) SpaceId
@@ -141,15 +144,16 @@ decl_storage! {
             hasher(twox_64_concat) SpaceId
             => Option<EntityStatus>;
 
-        /// Entity (key 1) statuses suggested by a space (key 2) moderators.
+        /// Entity (key 1) statuses suggested by space (key 2) moderators.
         pub SuggestedStatusesByEntityInSpace get(fn suggested_statuses): double_map
             hasher(twox_64_concat) EntityId<T::AccountId>,
             hasher(twox_64_concat) SpaceId
             => Vec<SuggestedStatus<T>>;
 
         /// A custom moderation settings for a certain space (key).
-        pub SpaceSettings get(fn space_settings):
-            map hasher(twox_64_concat) SpaceId => Option<SpaceModerationSettings>;
+        pub ModerationSettings get(fn moderation_settings):
+            map hasher(twox_64_concat) SpaceId
+            => Option<SpaceModerationSettings>;
     }
 }
 
@@ -163,43 +167,42 @@ decl_event!(
         EntityStatusSuggested(AccountId, SpaceId, EntityId, Option<EntityStatus>),
         EntityStatusUpdated(AccountId, SpaceId, EntityId, Option<EntityStatus>),
         EntityStatusDeleted(AccountId, SpaceId, EntityId),
-        
-        // TODO rename to 'ModerationSettingsUpdated'
-        SpaceSettingsUpdated(AccountId, SpaceId),
+        ModerationSettingsUpdated(AccountId, SpaceId),
     }
 );
 
 // The pallet's errors
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// The account has already made a report on this entity.
-        AlreadyReported,
-        /// Entity status in this space is not specified. Nothing to delete.
-        EntityHasNoAnyStatusInScope,
+        /// The account has already reported this entity.
+        AlreadyReportedEntity,
+        /// The entity has no status in this space. Nothing to delete.
+        EntityHasNoStatusInScope,
         /// Entity scope differs from the scope provided.
-        EntityIsNotInScope,
+        EntityNotInScope,
         /// Entity was not found by its id.
         EntityNotFound,
-        /// Entity status is already as suggested one
-        EntityStatusDoNotDiffer,
-        /// Entity scope provided doesn't exist.
+        /// Entity status is already as suggested one.
+        SuggestedSameEntityStatus,
+        /// Provided entity scope does not exist.
         InvalidScope,
-        /// Account has no permission to suggest a new entity status.
+        /// Account does not have a permission to suggest a new entity status.
         NoPermissionToSuggestEntityStatus,
-        /// Account has no permission to update entity status.
+        /// Account does not have a permission to update an entity status.
         NoPermissionToUpdateEntityStatus,
-        /// Account has no permission to update space settings.
-        NoPermissionToUpdateSpaceSettings,
-        /// No any updates provided for space settings.
-        NoUpdatesForSpaceSettings,
-        /// Report reason shouldn't be empty.
+        /// Account does not have a permission to update the moderation settings.
+        NoPermissionToUpdateModerationSettings,
+        /// No updates provided for the space settings.
+        NoUpdatesForModerationSettings,
+        /// Report reason should not be empty.
         ReasonIsEmpty,
         /// Report was not found by its id.
         ReportNotFound,
-        /// The specified scope differs from ones within report was created
-        ScopeDiffersFromReport,
-        /// Entity status update is already suggested by this account
-        SuggestionAlreadyCreated,
+        /// Trying to suggest an entity status in a scope that is different from the scope
+        /// the entity was reported in.
+        SuggestedStatusInWrongScope,
+        /// Entity status has already been suggested by this moderator account.
+        AlreadySuggestedEntityStatus,
     }
 }
 
@@ -235,7 +238,8 @@ decl_module! {
             ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::InvalidScope);
             Self::ensure_entity_in_scope(&entity, scope)?;
 
-            ensure!(Self::report_id_by_account((&entity, &who)).is_none(), Error::<T>::AlreadyReported);
+            let not_reported_yet = Self::report_id_by_account((&entity, &who)).is_none();
+            ensure!(not_reported_yet, Error::<T>::AlreadyReportedEntity);
 
             let report_id = Self::next_report_id();
             let new_report = Report::<T>::new(report_id, who.clone(), entity.clone(), scope, reason);
@@ -264,11 +268,11 @@ decl_module! {
 
             if let Some(report_id) = report_id_opt {
                 let report = Self::require_report(report_id)?;
-                ensure!(scope == report.reported_within, Error::<T>::ScopeDiffersFromReport);
+                ensure!(scope == report.reported_within, Error::<T>::SuggestedStatusInWrongScope);
             }
 
             let entity_status = StatusByEntityInSpace::<T>::get(&entity, scope);
-            ensure!(!(entity_status.is_some() && status == entity_status), Error::<T>::EntityStatusDoNotDiffer);
+            ensure!(!(entity_status.is_some() && status == entity_status), Error::<T>::SuggestedSameEntityStatus);
 
             let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
             Spaces::<T>::ensure_account_has_space_permission(
@@ -280,14 +284,14 @@ decl_module! {
 
             let mut suggestions = SuggestedStatusesByEntityInSpace::<T>::get(&entity, scope);
             let is_already_suggested = suggestions.iter().any(|suggestion| suggestion.suggested.account == who);
-            ensure!(!is_already_suggested, Error::<T>::SuggestionAlreadyCreated);
+            ensure!(!is_already_suggested, Error::<T>::AlreadySuggestedEntityStatus);
             suggestions.push(SuggestedStatus::new(who.clone(), status.clone(), report_id_opt));
 
             let block_suggestions_total = suggestions.iter()
                 .filter(|suggestion| suggestion.status == Some(EntityStatus::Blocked))
                 .count();
 
-            let autoblock_threshold_opt = Self::space_settings(scope)
+            let autoblock_threshold_opt = Self::moderation_settings(scope)
                 .unwrap_or_else(Self::default_autoblock_threshold_as_settings)
                 .autoblock_threshold;
 
@@ -344,7 +348,7 @@ decl_module! {
             let who = ensure_signed(origin)?;
 
             let status = Self::status_by_entity_in_space(&entity, scope);
-            ensure!(status.is_some(), Error::<T>::EntityHasNoAnyStatusInScope);
+            ensure!(status.is_some(), Error::<T>::EntityHasNoStatusInScope);
 
             let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
             Self::ensure_account_status_manager(who.clone(), &space)?;
@@ -359,7 +363,7 @@ decl_module! {
 
         // TODO rename to update_settings?
         #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
-        fn update_space_settings(
+        fn update_moderation_settings(
             origin,
             space_id: SpaceId,
             update: SpaceModerationSettingsUpdate
@@ -367,7 +371,7 @@ decl_module! {
             let who = ensure_signed(origin)?;
 
             let has_updates = update.autoblock_threshold.is_some();
-            ensure!(has_updates, Error::<T>::NoUpdatesForSpaceSettings);
+            ensure!(has_updates, Error::<T>::NoUpdatesForModerationSettings);
 
             let space = Spaces::<T>::require_space(space_id)?;
 
@@ -375,25 +379,25 @@ decl_module! {
                 who.clone(),
                 &space,
                 pallet_permissions::SpacePermission::UpdateSpaceSettings,
-                Error::<T>::NoPermissionToUpdateSpaceSettings.into(),
+                Error::<T>::NoPermissionToUpdateModerationSettings.into(),
             )?;
 
             // `true` if there is at least one updated field.
             let mut should_update = false;
 
-            let mut space_settings = Self::space_settings(space_id)
+            let mut settings = Self::moderation_settings(space_id)
                 .unwrap_or_else(Self::default_autoblock_threshold_as_settings);
 
             if let Some(autoblock_threshold) = update.autoblock_threshold {
-                if autoblock_threshold != space_settings.autoblock_threshold {
-                    space_settings.autoblock_threshold = autoblock_threshold;
+                if autoblock_threshold != settings.autoblock_threshold {
+                    settings.autoblock_threshold = autoblock_threshold;
                     should_update = true;
                 }
             }
 
             if should_update {
-                SpaceSettings::insert(space_id, space_settings);
-                Self::deposit_event(RawEvent::SpaceSettingsUpdated(who, space_id));
+                ModerationSettings::insert(space_id, settings);
+                Self::deposit_event(RawEvent::ModerationSettingsUpdated(who, space_id));
             }
             Ok(())
         }

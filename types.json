@@ -28,7 +28,12 @@
     "min_amount": "Option<Option<Balance>>",
     "max_amount": "Option<Option<Balance>>"
   },
-  "DripId": "u64",
+  "DropId": "u64",
+  "Drop": {
+    "id": "DropId",
+    "first_drop": "BlockNumber",
+    "dropped_amount": "Balance"
+  },
   "FaucetSettings": {
     "period": "Option<BlockNumber>",
     "limit": "Balance"
@@ -36,11 +41,6 @@
   "FaucetSettingsUpdate": {
     "period": "Option<Option<BlockNumber>>",
     "limit": "Option<Balance>"
-  },
-  "Drop": {
-    "id": "DripId",
-    "first_drop": "BlockNumber",
-    "dropped_amount": "Balance"
   },
   "ReportId": "u64",
   "EntityId": {
@@ -108,8 +108,7 @@
       "OverridePostPermissions",
       "SuggestEntityStatus",
       "UpdateEntityStatus",
-      "UpdateSpaceSettings",
-      "ManageSubscriptionPlans"
+      "UpdateSpaceSettings"
     ]
   },
   "SpacePermissions": {
@@ -263,6 +262,7 @@
     "_enum": {
       "Daily": "Null",
       "Weekly": "Null",
+      "Monthly": "Null",
       "Quarterly": "Null",
       "Yearly": "Null",
       "Custom": "BlockNumber"

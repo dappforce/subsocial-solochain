@@ -70,7 +70,7 @@ impl<T: Trait> Module<T> {
 
     pub(crate) fn ensure_entity_in_scope(entity: &EntityId<T::AccountId>, scope: SpaceId) -> DispatchResult {
         if let Some(entity_scope) = Self::get_entity_scope(entity)? {
-            ensure!(entity_scope == scope, Error::<T>::EntityIsNotInScope);
+            ensure!(entity_scope == scope, Error::<T>::EntityNotInScope);
         }
         Ok(())
     }

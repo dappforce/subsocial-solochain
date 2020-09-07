@@ -1,3 +1,19 @@
+//! # Faucet Module
+//!
+//! The Faucet module allows a root key (sudo) to add accounts (faucets) that are eligible
+//! to drip free tokens to other accounts (recipients).
+
+
+
+
+// TODO rename pallet 'faucet' to 'faucets'? (y)
+
+// TODO refactor sudo to generic account + add 'created' to FaucetSettings so we can check owner
+
+
+
+
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Encode, Decode};
@@ -23,25 +39,28 @@ use frame_system::{self as system, ensure_signed, ensure_root};
 // #[cfg(test)]
 // mod tests;
 
-type DripId = u64;
+type DropId = u64;
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct Drop<T: Trait> {
+	id: DropId,
+	first_drop: T::BlockNumber, // TODO rename to first_drop_at
+	dropped_amount: BalanceOf<T> // TODO rename to: total_dripped_amount, total_dropped or total_dripped
+}
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettings<BlockNumber, Balance> {
-	period: Option<BlockNumber>,
-	limit: Balance
+	period: Option<BlockNumber>, // TODO rename
+	limit: Balance // TODO rename to period_limit
+
+	// TODO add: min_amount: Balance
+	// TODO add: max_limit: Balance
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettingsUpdate<BlockNumber, Balance> {
 	period: Option<Option<BlockNumber>>,
 	limit: Option<Balance>
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Drop<T: Trait> {
-	id: DripId,
-	first_drop: T::BlockNumber,
-	dropped_amount: BalanceOf<T>
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
@@ -56,19 +75,24 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as FaucetModule {
-		NextDripId get(fn next_drip_id): DripId = 1;
+		pub NextDropId get(fn next_drop_id): DropId = 1;
 
 		pub DropById get(fn drop_by_id):
-			map hasher(twox_64_concat) DripId => Option<Drop<T>>;
+			map hasher(twox_64_concat) DropId
+			=> Option<Drop<T>>;
 
-		pub DripIdByAccount get(fn drip_id_by_account):
-			map hasher(twox_64_concat) T::AccountId => Option<DripId>;
+		pub DropIdByRecipient get(fn drop_id_by_recipient):
+			map hasher(twox_64_concat) T::AccountId
+			=> Option<DropId>;
 
-		pub DripIdByAlias get(fn drip_id_by_alias):
-			map hasher(blake2_128_concat) Vec<u8> => Option<DripId>;
+		pub DropIdByAlias get(fn drop_id_by_alias):
+			map hasher(blake2_128_concat) Vec<u8>
+			=> Option<DropId>;
 
+		// TODO rename to SettingsByFaucet ? (maybe)
 		pub FaucetSettingsByAccount get(fn faucet_settings_by_account):
-			map hasher(twox_64_concat) T::AccountId => Option<FaucetSettings<T::BlockNumber, BalanceOf<T>>>;
+			map hasher(twox_64_concat) T::AccountId
+			=> Option<FaucetSettings<T::BlockNumber, BalanceOf<T>>>;
 	}
 }
 
@@ -77,19 +101,23 @@ decl_event!(
 		AccountId = <T as system::Trait>::AccountId,
 		Balance = BalanceOf<T>
 	{
-		NewFaucetCreated,
-		FaucetUpdated,
-		FaucetsRemoved,
-		FaucetDropped(AccountId, Balance),
+		FaucetAdded(AccountId),
+		FaucetUpdated(AccountId),
+		FaucetsRemoved(Vec<AccountId>),
+		Dropped(
+			AccountId, // faucet
+			AccountId, // recipient
+			Balance // amount dropped
+		),
 	}
 );
 
 // The pallet's errors
 decl_error! {
 	pub enum Error for Module<T: Trait> {
-		FaucetAlreadyExists,
-		FaucetLimitReached,
 		FaucetNotFound,
+		FaucetAlreadyAdded,
+		FaucetLimitReached,
 		NoFreeBalanceOnAccount,
 		NothingToUpdate,
 		ZeroAmount,
@@ -109,134 +137,146 @@ decl_module! {
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
 		pub fn add_faucet(
 			origin,
-			faucet_account: T::AccountId,
+			faucet: T::AccountId,
 			settings: FaucetSettings<T::BlockNumber, BalanceOf<T>>
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			ensure!(Self::require_faucet(&faucet_account).is_ok(), Error::<T>::FaucetAlreadyExists);
 			ensure!(
-				T::Currency::free_balance(&faucet_account) >= T::Currency::minimum_balance(),
+				Self::require_faucet_settings(&faucet).is_ok(),
+				Error::<T>::FaucetAlreadyAdded
+			);
+
+			ensure!(
+				T::Currency::free_balance(&faucet) >= T::Currency::minimum_balance(),
 				Error::<T>::NoFreeBalanceOnAccount
 			);
 
-			FaucetSettingsByAccount::<T>::insert(faucet_account, settings);
+			FaucetSettingsByAccount::<T>::insert(faucet.clone(), settings);
 
-			Self::deposit_event(RawEvent::NewFaucetCreated);
+			Self::deposit_event(RawEvent::FaucetAdded(faucet));
 			Ok(())
 		}
 
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 20_000]
 		pub fn update_faucet(
 			origin,
-			faucet_account: T::AccountId,
-			settings_update: FaucetSettingsUpdate<T::BlockNumber, BalanceOf<T>>
+			faucet: T::AccountId,
+			update: FaucetSettingsUpdate<T::BlockNumber, BalanceOf<T>>
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
 			let has_updates =
-				settings_update.period.is_some() ||
-				settings_update.limit.is_some();
+				update.period.is_some() ||
+				update.limit.is_some();
 
 			ensure!(has_updates, Error::<T>::NothingToUpdate);
-			let mut faucet_settings = Self::require_faucet(&faucet_account)?;
-			let mut is_update_applied = false;
 
-			if let Some(period) = settings_update.period {
-				if period != faucet_settings.period {
-					faucet_settings.period = period;
-					is_update_applied = true;
+			let mut settings = Self::require_faucet_settings(&faucet)?;
+
+			// `true` if there is at least one updated field.
+			let mut should_update = false;
+
+			if let Some(period) = update.period {
+				if period != settings.period {
+					settings.period = period;
+					should_update = true;
 				}
 			}
 
-			if let Some(limit) = settings_update.limit {
-				if limit != faucet_settings.limit {
-					faucet_settings.limit = limit;
-					is_update_applied = true;
+			if let Some(limit) = update.limit {
+				if limit != settings.limit {
+					settings.limit = limit;
+					should_update = true;
 				}
 			}
 
-			if is_update_applied {
-				FaucetSettingsByAccount::<T>::insert(faucet_account, faucet_settings);
-				Self::deposit_event(RawEvent::FaucetUpdated);
+			if should_update {
+				FaucetSettingsByAccount::<T>::insert(faucet.clone(), settings);
+				Self::deposit_event(RawEvent::FaucetUpdated(faucet));
 			}
 			Ok(())
 		}
 
 		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000
-			+ 5_000 * faucet_accounts.len() as u64
+			+ 5_000 * faucets.len() as u64
 		]
 		pub fn remove_faucets(
 			origin,
-			faucet_accounts: Vec<T::AccountId>
+			faucets: Vec<T::AccountId>
 		) -> DispatchResult {
 			ensure_root(origin.clone())?;
 			let root_key = ensure_signed(origin)?;
 
-			let accounts_set = BTreeSet::from_iter(faucet_accounts.iter());
-			for account in accounts_set.iter() {
-				if Self::require_faucet(account).is_ok() {
+			let unique_faucets = BTreeSet::from_iter(faucets.iter());
+			for faucet in unique_faucets.iter() {
+				if Self::require_faucet_settings(faucet).is_ok() {
 					T::Currency::transfer(
-						account,
+						faucet,
 						&root_key,
-						T::Currency::free_balance(account),
+						T::Currency::free_balance(faucet),
 						ExistenceRequirement::AllowDeath
 					)?;
 				}
 
-				FaucetSettingsByAccount::<T>::remove(account);
+				// TODO move inside of if above? ^^
+				FaucetSettingsByAccount::<T>::remove(faucet);
 			}
 
-			Self::deposit_event(RawEvent::FaucetsRemoved);
+			Self::deposit_event(RawEvent::FaucetsRemoved(faucets));
 			Ok(())
 		}
 
 		#[weight = (
-			T::DbWeight::get().reads_writes(6, 4) + 50_000,
+			T::DbWeight::get().reads_writes(6, 4) + 50_000, // TODO why 50k ?
 			Pays::No
 		)]
 		pub fn drip(
-			origin,
+			origin, // faucet
 			amount: BalanceOf<T>,
-			faucet_account: T::AccountId,
-			destination: T::AccountId,
-			alias: Vec<u8>
+			recipient: T::AccountId,
+			recipient_aliases: Vec<u8> // TODO refactor to Vec<Vec<u8>> ? (yes)
 		) -> DispatchResult {
-			ensure_root(origin)?;
+			let faucet = ensure_signed(origin)?;
 
-			ensure!(amount != Zero::zero(), Error::<T>::ZeroAmount);
+			ensure!(amount > Zero::zero(), Error::<T>::ZeroAmount);
 
-			let faucet_settings = Self::require_faucet(&faucet_account)?;
-			let drop_opt = Self::drip_id_by_account(&faucet_account)
-				.ok_or_else(|| Self::drip_id_by_alias(&alias))
+			let settings = Self::require_faucet_settings(&faucet)?;
+
+			// TODO check amount against settings.min_amount
+
+			let maybe_drop = Self::drop_id_by_recipient(&recipient)
+				.ok_or_else(|| Self::drop_id_by_alias(&recipient_aliases))
 				.ok()
 				.and_then(Self::drop_by_id);
 
 			let mut is_new_drop = false;
-			let mut drop = drop_opt.unwrap_or_else(|| {
-				let drip_id = Self::next_drip_id();
+			let mut drop = maybe_drop.unwrap_or_else(|| {
 				is_new_drop = true;
-				Drop::<T>::new(drip_id)
+				let drop_id = Self::next_drop_id();
+				Drop::<T>::new(drop_id)
 			});
 
 			if !is_new_drop {
 				let now = <system::Module<T>>::block_number();
-				let past = now.saturating_sub(faucet_settings.period.unwrap_or_else(Zero::zero));
+
+				// TODO rename var 'past'
+				let past = now.saturating_sub(settings.period.unwrap_or_else(Zero::zero));
 
 				if past >= drop.first_drop {
 					drop.first_drop = now;
-					if faucet_settings.period.is_some() {
+					if settings.period.is_some() {
 						drop.dropped_amount = Zero::zero();
 					}
 				}
 			}
 
-			let amount_allowed = faucet_settings.limit.saturating_sub(drop.dropped_amount);
+			let amount_allowed = settings.limit.saturating_sub(drop.dropped_amount);
 			ensure!(amount_allowed >= amount, Error::<T>::FaucetLimitReached);
 
 			T::Currency::transfer(
-				&faucet_account,
-				&destination,
+				&faucet,
+				&recipient,
 				amount,
 				ExistenceRequirement::KeepAlive
 			)?;
@@ -245,27 +285,27 @@ decl_module! {
 
 			DropById::<T>::insert(drop.id, drop.clone());
 			if is_new_drop {
-				DripIdByAccount::<T>::insert(&destination, drop.id);
-				DripIdByAlias::insert(alias, drop.id);
-				NextDripId::mutate(|x| *x += 1);
+				DropIdByRecipient::<T>::insert(&recipient, drop.id);
+				DropIdByAlias::insert(recipient_aliases, drop.id);
+				NextDropId::mutate(|x| *x += 1);
 			}
 
-			Self::deposit_event(RawEvent::FaucetDropped(destination, amount));
+			Self::deposit_event(RawEvent::Dropped(faucet, recipient, amount));
 			Ok(())
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-	pub fn require_faucet(
-		account: &T::AccountId
+	pub fn require_faucet_settings(
+		faucet: &T::AccountId
 	) -> Result<FaucetSettings<T::BlockNumber, BalanceOf<T>>, DispatchError> {
-		Ok(Self::faucet_settings_by_account(account).ok_or(Error::<T>::FaucetNotFound)?)
+		Ok(Self::faucet_settings_by_account(faucet).ok_or(Error::<T>::FaucetNotFound)?)
 	}
 }
 
 impl<T: Trait> Drop<T> {
-	pub fn new(id: DripId) -> Self {
+	pub fn new(id: DropId) -> Self {
 		Self {
 			id,
 			first_drop: <system::Module<T>>::block_number(),
