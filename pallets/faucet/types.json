@@ -3,17 +3,17 @@
 
   "Drop": {
     "id": "DropId",
-    "first_drop": "BlockNumber",
-    "dropped_amount": "Balance"
+    "first_drop_at": "BlockNumber",
+    "total_dropped": "Balance"
   },
 
   "FaucetSettings": {
     "period": "Option<BlockNumber>",
-    "limit": "Balance"
+    "period_limit": "Balance"
   },
 
   "FaucetSettingsUpdate": {
     "period": "Option<Option<BlockNumber>>",
-    "limit": "Option<Balance>"
+    "period_limit": "Option<Balance>"
   }
 }

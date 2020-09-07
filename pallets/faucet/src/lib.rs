@@ -3,16 +3,8 @@
 //! The Faucet module allows a root key (sudo) to add accounts (faucets) that are eligible
 //! to drip free tokens to other accounts (recipients).
 
-
-
-
 // TODO rename pallet 'faucet' to 'faucets'? (y)
-
 // TODO refactor sudo to generic account + add 'created' to FaucetSettings so we can check owner
-
-
-
-
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -44,14 +36,14 @@ type DropId = u64;
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Drop<T: Trait> {
 	id: DropId,
-	first_drop: T::BlockNumber, // TODO rename to first_drop_at
-	dropped_amount: BalanceOf<T> // TODO rename to: total_dripped_amount, total_dropped or total_dripped
+	first_drop_at: T::BlockNumber,
+	total_dropped: BalanceOf<T>
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettings<BlockNumber, Balance> {
 	period: Option<BlockNumber>, // TODO rename
-	limit: Balance // TODO rename to period_limit
+	period_limit: Balance
 
 	// TODO add: min_amount: Balance
 	// TODO add: max_limit: Balance
@@ -60,7 +52,7 @@ pub struct FaucetSettings<BlockNumber, Balance> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettingsUpdate<BlockNumber, Balance> {
 	period: Option<Option<BlockNumber>>,
-	limit: Option<Balance>
+	period_limit: Option<Balance>
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
@@ -168,7 +160,7 @@ decl_module! {
 
 			let has_updates =
 				update.period.is_some() ||
-				update.limit.is_some();
+				update.period_limit.is_some();
 
 			ensure!(has_updates, Error::<T>::NothingToUpdate);
 
@@ -184,9 +176,9 @@ decl_module! {
 				}
 			}
 
-			if let Some(limit) = update.limit {
-				if limit != settings.limit {
-					settings.limit = limit;
+			if let Some(period_limit) = update.period_limit {
+				if period_limit != settings.period_limit {
+					settings.period_limit = period_limit;
 					should_update = true;
 				}
 			}
@@ -263,15 +255,15 @@ decl_module! {
 				// TODO rename var 'past'
 				let past = now.saturating_sub(settings.period.unwrap_or_else(Zero::zero));
 
-				if past >= drop.first_drop {
-					drop.first_drop = now;
+				if past >= drop.first_drop_at {
+					drop.first_drop_at = now;
 					if settings.period.is_some() {
-						drop.dropped_amount = Zero::zero();
+						drop.total_dropped = Zero::zero();
 					}
 				}
 			}
 
-			let amount_allowed = settings.limit.saturating_sub(drop.dropped_amount);
+			let amount_allowed = settings.period_limit.saturating_sub(drop.total_dropped);
 			ensure!(amount_allowed >= amount, Error::<T>::FaucetLimitReached);
 
 			T::Currency::transfer(
@@ -281,7 +273,7 @@ decl_module! {
 				ExistenceRequirement::KeepAlive
 			)?;
 
-			drop.dropped_amount = drop.dropped_amount.saturating_add(amount);
+			drop.total_dropped = drop.total_dropped.saturating_add(amount);
 
 			DropById::<T>::insert(drop.id, drop.clone());
 			if is_new_drop {
@@ -308,8 +300,8 @@ impl<T: Trait> Drop<T> {
 	pub fn new(id: DropId) -> Self {
 		Self {
 			id,
-			first_drop: <system::Module<T>>::block_number(),
-			dropped_amount: Zero::zero()
+			first_drop_at: <system::Module<T>>::block_number(),
+			total_dropped: Zero::zero()
 		}
 	}
 }
