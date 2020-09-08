@@ -163,6 +163,10 @@ mod tests {
             SP::UpdateEntityStatus,
 
             SP::UpdateSpaceSettings,
+
+            SP::ManageBadges,
+  			SP::ManageAwards,
+            
         ].into_iter())),
       };
     }
@@ -576,9 +580,7 @@ mod tests {
         PostExtension::SharedPost(post_id)
     }
 
-    fn _create_default_space() -> DispatchResult {
-        _create_space(None, None, None, None)
-    }
+    fn _create_default_space() -> DispatchResult { _create_space(None, None, None, None) }
 
     fn _create_space(
         origin: Option<Origin>,

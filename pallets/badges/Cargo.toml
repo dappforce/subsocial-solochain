@@ -21,6 +21,7 @@ std = [
     'sp-runtime/std',
     'frame-support/std',
     'frame-system/std',
+    'pallet-timestamp/std',
     'pallet-permissions/std',
     'pallet-spaces/std',
     'pallet-utils/std',
@@ -43,6 +44,7 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
+
 [dev-dependencies.sp-core]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -67,6 +69,12 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
+[dependencies.pallet-timestamp]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
 [dependencies.pallet-permissions]
 default-features = false
 path = '../permissions'
@@ -80,4 +88,35 @@ version = '0.4.0'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
+version = '0.4.0'
+
+[dev-dependencies.pallet-balances]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.pallet-space-follows]
+default-features = false
+path = '../space-follows'
+version = '0.4.0'
+
+[dev-dependencies.pallet-profiles]
+default-features = false
+path = '../profiles'
+version = '0.4.0'
+
+[dev-dependencies.pallet-roles]
+default-features = false
+path = '../roles'
+version = '0.4.0'
+
+[dev-dependencies.pallet-moderation]
+default-features = false
+path = '../moderation'
+version = '0.4.0'
+
+[dev-dependencies.pallet-posts]
+default-features = false
+path = '../posts'
 version = '0.4.0'

@@ -14,11 +14,11 @@ use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces};
 use pallet_utils::{Module as Utils, WhoAndWhen, SpaceId, Content};
 
-// #[cfg(test)]
-// mod mock;
-//
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
 
 type BadgeId = u64;
 type SpaceAwardId = u64;
@@ -37,7 +37,7 @@ pub struct SpaceAward<T: Trait> {
     badge_id: BadgeId,
     recipient: SpaceId,
     expires_at: Option<T::BlockNumber>,
-    approved: bool
+    accepted: bool
 }
 
 pub trait Trait: system::Trait
@@ -61,7 +61,7 @@ decl_storage! {
         pub SpaceAwardIdByExpirationBlock get(fn space_award_id_by_expiration_block):
             map hasher(blake2_128_concat) T::BlockNumber => Vec<SpaceAwardId>;
 
-        pub SpaceAwardsByBageId get(fn space_awards_by_badge_id):
+        pub SpaceAwardsByBadgeId get(fn space_awards_by_badge_id):
          map hasher(blake2_128_concat) BadgeId => Vec<SpaceAwardId>;
 	}
 }
@@ -125,7 +125,7 @@ decl_module! {
             let badge = Self::badge_by_id(badge_id).ok_or(Error::<T>::BadgeNotFound)?;
             Self::ensure_badge_manager(who, badge.space_id)?;
 
-            let sapce_award_id = SpaceAwardsByBageId::take(badge_id);
+            let sapce_award_id = SpaceAwardsByBadgeId::take(badge_id);
              for id in sapce_award_id.iter() {
                 <SpaceAwardById<T>>::remove(id);
             }
@@ -136,7 +136,7 @@ decl_module! {
         }
 
         #[weight = T::DbWeight::get().reads_writes(6, 4) + 10_000]
-        pub fn propose_space_award(
+        pub fn award_badge(
             origin,
             badge_id: BadgeId,
             recipient: SpaceId,
@@ -155,14 +155,14 @@ decl_module! {
                 created: WhoAndWhen::<T>::new(who),
                 recipient,
                 expires_at: expires_at_opt,
-                approved: false
+                accepted: false
             };
 
             if let Some(expires_at) = expires_at_opt {
                 <SpaceAwardIdByExpirationBlock<T>>::mutate(expires_at, |ids| ids.push(space_award_id));
             }
 
-            SpaceAwardsByBageId::mutate(badge_id, |ids| ids.push(space_award_id));
+            SpaceAwardsByBadgeId::mutate(badge_id, |ids| ids.push(space_award_id));
 
             <SpaceAwardById<T>>::insert(space_award_id, new_space_award);
             NextSpaceAwardId::mutate(|x| *x += 1);
@@ -171,28 +171,28 @@ decl_module! {
         }
 
         #[weight = T::DbWeight::get().reads_writes(2, 1) + 10_000]
-        pub fn approve_space_award(origin, space_award_id: SpaceAwardId) -> DispatchResult {
+        pub fn accept_award(origin, award_id: SpaceAwardId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            let mut space_award = Self::space_award_by_id(space_award_id).ok_or(Error::<T>::SpaceAwardNotFound)?;
+            let mut space_award = Self::space_award_by_id(award_id).ok_or(Error::<T>::SpaceAwardNotFound)?;
 
             // todo(i): maybe replace with a permission?
             let space = Spaces::<T>::require_space(space_award.recipient)?;
             space.ensure_space_owner(who)?;
 
-            space_award.approved = true;
-            <SpaceAwardById<T>>::insert(space_award_id, space_award);
+            space_award.accepted = true;
+            <SpaceAwardById<T>>::insert(award_id, space_award);
 
             Ok(())
         }
 
         #[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
-        pub fn delete_space_award(origin, space_award_id: SpaceAwardId) -> DispatchResult {
+        pub fn delete_badge_award(origin, space_award_id: SpaceAwardId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let space_award = Self::space_award_by_id(space_award_id).ok_or(Error::<T>::SpaceAwardNotFound)?;
             let badge = Self::badge_by_id(space_award.badge_id).ok_or(Error::<T>::BadgeNotFound)?;
-            Self::ensure_badge_manager(who, badge.space_id)?;
+            Self::ensure_award_manager(who, badge.space_id)?;
 
             <SpaceAwardById<T>>::remove(space_award_id);
 
