@@ -5,7 +5,7 @@ use sp_std::iter::FromIterator;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill, DispatchResult};
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageMap};
+use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageMap, assert_ok};
 use frame_system as system;
 
 use pallet_permissions::{
@@ -217,7 +217,7 @@ impl pallet_posts::Trait for Test {
 impl Trait for Test {
 }
 
-pub type Badge = Module<Test>;
+pub type BadgeForTest = Module<Test>;
 type System = system::Module<Test>;
 type Balances = pallet_balances::Module<Test>;
 type Spaces = pallet_spaces::Module<Test>;
@@ -258,14 +258,54 @@ impl ExtBuilder {
 
 		ext
 	}
+
+	pub fn build_with_two_spaces() -> TestExternalities {
+		let storage = system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap();
+
+		let mut ext = TestExternalities::from(storage);
+		ext.execute_with(|| {
+			System::set_block_number(1);
+			let space1 = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None);
+			let space2 = Space::<Test>::new(SPACE2, None, ACCOUNT1, Content::None, None);
+			SpaceById::insert(space1.id, space1);
+			SpaceById::insert(space2.id, space2);
+		});
+
+		ext
+	}
+
+	pub fn build_with_badge_no_space() -> TestExternalities {
+		let storage = system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap();
+
+		let mut ext = TestExternalities::from(storage);
+		ext.execute_with(|| {
+			System::set_block_number(1);
+
+			let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None);
+			SpaceById::insert(space.id, space);
+
+			assert_ok!(_create_default_badge());
+			assert_ok!(_award_default_badge());
+
+			<SpaceById<Test>>::remove(SPACE1);
+		});
+
+		ext
+	}
 }
 
 pub const ACCOUNT1: AccountId = 1;
+pub const ACCOUNT2: AccountId = 2;
 pub const SPACE1: SpaceId = 1;
 pub const SPACE2: SpaceId = 2;
 pub const BADGEID1: BadgeId = 1;
 pub const BADGEID2: BadgeId = 2;
-pub const SPACEAWARDID: SpaceAwardId = 1;
+pub const SPACEAWARDID1: SpaceAwardId = 1;
+pub const SPACEAWARDID2: SpaceAwardId = 2;
 
 
 pub fn default_badge_content_ipfs() -> Content {
@@ -276,6 +316,11 @@ pub fn updated_badge_content_ipfs() -> Content {
 	Content::IPFS(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
 }
 
+pub(crate) fn invalid_badge_content_ipfs() -> Content {
+	Content::IPFS(b"QmRAQB6DaazhR8".to_vec())
+}
+
+
 pub fn _create_default_badge() -> DispatchResult {
 	_create_badge(None, None, None)
 }
@@ -285,7 +330,7 @@ pub fn _create_badge(
 	space_id: Option<SpaceId>,
 	content: Option<Content>
 ) -> DispatchResult {
-	Badge::create_badge(
+	BadgeForTest::create_badge(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
 		space_id.unwrap_or(SPACE1),
 		content.unwrap_or_else(self::default_badge_content_ipfs)
@@ -301,7 +346,7 @@ pub fn _update_badge(
 	badge_id: Option<BadgeId>,
 	content: Option<Content>
 ) -> DispatchResult {
-	Badge::update_badge(
+	BadgeForTest::update_badge(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
 		badge_id.unwrap_or(BADGEID1),
 		content.unwrap_or_else(self::updated_badge_content_ipfs)
@@ -316,7 +361,7 @@ pub fn _delete_badge(
 	origin: Option<Origin>,
 	badge_id: Option<BadgeId>
 ) -> DispatchResult {
-	Badge::delete_badge(
+	BadgeForTest::delete_badge(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
 		badge_id.unwrap_or(BADGEID1)
 	)
@@ -332,7 +377,7 @@ pub fn _award_badge(
 	recipient: Option<SpaceId>,
 	expire_after_opt: Option<Option<BlockNumber>>,
 ) -> DispatchResult {
-	Badge::award_badge(
+	BadgeForTest::award_badge(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
 		badge_id.unwrap_or(BADGEID1),
 		recipient.unwrap_or(SPACE2),
@@ -349,13 +394,13 @@ pub fn _accept_award(
 	origin: Option<Origin>,
 	award_id: Option<SpaceAwardId>,
 ) -> DispatchResult {
-	Badge::accept_award(
+	BadgeForTest::accept_award(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-		award_id.unwrap_or(SPACEAWARDID)
+		award_id.unwrap_or(SPACEAWARDID1)
 	)
 }
 
-pub fn _delete_default_award() -> DispatchResult {
+pub fn _delete_default_badge_award() -> DispatchResult {
 	_delete_badge_award(None, None)
 }
 
@@ -363,9 +408,9 @@ pub fn _delete_badge_award(
 	origin: Option<Origin>,
 	space_award_id: Option<SpaceAwardId>,
 ) -> DispatchResult {
-	Badge::delete_badge_award(
+	BadgeForTest::delete_badge_award(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-		space_award_id.unwrap_or(SPACEAWARDID)
+		space_award_id.unwrap_or(SPACEAWARDID1)
 	)
 }
 

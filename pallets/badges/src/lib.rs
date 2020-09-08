@@ -175,10 +175,7 @@ decl_module! {
             let who = ensure_signed(origin)?;
 
             let mut space_award = Self::space_award_by_id(award_id).ok_or(Error::<T>::SpaceAwardNotFound)?;
-
-            // todo(i): maybe replace with a permission?
-            let space = Spaces::<T>::require_space(space_award.recipient)?;
-            space.ensure_space_owner(who)?;
+            Self::ensure_award_manager(who, space_award.recipient)?;
 
             space_award.accepted = true;
             <SpaceAwardById<T>>::insert(award_id, space_award);
