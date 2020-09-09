@@ -5,6 +5,7 @@
 
 // TODO rename pallet 'faucet' to 'faucets'? (y)
 // TODO refactor sudo to generic account + add 'created' to FaucetSettings so we can check owner
+// TODO possible improvement: add `remove_alias`
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -24,19 +25,20 @@ use frame_support::{
 	weights::Pays,
 };
 use frame_system::{self as system, ensure_signed, ensure_root};
+use pallet_sudo::Module as SudoModule;
 
-// #[cfg(test)]
-// mod mock;
+#[cfg(test)]
+mod mock;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 type DropId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Drop<T: Trait> {
 	id: DropId,
-	first_drop_at: T::BlockNumber,
+	last_drop_at: T::BlockNumber,
 	total_dropped: BalanceOf<T>
 }
 
@@ -58,7 +60,7 @@ pub struct FaucetSettingsUpdate<BlockNumber, Balance> {
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
+pub trait Trait: system::Trait + pallet_sudo::Trait {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
@@ -110,6 +112,7 @@ decl_error! {
 		FaucetNotFound,
 		FaucetAlreadyAdded,
 		FaucetLimitReached,
+		NoFaucetsProvided,
 		NoFreeBalanceOnAccount,
 		NothingToUpdate,
 		ZeroAmount,
@@ -135,7 +138,7 @@ decl_module! {
 			ensure_root(origin)?;
 
 			ensure!(
-				Self::require_faucet_settings(&faucet).is_ok(),
+				Self::require_faucet_settings(&faucet).is_err(),
 				Error::<T>::FaucetAlreadyAdded
 			);
 
@@ -186,8 +189,9 @@ decl_module! {
 			if should_update {
 				FaucetSettingsByAccount::<T>::insert(faucet.clone(), settings);
 				Self::deposit_event(RawEvent::FaucetUpdated(faucet));
+				return Ok(());
 			}
-			Ok(())
+			Err(Error::<T>::NothingToUpdate.into())
 		}
 
 		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000
@@ -197,8 +201,10 @@ decl_module! {
 			origin,
 			faucets: Vec<T::AccountId>
 		) -> DispatchResult {
-			ensure_root(origin.clone())?;
-			let root_key = ensure_signed(origin)?;
+			ensure_root(origin)?;
+			let root_key = SudoModule::<T>::key();
+
+			ensure!(faucets.len() != Zero::zero(), Error::<T>::NoFaucetsProvided);
 
 			let unique_faucets = BTreeSet::from_iter(faucets.iter());
 			for faucet in unique_faucets.iter() {
@@ -209,10 +215,9 @@ decl_module! {
 						T::Currency::free_balance(faucet),
 						ExistenceRequirement::AllowDeath
 					)?;
-				}
 
-				// TODO move inside of if above? ^^
-				FaucetSettingsByAccount::<T>::remove(faucet);
+					FaucetSettingsByAccount::<T>::remove(faucet);
+				}
 			}
 
 			Self::deposit_event(RawEvent::FaucetsRemoved(faucets));
@@ -237,6 +242,11 @@ decl_module! {
 
 			// TODO check amount against settings.min_amount
 
+			let _drop_id_by_recipient = Self::drop_id_by_recipient(&recipient);
+			let _drop_id_by_alias = Self::drop_id_by_alias(&recipient_aliases);
+			let _recipient_alias = recipient_aliases.clone();
+			let _amount = amount.clone();
+
 			let maybe_drop = Self::drop_id_by_recipient(&recipient)
 				.ok_or_else(|| Self::drop_id_by_alias(&recipient_aliases))
 				.ok()
@@ -255,8 +265,8 @@ decl_module! {
 				// TODO rename var 'past'
 				let past = now.saturating_sub(settings.period.unwrap_or_else(Zero::zero));
 
-				if past >= drop.first_drop_at {
-					drop.first_drop_at = now;
+				if past >= drop.last_drop_at {
+					drop.last_drop_at = now;
 					if settings.period.is_some() {
 						drop.total_dropped = Zero::zero();
 					}
@@ -276,9 +286,9 @@ decl_module! {
 			drop.total_dropped = drop.total_dropped.saturating_add(amount);
 
 			DropById::<T>::insert(drop.id, drop.clone());
+			DropIdByAlias::insert(recipient_aliases, drop.id);
+			DropIdByRecipient::<T>::insert(&recipient, drop.id);
 			if is_new_drop {
-				DropIdByRecipient::<T>::insert(&recipient, drop.id);
-				DropIdByAlias::insert(recipient_aliases, drop.id);
 				NextDropId::mutate(|x| *x += 1);
 			}
 
@@ -300,7 +310,7 @@ impl<T: Trait> Drop<T> {
 	pub fn new(id: DropId) -> Self {
 		Self {
 			id,
-			first_drop_at: <system::Module<T>>::block_number(),
+			last_drop_at: <system::Module<T>>::block_number(),
 			total_dropped: Zero::zero()
 		}
 	}
