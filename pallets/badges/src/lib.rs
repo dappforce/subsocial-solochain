@@ -3,7 +3,7 @@
 use codec::{Encode, Decode};
 use sp_runtime::RuntimeDebug;
 use frame_support::{
-    decl_module, decl_storage, decl_error,
+    decl_module, decl_storage, decl_error, decl_event,
     traits::Get,
     dispatch::{DispatchResult, DispatchError},
 };
@@ -45,7 +45,21 @@ pub trait Trait: system::Trait
     + pallet_spaces::Trait
 {
     // todo: Add Event
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
+
+decl_event!(
+	pub enum Event<T> where
+		AccountId = <T as system::Trait>::AccountId
+	{
+		BadgeCreated(AccountId, BadgeId),
+		BadgeUpdated(AccountId, BadgeId),
+		BadgeDeleted(AccountId, BadgeId),
+		BadgeAwarded(AccountId, SpaceAwardId, BadgeId, SpaceId),
+		SpaceAwardAccepted(AccountId, SpaceAwardId, SpaceId),
+		SpaceAwardDeleted(AccountId, SpaceAwardId),
+	}
+);
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
@@ -57,6 +71,9 @@ decl_storage! {
 
         pub SpaceAwardById get(fn space_award_by_id):
             map hasher(twox_64_concat) SpaceAwardId => Option<SpaceAward<T>>;
+
+        pub SpaceAwardsBySpaceId get(fn space_awards_by_space_id):
+            map hasher(twox_64_concat) SpaceId => Vec<SpaceAwardId>;
 
         pub SpaceAwardIdByExpirationBlock get(fn space_award_id_by_expiration_block):
             map hasher(blake2_128_concat) T::BlockNumber => Vec<SpaceAwardId>;
@@ -79,6 +96,8 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
+		fn deposit_event() = default;
+
          #[weight = T::DbWeight::get().reads_writes(2, 2) + 10_000]
          pub fn create_badge(origin, space_id: SpaceId, content: Content) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -89,7 +108,7 @@ decl_module! {
 
             let badge_id = Self::next_badge_id();
             let new_badge = Badge {
-                created: WhoAndWhen::<T>::new(who),
+                created: WhoAndWhen::<T>::new(who.clone()),
                 content,
                 space_id,
                 updated: None
@@ -98,6 +117,7 @@ decl_module! {
             <BadgeById<T>>::insert(badge_id, new_badge);
             NextBadgeId::mutate(|x| *x += 1);
 
+            Self::deposit_event(RawEvent::BadgeCreated(who, badge_id));
             Ok(())
          }
 
@@ -111,10 +131,11 @@ decl_module! {
             Self::ensure_badge_manager(who.clone(), updated_badge.space_id)?;
 
             updated_badge.content = content;
-            updated_badge.updated = Some(WhoAndWhen::<T>::new(who));
+            updated_badge.updated = Some(WhoAndWhen::<T>::new(who.clone()));
 
             <BadgeById<T>>::insert(badge_id, updated_badge);
 
+            Self::deposit_event(RawEvent::BadgeUpdated(who, badge_id));
             Ok(())
         }
 
@@ -123,15 +144,16 @@ decl_module! {
             let who = ensure_signed(origin)?;
 
             let badge = Self::badge_by_id(badge_id).ok_or(Error::<T>::BadgeNotFound)?;
-            Self::ensure_badge_manager(who, badge.space_id)?;
+            Self::ensure_badge_manager(who.clone(), badge.space_id)?;
 
-            let sapce_award_id = SpaceAwardsByBadgeId::take(badge_id);
-             for id in sapce_award_id.iter() {
+            let space_award_id = SpaceAwardsByBadgeId::take(badge_id);
+             for id in space_award_id.iter() {
                 <SpaceAwardById<T>>::remove(id);
             }
 
             <BadgeById<T>>::remove(badge_id);
 
+            Self::deposit_event(RawEvent::BadgeDeleted(who, badge_id));
             Ok(())
         }
 
@@ -152,7 +174,7 @@ decl_module! {
 
             let new_space_award = SpaceAward {
                 badge_id,
-                created: WhoAndWhen::<T>::new(who),
+                created: WhoAndWhen::<T>::new(who.clone()),
                 recipient,
                 expires_at: expires_at_opt,
                 accepted: false
@@ -161,12 +183,13 @@ decl_module! {
             if let Some(expires_at) = expires_at_opt {
                 <SpaceAwardIdByExpirationBlock<T>>::mutate(expires_at, |ids| ids.push(space_award_id));
             }
-
+            SpaceAwardsBySpaceId::mutate(recipient, |ids| ids.push(space_award_id));
             SpaceAwardsByBadgeId::mutate(badge_id, |ids| ids.push(space_award_id));
 
             <SpaceAwardById<T>>::insert(space_award_id, new_space_award);
             NextSpaceAwardId::mutate(|x| *x += 1);
 
+            Self::deposit_event(RawEvent::BadgeAwarded(who, space_award_id, badge_id, recipient));
             Ok(())
         }
 
@@ -175,11 +198,12 @@ decl_module! {
             let who = ensure_signed(origin)?;
 
             let mut space_award = Self::space_award_by_id(award_id).ok_or(Error::<T>::SpaceAwardNotFound)?;
-            Self::ensure_award_manager(who, space_award.recipient)?;
+            Self::ensure_award_manager(who.clone(), space_award.recipient)?;
 
             space_award.accepted = true;
-            <SpaceAwardById<T>>::insert(award_id, space_award);
+            <SpaceAwardById<T>>::insert(award_id, space_award.clone());
 
+            Self::deposit_event(RawEvent::SpaceAwardAccepted(who, award_id, space_award.recipient));
             Ok(())
         }
 
@@ -189,10 +213,11 @@ decl_module! {
 
             let space_award = Self::space_award_by_id(space_award_id).ok_or(Error::<T>::SpaceAwardNotFound)?;
             let badge = Self::badge_by_id(space_award.badge_id).ok_or(Error::<T>::BadgeNotFound)?;
-            Self::ensure_award_manager(who, badge.space_id)?;
+            Self::ensure_award_manager(who.clone(), badge.space_id)?;
 
             <SpaceAwardById<T>>::remove(space_award_id);
 
+            Self::deposit_event(RawEvent::SpaceAwardDeleted(who, space_award_id));
             Ok(())
         }
 

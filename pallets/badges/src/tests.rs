@@ -12,9 +12,9 @@ fn create_badge_should_work() {
     ExtBuilder::build_with_space().execute_with(|| {
         assert_ok!(_create_default_badge());
 
-        assert_eq!(BadgeForTest::next_badge_id(), BADGEID2);
+        assert_eq!(BadgeForTest::next_badge_id(), BADGE2);
 
-        let badge = BadgeForTest::badge_by_id(BADGEID1).unwrap();
+        let badge = BadgeForTest::badge_by_id(BADGE1).unwrap();
         assert_eq!(badge.created.account, ACCOUNT1);
         assert_eq!(badge.content, default_badge_content_ipfs());
         assert_eq!(badge.space_id, SPACE1);
@@ -68,7 +68,7 @@ fn update_badge_should_work() {
         assert_ok!(_create_default_badge());
         assert_ok!(_update_default_badge());
 
-        let badge = BadgeForTest::badge_by_id(BADGEID1).unwrap();
+        let badge = BadgeForTest::badge_by_id(BADGE1).unwrap();
         assert_eq!(badge.created.account, ACCOUNT1);
         assert_eq!(badge.content, updated_badge_content_ipfs());
     });
@@ -80,7 +80,7 @@ fn update_badge_should_fail_with_badge_not_found() {
         assert_ok!(_create_default_badge());
         assert_noop!(_update_badge(
                 None,
-                Some(BADGEID2),
+                Some(BADGE2),
                 None,
             ), Error::<Test>::BadgeNotFound
         );
@@ -127,7 +127,7 @@ fn delete_badge_should_work() {
         assert_ok!(_create_default_badge());
         assert_ok!(_delete_default_badge());
 
-        assert!(BadgeForTest::badge_by_id(BADGEID1).is_none());
+        assert!(BadgeForTest::badge_by_id(BADGE1).is_none());
     });
 }
 
@@ -138,7 +138,7 @@ fn delete_badge_should_fail_with_badge_not_found() {
         assert_noop!(
             _delete_badge(
                 None,
-                Some(BADGEID2)
+                Some(BADGE2)
             ), Error::<Test>::BadgeNotFound
         );
     });
@@ -171,10 +171,10 @@ fn award_badge_should_work() {
         assert_ok!(_create_default_badge());
         assert_ok!(_award_default_badge());
 
-        assert_eq!(BadgeForTest::next_space_award_id(), SPACEAWARDID2);
+        assert_eq!(BadgeForTest::next_space_award_id(), AWARD2);
 
-        let space_award = BadgeForTest::space_award_by_id(SPACEAWARDID1).unwrap();
-        assert_eq!(space_award.badge_id, BADGEID1);
+        let space_award = BadgeForTest::space_award_by_id(AWARD1).unwrap();
+        assert_eq!(space_award.badge_id, BADGE1);
         assert_eq!(space_award.created.account, ACCOUNT1);
         assert_eq!(space_award.recipient, SPACE2);
         assert_eq!(space_award.accepted, false);
@@ -188,7 +188,7 @@ fn award_badge_should_fail_with_badge_not_found() {
         assert_noop!(
             _award_badge(
                 None,
-                Some(BADGEID2),
+                Some(BADGE2),
                 None,
                 None
             ), Error::<Test>::BadgeNotFound
@@ -226,7 +226,7 @@ fn accept_award_should_work() {
         assert_ok!(_award_default_badge());
         assert_ok!(_accept_default_award());
 
-        let space_award = BadgeForTest::space_award_by_id(SPACEAWARDID1).unwrap();
+        let space_award = BadgeForTest::space_award_by_id(AWARD1).unwrap();
         assert_eq!(space_award.accepted, true);
     });
 }
@@ -239,7 +239,7 @@ fn accept_award_should_fail_with_space_award_not_found() {
         assert_noop!(
             _accept_award(
                 None,
-                Some(SPACEAWARDID2)
+                Some(AWARD2)
             ), Error::<Test>::SpaceAwardNotFound
         );
     });
@@ -274,7 +274,7 @@ fn delete_badge_award_should_work() {
         assert_ok!(_award_default_badge());
         assert_ok!(_delete_default_badge_award());
 
-        assert!(BadgeForTest::space_award_by_id(SPACEAWARDID1).is_none());
+        assert!(BadgeForTest::space_award_by_id(AWARD1).is_none());
     });
 }
 
@@ -286,7 +286,7 @@ fn delete_badge_award_should_fail_with_space_award_not_found() {
         assert_noop!(
             _delete_badge_award(
                 None,
-                Some(SPACEAWARDID2)
+                Some(AWARD2)
             ), Error::<Test>::SpaceAwardNotFound
         );
     });

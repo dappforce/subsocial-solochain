@@ -558,7 +558,9 @@ impl pallet_faucet::Trait for Runtime {
 	type Currency = Balances;
 }
 
-impl pallet_badges::Trait for Runtime {}
+impl pallet_badges::Trait for Runtime {
+	type Event = Event;
+}
 */
 
 construct_runtime!(

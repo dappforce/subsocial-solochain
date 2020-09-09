@@ -215,6 +215,7 @@ impl pallet_posts::Trait for Test {
 }
 
 impl Trait for Test {
+	type Event = ();
 }
 
 pub type BadgeForTest = Module<Test>;
@@ -302,10 +303,10 @@ pub const ACCOUNT1: AccountId = 1;
 pub const ACCOUNT2: AccountId = 2;
 pub const SPACE1: SpaceId = 1;
 pub const SPACE2: SpaceId = 2;
-pub const BADGEID1: BadgeId = 1;
-pub const BADGEID2: BadgeId = 2;
-pub const SPACEAWARDID1: SpaceAwardId = 1;
-pub const SPACEAWARDID2: SpaceAwardId = 2;
+pub const BADGE1: BadgeId = 1;
+pub const BADGE2: BadgeId = 2;
+pub const AWARD1: SpaceAwardId = 1;
+pub const AWARD2: SpaceAwardId = 2;
 
 
 pub fn default_badge_content_ipfs() -> Content {
@@ -348,7 +349,7 @@ pub fn _update_badge(
 ) -> DispatchResult {
 	BadgeForTest::update_badge(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-		badge_id.unwrap_or(BADGEID1),
+		badge_id.unwrap_or(BADGE1),
 		content.unwrap_or_else(self::updated_badge_content_ipfs)
 	)
 }
@@ -363,7 +364,7 @@ pub fn _delete_badge(
 ) -> DispatchResult {
 	BadgeForTest::delete_badge(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-		badge_id.unwrap_or(BADGEID1)
+		badge_id.unwrap_or(BADGE1)
 	)
 }
 
@@ -379,7 +380,7 @@ pub fn _award_badge(
 ) -> DispatchResult {
 	BadgeForTest::award_badge(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-		badge_id.unwrap_or(BADGEID1),
+		badge_id.unwrap_or(BADGE1),
 		recipient.unwrap_or(SPACE2),
 		expire_after_opt.unwrap_or_default(),
 
@@ -396,7 +397,7 @@ pub fn _accept_award(
 ) -> DispatchResult {
 	BadgeForTest::accept_award(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-		award_id.unwrap_or(SPACEAWARDID1)
+		award_id.unwrap_or(AWARD1)
 	)
 }
 
@@ -410,7 +411,7 @@ pub fn _delete_badge_award(
 ) -> DispatchResult {
 	BadgeForTest::delete_badge_award(
 		origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-		space_award_id.unwrap_or(SPACEAWARDID1)
+		space_award_id.unwrap_or(AWARD1)
 	)
 }
 

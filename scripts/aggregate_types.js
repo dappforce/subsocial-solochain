@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const pallets = [
+  "badges",
   "donations",
   "faucet",
   "moderation",

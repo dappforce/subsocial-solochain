@@ -14,6 +14,6 @@
     "badge_id": "BadgeId",
     "recipient": "SpaceId",
     "expires_at": "Option<BlockNumber>",
-    "approved": "bool"
+    "accepted": "bool"
   }
 }
