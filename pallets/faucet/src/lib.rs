@@ -242,14 +242,8 @@ decl_module! {
 
 			// TODO check amount against settings.min_amount
 
-			let _drop_id_by_recipient = Self::drop_id_by_recipient(&recipient);
-			let _drop_id_by_alias = Self::drop_id_by_alias(&recipient_aliases);
-			let _recipient_alias = recipient_aliases.clone();
-			let _amount = amount.clone();
-
 			let maybe_drop = Self::drop_id_by_recipient(&recipient)
-				.ok_or_else(|| Self::drop_id_by_alias(&recipient_aliases))
-				.ok()
+				.or_else(|| Self::drop_id_by_alias(&recipient_aliases))
 				.and_then(Self::drop_by_id);
 
 			let mut is_new_drop = false;
@@ -285,9 +279,9 @@ decl_module! {
 
 			drop.total_dropped = drop.total_dropped.saturating_add(amount);
 
-			DropById::<T>::insert(drop.id, drop.clone());
 			DropIdByAlias::insert(recipient_aliases, drop.id);
 			DropIdByRecipient::<T>::insert(&recipient, drop.id);
+			DropById::<T>::insert(drop.id, drop);
 			if is_new_drop {
 				NextDropId::mutate(|x| *x += 1);
 			}
