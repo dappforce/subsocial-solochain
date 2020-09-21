@@ -6138,6 +6138,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "spaces-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+ "spaces-runtime-api",
+]
+
+[[package]]
+name = "spaces-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde_json",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6248,6 +6277,7 @@ version = "0.4.0"
 dependencies = [
  "futures 0.3.5",
  "hex-literal",
+ "jsonrpc-core",
  "log",
  "parking_lot 0.10.2",
  "sc-basic-authorship",
@@ -6258,6 +6288,7 @@ dependencies = [
  "sc-executor",
  "sc-finality-grandpa",
  "sc-network",
+ "sc-rpc",
  "sc-service",
  "sc-telemetry",
  "sc-transaction-pool",
@@ -6268,6 +6299,7 @@ dependencies = [
  "sp-inherents",
  "sp-runtime",
  "sp-transaction-pool",
+ "spaces-rpc",
  "structopt",
  "subsocial-runtime",
  "substrate-build-script-utils",
@@ -6319,6 +6351,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "spaces-runtime-api",
  "substrate-wasm-builder-runner",
 ]
 

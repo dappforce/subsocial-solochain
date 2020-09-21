@@ -97,7 +97,9 @@ impl pallet_permissions::Trait for Test {
     type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
-parameter_types! {}
+parameter_types! {
+    pub const DefaultRPCLimit: u64 = 20;
+}
 
 impl pallet_spaces::Trait for Test {
     type Event = ();
@@ -108,6 +110,7 @@ impl pallet_spaces::Trait for Test {
     type IsAccountBlocked = Moderation;
     type IsContentBlocked = Moderation;
     type SpaceCreationFee = ();
+    type DefaultRPCLimit = DefaultRPCLimit;
 }
 
 parameter_types! {}

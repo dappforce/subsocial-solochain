@@ -483,6 +483,10 @@ impl<T: Trait> Module<T> {
         })
     }
 
+    pub fn get_last_space_id() -> SpaceId {
+        Self::next_space_id().saturating_sub(1)
+    }
+
     pub fn get_last_space() -> Option<Space<T>> {
         let last_space_id = Self::next_space_id().saturating_sub(1);
 

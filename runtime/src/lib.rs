@@ -752,10 +752,10 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl spaces_runtime_api::SpacesApi<Block, Space> for Runtime
+	impl spaces_runtime_api::SpacesApi<Block> for Runtime
 	{
-        fn get_last_space() -> Option<Space> {
-            Spaces::get_last_space()
+        fn get_last_space_id() -> SpaceId {
+            Spaces::get_last_space_id()
         }
 
         fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
