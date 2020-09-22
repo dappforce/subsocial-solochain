@@ -530,6 +530,64 @@ impl<T: Trait> Module<T> {
 
         hidden_space_ids
     }
+
+    pub fn get_public_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+        let mut last_space_id = Self::next_space_id();
+
+        if let Some(offset) = offset_opt {
+            last_space_id = last_space_id.saturating_sub(offset);
+        }
+
+        let first_space_id: u64;
+        if let Some(limit) = limit_opt {
+            first_space_id = last_space_id.saturating_sub(limit);
+        } else {
+            first_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
+        }
+
+        let mut public_space_ids: Vec<SpaceId> = Vec::new();
+        for space_id in first_space_id..last_space_id {
+            let space_opt = Self::space_by_id(space_id);
+
+            if let Some(space) = space_opt.clone() {
+                if !space.hidden && !space.content.is_none() {
+                    public_space_ids.push(space.id);
+                }
+            }
+        }
+
+        public_space_ids
+    }
+
+    pub fn get_unlisted_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+        let mut last_space_id = Self::next_space_id();
+
+        if let Some(offset) = offset_opt {
+            last_space_id = last_space_id.saturating_sub(offset);
+        }
+
+        let first_space_id: u64;
+        if let Some(limit) = limit_opt {
+            first_space_id = last_space_id.saturating_sub(limit);
+        } else {
+            first_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
+        }
+
+        let mut unlisted_space_ids: Vec<SpaceId> = Vec::new();
+
+        for space_id in first_space_id..last_space_id {
+            let space_opt = Self::space_by_id(space_id);
+
+            if let Some(space) = space_opt.clone() {
+                if space.hidden && space.content.is_none() {
+                    unlisted_space_ids.push(space.id);
+                }
+            }
+        }
+
+        unlisted_space_ids
+    }
+
 }
 
 impl<T: Trait> SpaceForRolesProvider for Module<T> {

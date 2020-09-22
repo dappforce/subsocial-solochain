@@ -22,6 +22,22 @@ pub trait SpacesApi<BlockHash> {
         limit_opt: Option<u64>,
         offset_opt: Option<u64>
     ) -> Result<Vec<SpaceId>>;
+
+    #[rpc(name = "spaces_getPublicSpaceIds")]
+    fn get_public_space_ids(
+        &self,
+        at: Option<BlockHash>,
+        limit_opt: Option<u64>,
+        offset_opt: Option<u64>
+    ) -> Result<Vec<SpaceId>>;
+
+    #[rpc(name = "spaces_getPublicSpaceIds")]
+    fn get_unlisted_space_ids(
+        &self,
+        at: Option<BlockHash>,
+        limit_opt: Option<u64>,
+        offset_opt: Option<u64>
+    ) -> Result<Vec<SpaceId>>;
 }
 
 pub struct Spaces<C, M> {
@@ -72,6 +88,48 @@ impl<C, Block> SpacesApi<<Block as BlockT>::Hash> for Spaces<C, Block>
             self.client.info().best_hash));
 
         let runtime_api_result = api.get_hidden_space_ids(&at, limit_opt, offset_opt);
+        runtime_api_result.map_err(|e| RpcError {
+            // TODO: research on error codes and change a value
+            code: ErrorCode::ServerError(9876), // No real reason for this value
+            // TODO: change error message (?use errors macro)
+            message: "Something wrong".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
+    }
+
+    fn get_public_space_ids(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        limit_opt: Option<u64>,
+        offset_opt: Option<u64>
+    ) -> Result<Vec<SpaceId>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(||
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash));
+
+        let runtime_api_result = api.get_public_space_ids(&at, limit_opt, offset_opt);
+        runtime_api_result.map_err(|e| RpcError {
+            // TODO: research on error codes and change a value
+            code: ErrorCode::ServerError(9876), // No real reason for this value
+            // TODO: change error message (?use errors macro)
+            message: "Something wrong".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
+    }
+
+    fn get_unlisted_space_ids(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        limit_opt: Option<u64>,
+        offset_opt: Option<u64>
+    ) -> Result<Vec<SpaceId>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(||
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash));
+
+        let runtime_api_result = api.get_unlisted_space_ids(&at, limit_opt, offset_opt);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value

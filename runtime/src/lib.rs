@@ -761,5 +761,13 @@ impl_runtime_apis! {
         fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
         	Spaces::get_hidden_space_ids(limit_opt, offset_opt)
         }
+
+        fn get_public_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+        	Spaces::get_public_space_ids(limit_opt, offset_opt)
+        }
+
+        fn get_unlisted_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+        	Spaces::get_unlisted_space_ids(limit_opt, offset_opt)
+        }
     }
 }
