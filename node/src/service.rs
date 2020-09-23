@@ -96,6 +96,9 @@ macro_rules! new_full_start {
 				io.extend_with(spaces_rpc::SpacesApi::to_delegate(
 					spaces_rpc::Spaces::new(builder.client().clone()),
 				));
+				io.extend_with(posts_rpc::PostsApi::to_delegate(
+					posts_rpc::Posts::new(builder.client().clone()),
+				));
 
 				Ok(io)
 			})?;

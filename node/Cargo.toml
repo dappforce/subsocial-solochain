@@ -52,6 +52,9 @@ version = '2.0.0-rc4'
 [dependencies.spaces-rpc]
 path = '../pallets/spaces/rpc'
 
+[dependencies.posts-rpc]
+path = '../pallets/posts/rpc'
+
 [dependencies.sc-consensus]
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'

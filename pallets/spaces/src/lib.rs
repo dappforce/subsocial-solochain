@@ -531,19 +531,12 @@ impl<T: Trait> Module<T> {
         hidden_space_ids
     }
 
-    pub fn get_public_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+    pub fn get_public_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
         let mut last_space_id = Self::next_space_id();
-
-        if let Some(offset) = offset_opt {
-            last_space_id = last_space_id.saturating_sub(offset);
-        }
+        last_space_id = last_space_id.saturating_sub(offset);
 
         let first_space_id: u64;
-        if let Some(limit) = limit_opt {
-            first_space_id = last_space_id.saturating_sub(limit);
-        } else {
-            first_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
-        }
+        first_space_id = last_space_id.saturating_sub(limit);
 
         let mut public_space_ids: Vec<SpaceId> = Vec::new();
         for space_id in first_space_id..last_space_id {
@@ -559,19 +552,14 @@ impl<T: Trait> Module<T> {
         public_space_ids
     }
 
-    pub fn get_unlisted_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+    pub fn get_unlisted_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
         let mut last_space_id = Self::next_space_id();
 
-        if let Some(offset) = offset_opt {
-            last_space_id = last_space_id.saturating_sub(offset);
-        }
+        last_space_id = last_space_id.saturating_sub(offset);
 
         let first_space_id: u64;
-        if let Some(limit) = limit_opt {
-            first_space_id = last_space_id.saturating_sub(limit);
-        } else {
-            first_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
-        }
+        first_space_id = last_space_id.saturating_sub(limit);
+
 
         let mut unlisted_space_ids: Vec<SpaceId> = Vec::new();
 

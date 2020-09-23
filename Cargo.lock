@@ -3856,6 +3856,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "posts-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-posts",
+ "pallet-utils",
+ "parity-scale-codec",
+ "posts-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "posts-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-posts",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde_json",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6280,6 +6311,7 @@ dependencies = [
  "jsonrpc-core",
  "log",
  "parking_lot 0.10.2",
+ "posts-rpc",
  "sc-basic-authorship",
  "sc-cli",
  "sc-client-api",
@@ -6338,6 +6370,7 @@ dependencies = [
  "pallet-utility",
  "pallet-utils",
  "parity-scale-codec",
+ "posts-runtime-api",
  "serde",
  "sp-api",
  "sp-block-builder",

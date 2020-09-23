@@ -10,6 +10,7 @@ use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 
 use pallet_utils::SpaceId;
 
+
 #[rpc]
 pub trait SpacesApi<BlockHash> {
     #[rpc(name = "spaces_getLastSpaceId")]
@@ -27,16 +28,16 @@ pub trait SpacesApi<BlockHash> {
     fn get_public_space_ids(
         &self,
         at: Option<BlockHash>,
-        limit_opt: Option<u64>,
-        offset_opt: Option<u64>
+        limit: u64,
+        offset: u64
     ) -> Result<Vec<SpaceId>>;
 
-    #[rpc(name = "spaces_getPublicSpaceIds")]
+    #[rpc(name = "spaces_getUnlistedSpaceIds")]
     fn get_unlisted_space_ids(
         &self,
         at: Option<BlockHash>,
-        limit_opt: Option<u64>,
-        offset_opt: Option<u64>
+        limit: u64,
+        offset: u64
     ) -> Result<Vec<SpaceId>>;
 }
 
@@ -100,15 +101,15 @@ impl<C, Block> SpacesApi<<Block as BlockT>::Hash> for Spaces<C, Block>
     fn get_public_space_ids(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        limit_opt: Option<u64>,
-        offset_opt: Option<u64>
+        limit: u64,
+        offset: u64
     ) -> Result<Vec<SpaceId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
 
-        let runtime_api_result = api.get_public_space_ids(&at, limit_opt, offset_opt);
+        let runtime_api_result = api.get_public_space_ids(&at, limit, offset);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value
@@ -121,15 +122,15 @@ impl<C, Block> SpacesApi<<Block as BlockT>::Hash> for Spaces<C, Block>
     fn get_unlisted_space_ids(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        limit_opt: Option<u64>,
-        offset_opt: Option<u64>
+        limit: u64,
+        offset: u64
     ) -> Result<Vec<SpaceId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
 
-        let runtime_api_result = api.get_unlisted_space_ids(&at, limit_opt, offset_opt);
+        let runtime_api_result = api.get_unlisted_space_ids(&at, limit, offset);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value

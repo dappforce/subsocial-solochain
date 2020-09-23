@@ -11,8 +11,8 @@ sp_api::decl_runtime_apis! {
 
         fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId>;
 
-        fn get_public_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId>;
+        fn get_public_space_ids(limit: u64, offset: u64) -> Vec<SpaceId>;
 
-        fn get_unlisted_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId>;
+        fn get_unlisted_space_ids(limit: u64, offset: u64) -> Vec<SpaceId>;
     }
 }

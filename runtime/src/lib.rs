@@ -51,6 +51,7 @@ use pallet_permissions::{
 	SpacePermissionSet
 };
 use pallet_utils::SpaceId;
+use pallet_posts::PostId;
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -762,12 +763,23 @@ impl_runtime_apis! {
         	Spaces::get_hidden_space_ids(limit_opt, offset_opt)
         }
 
-        fn get_public_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
-        	Spaces::get_public_space_ids(limit_opt, offset_opt)
+        fn get_public_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
+        	Spaces::get_public_space_ids(limit, offset)
         }
 
-        fn get_unlisted_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
-        	Spaces::get_unlisted_space_ids(limit_opt, offset_opt)
+        fn get_unlisted_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
+        	Spaces::get_unlisted_space_ids(limit, offset)
         }
+    }
+
+    impl posts_runtime_api::PostsApi<Block> for Runtime
+    {
+    	fn get_public_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId> {
+    		Posts::get_public_post_ids_in_space(space_id, limit, offset)
+    	}
+
+    	fn get_unlisted_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId> {
+    		Posts::get_unlisted_post_ids_in_space(space_id, limit, offset)
+    	}
     }
 }
