@@ -531,7 +531,18 @@ impl<T: Trait> Module<T> {
         hidden_space_ids
     }
 
-    pub fn get_public_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
+    fn space_is_public(space_id: u64) -> bool {
+        let space_opt = Self::space_by_id(space_id);
+        let mut result: bool = false;
+        if let Some(space) = space_opt.clone() {
+            if !space.hidden && !space.content.is_none() {
+                result = true;
+            }
+        }
+        result
+    }
+
+    pub fn find_public_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
         let mut last_space_id = Self::next_space_id();
         last_space_id = last_space_id.saturating_sub(offset);
 
@@ -539,20 +550,16 @@ impl<T: Trait> Module<T> {
         first_space_id = last_space_id.saturating_sub(limit);
 
         let mut public_space_ids: Vec<SpaceId> = Vec::new();
-        for space_id in first_space_id..last_space_id {
-            let space_opt = Self::space_by_id(space_id);
-
-            if let Some(space) = space_opt.clone() {
-                if !space.hidden && !space.content.is_none() {
-                    public_space_ids.push(space.id);
-                }
+        for space_id in first_space_id..=last_space_id {
+            if Self::space_is_public(space_id) {
+                public_space_ids.push(space_id);
             }
         }
 
         public_space_ids
     }
 
-    pub fn get_unlisted_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
+    pub fn find_unlisted_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
         let mut last_space_id = Self::next_space_id();
 
         last_space_id = last_space_id.saturating_sub(offset);
@@ -560,16 +567,11 @@ impl<T: Trait> Module<T> {
         let first_space_id: u64;
         first_space_id = last_space_id.saturating_sub(limit);
 
-
         let mut unlisted_space_ids: Vec<SpaceId> = Vec::new();
 
         for space_id in first_space_id..last_space_id {
-            let space_opt = Self::space_by_id(space_id);
-
-            if let Some(space) = space_opt.clone() {
-                if space.hidden && space.content.is_none() {
-                    unlisted_space_ids.push(space.id);
-                }
+            if !Self::space_is_public(space_id) {
+                unlisted_space_ids.push(space_id);
             }
         }
 

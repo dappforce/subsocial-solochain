@@ -1671,6 +1671,156 @@ mod tests {
         });
     }
 
+    #[test]
+    fn find_public_space_ids_should_work() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(_create_space(None, None, Some(Some(space_handle1())), None));
+
+            let space_ids = Spaces::find_public_space_ids(0, 3);
+            assert_eq!(space_ids, vec![SPACE1, SPACE2]);
+        });
+    }
+
+    #[test]
+    fn find_public_space_ids_should_work_with_zero_offset() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            let space_ids = Spaces::find_public_space_ids(0, 1);
+            assert_eq!(space_ids, vec![SPACE1]);
+        });
+    }
+
+    #[test]
+    fn find_public_space_ids_should_work_with_zero_limit() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            let space_ids = Spaces::find_public_space_ids(1, 0);
+            assert_eq!(space_ids, vec![SPACE1]);
+        });
+    }
+
+    #[test]
+    fn find_public_space_ids_should_work_with_zero_offset_and_zero_limit() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            let space_ids = Spaces::find_public_space_ids(0, 0);
+            assert_eq!(space_ids, vec![]);
+        });
+    }
+
+    //_____________________________________________________________________________________
+
+    #[test]
+    fn find_unlisted_space_ids_should_work() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(_create_space(None, None, Some(Some(space_handle1())), None));
+            assert_ok!(
+                _update_space(
+                    None,
+                    Some(SPACE1),
+                    Some(
+                        space_update(
+                            None,
+                            None,
+                            Some(Content::None),
+                            Some(true),
+                            None
+                        )
+                    )
+                )
+            );
+
+            assert_ok!(
+                _update_space(
+                    None,
+                    Some(SPACE2),
+                    Some(
+                        space_update(
+                            None,
+                            None,
+                            Some(Content::None),
+                            Some(true),
+                            None
+                        )
+                    )
+                )
+            );
+
+
+            let space_ids = Spaces::find_unlisted_space_ids(0, 2);
+            assert_eq!(space_ids, vec![SPACE1, SPACE2]);
+        });
+    }
+
+    #[test]
+    fn find_unlisted_space_ids_should_work_with_zero_offset() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(
+                _update_space(
+                    None,
+                    Some(SPACE1),
+                    Some(
+                        space_update(
+                            None,
+                            None,
+                            Some(Content::None),
+                            Some(true),
+                            None
+                        )
+                    )
+                )
+            );
+
+            let space_ids = Spaces::find_unlisted_space_ids(0, 1);
+            assert_eq!(space_ids, vec![SPACE1]);
+        });
+    }
+
+    #[test]
+    fn find_unlisted_space_ids_should_work_with_zero_limit() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(
+                _update_space(
+                    None,
+                    Some(SPACE1),
+                    Some(
+                        space_update(
+                            None,
+                            None,
+                            Some(Content::None),
+                            Some(true),
+                            None
+                        )
+                    )
+                )
+            );
+
+            let space_ids = Spaces::find_unlisted_space_ids(1, 0);
+            assert_eq!(space_ids, vec![]);
+        });
+    }
+
+    #[test]
+    fn find_unlisted_space_ids_should_work_with_zero_offset_and_zero_limit() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(
+                _update_space(
+                    None,
+                    Some(SPACE1),
+                    Some(
+                        space_update(
+                            None,
+                            None,
+                            Some(Content::None),
+                            Some(true),
+                            None
+                        )
+                    )
+                )
+            );
+
+            let space_ids = Spaces::find_unlisted_space_ids(0, 0);
+            assert_eq!(space_ids, vec![]);
+        });
+    }
+
     // Post tests
     #[test]
     fn create_post_should_work() {
@@ -1964,6 +2114,139 @@ mod tests {
                 Some(POST1),
                 Some(post_update)
             ), PostsError::<TestRuntime>::NoPermissionToUpdateAnyPost);
+        });
+    }
+
+    #[test]
+    fn find_public_post_ids_in_space_should_work() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(_create_post(None, Some(Some(SPACE1)), None, None));
+
+            let post_ids = Posts::find_public_post_ids_in_space(SPACE1, 0, 3);
+            assert_eq!(post_ids, vec![POST1, POST2]);
+        });
+    }
+
+    #[test]
+    fn find_public_post_ids_in_space_should_work_with_zero_offset() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            let post_ids = Posts::find_public_post_ids_in_space(SPACE1, 0, 1);
+            assert_eq!(post_ids, vec![POST1]);
+        });
+    }
+
+    #[test]
+    fn find_public_post_ids_in_space_should_work_with_zero_limit() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            let post_ids = Posts::find_public_post_ids_in_space(SPACE1, 1, 0);
+            assert_eq!(post_ids, vec![POST1]);
+        });
+    }
+
+    #[test]
+    fn find_public_post_ids_in_space_should_work_with_zero_offset_and_zero_limit() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            let post_ids = Posts::find_public_post_ids_in_space(SPACE1, 0, 0);
+            assert_eq!(post_ids, vec![]);
+        });
+    }
+
+    //_______________________________________________________________________________
+
+    #[test]
+    fn find_unlisted_post_ids_in_space_should_work() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(_create_post(None, Some(Some(SPACE1)), None, None));
+            assert_ok!(
+                _update_post(
+                    None,
+                    None,
+                    Some(
+                        post_update(
+                            None,
+                            Some(Content::None),
+                            Some(true))
+                    )
+                )
+            );
+            assert_ok!(
+                _update_post(
+                    None,
+                    Some(POST2),
+                    Some(
+                        post_update(
+                            None,
+                            Some(Content::None),
+                            Some(true))
+                    )
+                )
+            );
+
+            let post_ids = Posts::find_unlisted_post_ids_in_space(SPACE1, 0, 3);
+            assert_eq!(post_ids, vec![POST1, POST2]);
+        });
+    }
+
+    #[test]
+    fn find_unlisted_post_ids_in_space_should_work_with_zero_offset() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(
+                _update_post(
+                    None,
+                    None,
+                    Some(
+                        post_update(
+                            None,
+                            Some(Content::None),
+                            Some(true))
+                    )
+                )
+            );
+
+            let post_ids = Posts::find_unlisted_post_ids_in_space(SPACE1, 0, 1);
+            assert_eq!(post_ids, vec![POST1]);
+        });
+    }
+
+    #[test]
+    fn find_unlisted_post_ids_in_space_should_work_with_zero_limit() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(
+                _update_post(
+                    None,
+                    None,
+                    Some(
+                        post_update(
+                            None,
+                            Some(Content::None),
+                            Some(true))
+                    )
+                )
+            );
+
+            let post_ids = Posts::find_unlisted_post_ids_in_space(SPACE1, 1, 0);
+            assert_eq!(post_ids, vec![POST1]);
+        });
+    }
+
+    #[test]
+    fn find_unlisted_post_ids_in_space_should_work_with_zero_offset_and_zero_limit() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(
+                _update_post(
+                    None,
+                    None,
+                    Some(
+                        post_update(
+                            None,
+                            Some(Content::None),
+                            Some(true))
+                    )
+                )
+            );
+
+            let post_ids = Posts::find_unlisted_post_ids_in_space(SPACE1, 0, 0);
+            assert_eq!(post_ids, vec![]);
         });
     }
 

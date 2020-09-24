@@ -763,23 +763,23 @@ impl_runtime_apis! {
         	Spaces::get_hidden_space_ids(limit_opt, offset_opt)
         }
 
-        fn get_public_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
-        	Spaces::get_public_space_ids(limit, offset)
+        fn find_public_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
+        	Spaces::find_public_space_ids(offset, limit)
         }
 
-        fn get_unlisted_space_ids(limit: u64, offset: u64) -> Vec<SpaceId> {
-        	Spaces::get_unlisted_space_ids(limit, offset)
+        fn find_unlisted_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
+        	Spaces::find_unlisted_space_ids(offset, limit)
         }
     }
 
     impl posts_runtime_api::PostsApi<Block> for Runtime
     {
-    	fn get_public_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId> {
-    		Posts::get_public_post_ids_in_space(space_id, limit, offset)
+    	fn find_public_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
+    		Posts::find_public_post_ids_in_space(space_id, offset, limit)
     	}
 
-    	fn get_unlisted_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId> {
-    		Posts::get_unlisted_post_ids_in_space(space_id, limit, offset)
+    	fn find_unlisted_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
+    		Posts::find_unlisted_post_ids_in_space(space_id, offset, limit)
     	}
     }
 }

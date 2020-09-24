@@ -396,21 +396,43 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    pub fn get_public_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId> {
-        let mut post_ids: Vec<PostId> = Self::post_ids_by_space_id(space_id);
-        post_ids.sort();
+    fn space_is_public(space_id: SpaceId) -> bool {
+        let space_opt = Spaces::<T>::space_by_id(space_id);
+        let mut result: bool = false;
+        if let Some(space) = space_opt.clone() {
+            if !space.hidden && !space.content.is_none() {
+                result = true;
+            }
+        }
+        result
+    }
 
-        let post_id_length = post_ids.len();
-        let last_post_id_index = post_id_length.saturating_sub(offset as usize);
-        let first_post_id_index = last_post_id_index.saturating_sub(limit as usize);
+    fn post_is_public(post_id: &u64) -> bool {
+        let post_opt = Self::post_by_id(post_id);
+        let mut result: bool = false;
+        if let Some(post) = post_opt.clone() {
+            if !post.hidden && !post.content.is_none() {
+                result = true;
+            }
+        }
+        result
+    }
+
+    pub fn find_public_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
 
         let mut public_post_ids_in_space = Vec::new();
-        for (idx, post_id) in post_ids.iter().enumerate() {
-            if idx >= first_post_id_index && idx <= last_post_id_index {
-                let post_opt = Self::post_by_id(post_id);
+        if Self::space_is_public(space_id) {
+            let mut post_ids: Vec<PostId> = Self::post_ids_by_space_id(space_id);
+            post_ids.sort();
 
-                if let Some(post) = post_opt.clone() {
-                    if !post.hidden && !post.content.is_none() {
+
+            let post_id_length = post_ids.len();
+            let last_post_id_index = post_id_length.saturating_sub(offset as usize);
+            let first_post_id_index = last_post_id_index.saturating_sub(limit as usize);
+
+            for (idx, post_id) in post_ids.iter().enumerate() {
+                if idx >= first_post_id_index && idx <= last_post_id_index {
+                    if Self::post_is_public(post_id) {
                         public_post_ids_in_space.push(post_id.clone());
                     }
                 }
@@ -420,27 +442,25 @@ impl<T: Trait> Module<T> {
         public_post_ids_in_space
     }
 
-    pub fn get_unlisted_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId> {
-        let mut post_ids: Vec<PostId> = Self::post_ids_by_space_id(space_id);
-        post_ids.sort();
+    pub fn find_unlisted_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
+        let mut unlisted_post_ids_in_space = Vec::new();
+        if Self::space_is_public(space_id) {
+            let mut post_ids: Vec<PostId> = Self::post_ids_by_space_id(space_id);
+            post_ids.sort();
 
-        let post_id_length = post_ids.len();
-        let last_post_id_index = post_id_length.saturating_sub(offset as usize);
-        let first_post_id_index = last_post_id_index.saturating_sub(limit as usize);
+            let post_id_length = post_ids.len();
+            let last_post_id_index = post_id_length.saturating_sub(offset as usize);
+            let first_post_id_index = last_post_id_index.saturating_sub(limit as usize);
 
-        let mut public_post_ids_in_space = Vec::new();
-        for (idx, post_id) in post_ids.iter().enumerate() {
-            if idx >= first_post_id_index && idx <= last_post_id_index {
-                let post_opt = Self::post_by_id(post_id);
-
-                if let Some(post) = post_opt.clone() {
-                    if post.hidden && post.content.is_none() {
-                        public_post_ids_in_space.push(post_id.clone());
+            for (idx, post_id) in post_ids.iter().enumerate() {
+                if idx >= first_post_id_index && idx <= last_post_id_index {
+                    if !Self::post_is_public(post_id) {
+                        unlisted_post_ids_in_space.push(post_id.clone());
                     }
                 }
             }
         }
 
-        public_post_ids_in_space
+        unlisted_post_ids_in_space
     }
 }

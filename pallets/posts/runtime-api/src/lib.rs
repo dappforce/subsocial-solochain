@@ -8,8 +8,8 @@ use pallet_posts::PostId;
 
 sp_api::decl_runtime_apis! {
     pub trait PostsApi {
-        fn get_public_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId>;
+        fn find_public_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId>;
 
-        fn get_unlisted_post_ids_in_space(space_id: SpaceId, limit: u64, offset: u64) -> Vec<PostId>;
+        fn find_unlisted_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId>;
     }
 }
