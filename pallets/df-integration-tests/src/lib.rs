@@ -1422,6 +1422,7 @@ mod tests {
             let post = Posts::post_by_id(POST1).unwrap();
 
             assert_eq!(post.created.account, ACCOUNT1);
+            assert_eq!(post.owner, ACCOUNT1);
             assert!(post.updated.is_none());
             assert_eq!(post.hidden, false);
 
@@ -1715,6 +1716,7 @@ mod tests {
             assert!(comment_ext.parent_id.is_none());
             assert_eq!(comment_ext.root_post_id, POST1);
             assert_eq!(comment.created.account, ACCOUNT1);
+            assert_eq!(comment.owner, ACCOUNT1);
             assert!(comment.updated.is_none());
             assert_eq!(comment.content, self::comment_content_ipfs());
             assert_eq!(comment.replies_count, 0);
@@ -2512,6 +2514,7 @@ mod tests {
 
             assert_eq!(shared_post.space_id, Some(SPACE2));
             assert_eq!(shared_post.created.account, ACCOUNT2);
+            assert_eq!(shared_post.owner, ACCOUNT2);
             assert_eq!(shared_post.extension, self::extension_shared_post(POST1));
         });
     }
@@ -2564,6 +2567,7 @@ mod tests {
             let shared_post = Posts::post_by_id(POST2).unwrap();
             assert_eq!(shared_post.space_id, Some(SPACE1));
             assert_eq!(shared_post.created.account, ACCOUNT1);
+            assert_eq!(shared_post.owner, ACCOUNT1);
             assert_eq!(shared_post.extension, self::extension_shared_post(POST1));
         });
     }
