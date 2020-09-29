@@ -48,6 +48,7 @@ pub type SubscriptionId = u64;
 pub enum SubscriptionPeriod<BlockNumber> {
 	Daily,
 	Weekly,
+	Monthly,
 	Quarterly,
 	Yearly,
 	Custom(BlockNumber), // Currently not supported
@@ -98,6 +99,8 @@ pub trait Trait:
 
 	type DailyPeriodInBlocks: Get<Self::BlockNumber>;
 
+	type MonthlyPeriodInBlocks: Get<Self::BlockNumber>;
+
 	type WeeklyPeriodInBlocks: Get<Self::BlockNumber>;
 
 	type QuarterlyPeriodInBlocks: Get<Self::BlockNumber>;
@@ -132,12 +135,12 @@ decl_storage! {
 
 		// Wallets
 
-		// Where to transfer balance withdrawn from subscribers
+		/// A recipient's wallet that receives transfers sent from their subscribers.
 		pub RecipientWallet get(fn recipient_wallet):
 			map hasher(twox_64_concat) SpaceId => Option<T::AccountId>;
 
-		// From where to withdraw subscribers donation
-		pub PatronWallet get(fn patron_wallet):
+		/// A subscriber's wallet that is used to pay for their active subscriptions.
+		pub SubscriberWallet get(fn subscriber_wallet):
 			map hasher(twox_64_concat) T::AccountId => Option<T::AccountId>;
 	}
 }
@@ -172,12 +175,11 @@ decl_error! {
 decl_module! {
 	/// The module declaration.
 	pub struct Module<T: Trait> for enum Call where origin: <T as system::Trait>::Origin {
+
 		const DailyPeriodInBlocks: T::BlockNumber = T::DailyPeriodInBlocks::get();
-
 		const WeeklyPeriodInBlocks: T::BlockNumber = T::WeeklyPeriodInBlocks::get();
-
+		const MonthlyPeriodInBlocks: T::BlockNumber = T::MonthlyPeriodInBlocks::get();
 		const QuarterlyPeriodInBlocks: T::BlockNumber = T::QuarterlyPeriodInBlocks::get();
-
 		const YearlyPeriodInBlocks: T::BlockNumber = T::YearlyPeriodInBlocks::get();
 
 		// Initializing errors
@@ -280,7 +282,7 @@ decl_module! {
 		/// Specify a default wallet to which subscribers will pay in case a subscription plan
 		/// does not specify its own wallet.
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
-		pub fn set_space_wallet(origin, space_id: SpaceId, wallet: T::AccountId) -> DispatchResult {
+		pub fn set_recipient_wallet(origin, space_id: SpaceId, wallet: T::AccountId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			let space = Spaces::<T>::require_space(space_id)?;
@@ -291,7 +293,7 @@ decl_module! {
 		}
 
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
-		pub fn remove_space_wallet(origin, space_id: SpaceId) -> DispatchResult {
+		pub fn remove_recipient_wallet(origin, space_id: SpaceId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			let space = Spaces::<T>::require_space(space_id)?;
@@ -355,7 +357,7 @@ decl_module! {
 		}
 
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
-		pub fn update_subscribtion(
+		pub fn update_subscription(
 			origin,
 			subscription_id: SubscriptionId,
 			new_wallet: Option<T::AccountId>
@@ -392,13 +394,13 @@ decl_module! {
 
 		/// Specify a default wallet that will be used to pay for subscriptions of this `origin`.
 		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
-		pub fn set_subscription_wallet(
+		pub fn set_subscriber_wallet(
 			origin,
 			wallet: T::AccountId
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			PatronWallet::<T>::insert(sender, wallet);
+			SubscriberWallet::<T>::insert(sender, wallet);
 
 			Ok(())
 		}
@@ -407,16 +409,16 @@ decl_module! {
 		/// If an account has no default subscription wallet, then the payments will be made
 		/// from its account id.
 		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
-		pub fn remove_subscription_wallet(origin) -> DispatchResult {
+		pub fn remove_subscriber_wallet(origin) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			PatronWallet::<T>::remove(sender);
+			SubscriberWallet::<T>::remove(sender);
 
 			Ok(())
 		}
 
 		#[weight = T::DbWeight::get().reads_writes(4, 1) + 25_000]
-		pub fn withdraw_subscription_payment(origin, subscription_id: SubscriptionId) -> DispatchResult {
+		pub fn process_subscription_payment(origin, subscription_id: SubscriptionId) -> DispatchResult {
 			let _ = ensure_root(origin)?;
 
 			// todo: remove recurring payment if something in this block goes wrong

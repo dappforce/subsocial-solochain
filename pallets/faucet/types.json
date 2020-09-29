@@ -1,0 +1,19 @@
+{
+  "DropId": "u64",
+
+  "Drop": {
+    "id": "DropId",
+    "first_drop_at": "BlockNumber",
+    "total_dropped": "Balance"
+  },
+
+  "FaucetSettings": {
+    "period": "Option<BlockNumber>",
+    "period_limit": "Balance"
+  },
+
+  "FaucetSettingsUpdate": {
+    "period": "Option<Option<BlockNumber>>",
+    "period_limit": "Option<Balance>"
+  }
+}

@@ -1,16 +1,13 @@
 use crate::*;
 
 use sp_runtime::traits::Saturating;
-
 use frame_support::dispatch::DispatchError;
 
 use pallet_permissions::SpacePermission;
 use pallet_spaces::Space;
 
 impl<T: Trait> Module<T> {
-    pub fn require_plan(
-        plan_id: SubscriptionPlanId
-    ) -> Result<SubscriptionPlan<T>, DispatchError> {
+    pub fn require_plan(plan_id: SubscriptionPlanId) -> Result<SubscriptionPlan<T>, DispatchError> {
         Ok(Self::plan_by_id(plan_id).ok_or(Error::<T>::SubscriptionPlanNotFound)?)
     }
 
@@ -22,7 +19,7 @@ impl<T: Trait> Module<T> {
         Spaces::<T>::ensure_account_has_space_permission(
             account,
             space,
-            SpacePermission::ManageSubscriptionPlans,
+            SpacePermission::UpdateSpaceSettings,
             Error::<T>::NoPermissionToUpdateSubscriptionPlan.into()
         )
     }
@@ -31,13 +28,14 @@ impl<T: Trait> Module<T> {
         match period {
             SubscriptionPeriod::Daily => T::DailyPeriodInBlocks::get(),
             SubscriptionPeriod::Weekly => T::WeeklyPeriodInBlocks::get(),
+            SubscriptionPeriod::Monthly => T::MonthlyPeriodInBlocks::get(),
             SubscriptionPeriod::Quarterly => T::QuarterlyPeriodInBlocks::get(),
             SubscriptionPeriod::Yearly => T::YearlyPeriodInBlocks::get(),
             SubscriptionPeriod::Custom(block_number) => block_number,
         }
     }
 
-    pub(crate) fn schedule_recurring_payment(
+    pub(crate) fn schedule_recurring_subscription_payment(
         subscription_id: SubscriptionId,
         period: SubscriptionPeriod<T::BlockNumber>
     ) -> DispatchResult {
@@ -50,12 +48,12 @@ impl<T: Trait> Module<T> {
             when,
             Some((period_in_blocks, 12)),
             1,
-            Call::withdraw_subscription_payment(subscription_id).into()
+            Call::process_subscription_payment(subscription_id).into()
         ).map_err(|_| Error::<T>::CannotScheduleReccurentPayment)?;
         Ok(())
     }
 
-    pub(crate) fn cancel_recurring_payment(subscription_id: SubscriptionId) {
+    pub(crate) fn cancel_recurring_subscription_payment(subscription_id: SubscriptionId) {
         let _ = T::Scheduler::cancel_named((SUBSCRIPTIONS_ID, subscription_id).encode())
             .map_err(|_| Error::<T>::RecurringPaymentMissing);
         // todo: emmit event with status
