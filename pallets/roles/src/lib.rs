@@ -20,11 +20,11 @@ use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, User, WhoAndWh
 
 pub mod functions;
 
-// #[cfg(test)]
-// mod mock;
-//
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
 
 type RoleId = u64;
 
