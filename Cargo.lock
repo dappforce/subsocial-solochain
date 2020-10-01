@@ -3146,21 +3146,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-faucet"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-balances",
- "pallet-sudo",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-finality-tracker"
 version = "2.0.0-rc4"
 source = "git+https://github.com/paritytech/substrate.git?tag=v2.0.0-rc4#00768a1f21a579c478fe5d4f51e1fa71f7db9fd4"
@@ -6295,7 +6280,6 @@ dependencies = [
  "node-primitives",
  "pallet-aura",
  "pallet-balances",
- "pallet-faucet",
  "pallet-grandpa",
  "pallet-permissions",
  "pallet-post-history",
