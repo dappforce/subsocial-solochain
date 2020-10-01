@@ -70,6 +70,7 @@ impl Content {
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+
 type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::NegativeImbalance;
 
 pub trait Trait: system::Trait + pallet_timestamp::Trait
@@ -80,10 +81,7 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
 
-    /// A valid length of IPFS CID in bytes.
-    type IpfsCidLen: Get<u32>;
-
-    /// Min length of a space handle.
+    /// Minimal length of space/profile handle
     type MinHandleLen: Get<u32>;
 
     /// Max length of a space handle.
@@ -92,7 +90,7 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait
 
 decl_storage! {
     trait Store for Module<T: Trait> as UtilsModule {
-        TreasuryAccount build(|config| config.treasury_account.clone()): T::AccountId;
+        pub TreasuryAccount get(fn treasury_account) build(|config| config.treasury_account.clone()): T::AccountId;
     }
     add_extra_genesis {
         config(treasury_account): T::AccountId;
@@ -108,8 +106,6 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-
-        const IpfsCidLen: u32 = T::IpfsCidLen::get();
 
         const MinHandleLen: u32 = T::MinHandleLen::get();
 
@@ -182,10 +178,10 @@ impl<T: Trait> Module<T> {
             Content::None => Ok(()),
             Content::Raw(_) => Err(Error::<T>::RawContentTypeNotSupported.into()),
             Content::IPFS(ipfs_cid) => {
-
-                // TODO write tests for IPFS CID v0 and v1.
-
-                ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);
+                let len = ipfs_cid.len();
+                // IPFS CID v0 is 46 bytes.
+                // IPFS CID v1 is 59 bytes.df-integration-tests/src/lib.rs:272:5
+                ensure!(len == 46 || len == 59, Error::<T>::InvalidIpfsCid);
                 Ok(())
             },
             Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())

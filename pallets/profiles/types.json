@@ -10,13 +10,10 @@
   "Profile": {
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
-
-    "handle": "Text",
     "content": "Content"
   },
 
   "ProfileUpdate": {
-    "handle": "Option<Text>",
     "content": "Option<Content>"
   }
 }

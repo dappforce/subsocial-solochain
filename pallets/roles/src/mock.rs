@@ -90,7 +90,6 @@ impl pallet_balances::Trait for Test {
 }
 
 parameter_types! {
-    pub const IpfsCidLen: u32 = 46;
     pub const MinHandleLen: u32 = 5;
     pub const MaxHandleLen: u32 = 50;
 }
@@ -98,7 +97,6 @@ parameter_types! {
 impl pallet_utils::Trait for Test {
     type Event = ();
     type Currency = Balances;
-    type IpfsCidLen = IpfsCidLen;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
 }

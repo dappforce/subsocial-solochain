@@ -10,8 +10,8 @@ use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
 use df_traits::moderation::IsAccountBlocked;
-use pallet_spaces::{Module as Spaces, SpaceById};
-use pallet_utils::{Error as UtilsError, SpaceId};
+use pallet_spaces::{Module as Spaces, SpaceById, SpaceIdsByOwner};
+use pallet_utils::{Error as UtilsError, SpaceId, vec_remove_on};
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -24,13 +24,15 @@ pub trait Trait: system::Trait
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
-    /// The current space owner cannot transfer ownership to himself.
+    /// The current space owner cannot transfer ownership to themself.
     CannotTranferToCurrentOwner,
-    /// There is no transfer ownership by space that is provided.
+    /// Account is already an owner of a space.
+    AlreadyASpaceOwner,
+    /// There is no pending ownership transfer for a given space.
     NoPendingTransferOnSpace,
-    /// The account is not allowed to accept transfer ownership.
+    /// Account is not allowed to accept ownership transfer.
     NotAllowedToAcceptOwnershipTransfer,
-    /// The account is not allowed to reject transfer ownership.
+    /// Account is not allowed to reject ownership transfer.
     NotAllowedToRejectOwnershipTransfer,
   }
 }
@@ -81,19 +83,30 @@ decl_module! {
 
     #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 2)]
     pub fn accept_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
-      let who = ensure_signed(origin)?;
+      let new_owner = ensure_signed(origin)?;
 
       let mut space = Spaces::require_space(space_id)?;
+      ensure!(!space.is_owner(&new_owner), Error::<T>::AlreadyASpaceOwner);
+
       let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
-      ensure!(who == transfer_to, Error::<T>::NotAllowedToAcceptOwnershipTransfer);
+      ensure!(new_owner == transfer_to, Error::<T>::NotAllowedToAcceptOwnershipTransfer);
 
       // Here we know that the origin is eligible to become a new owner of this space.
       <PendingSpaceOwner<T>>::remove(space_id);
 
-      space.owner = who.clone();
+      let old_owner = space.owner;
+      space.owner = new_owner.clone();
       <SpaceById<T>>::insert(space_id, space);
 
-      Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
+      // Remove space id from the list of spaces by old owner
+      <SpaceIdsByOwner<T>>::mutate(old_owner.clone(), |space_ids| vec_remove_on(space_ids, space_id));
+
+      // Add space id to the list of spaces by new owner
+      <SpaceIdsByOwner<T>>::mutate(new_owner.clone(), |ids| ids.push(space_id));
+
+      // TODO add a new owner as a space follower? See T::BeforeSpaceCreated::before_space_created(new_owner.clone(), space)?;
+
+      Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(new_owner, space_id));
       Ok(())
     }
 
