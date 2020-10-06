@@ -30,6 +30,13 @@ pub trait PostsApi<BlockHash> {
         limit: u64,
         offset: u64
     ) -> Result<Vec<PostId>>;
+
+    #[rpc(name = "posts_findReplyIdsInPost")]
+    fn find_reply_ids_in_post(
+        &self,
+        at: Option<BlockHash>,
+        post_id: PostId
+    ) -> Result<Vec<PostId>>;
 }
 
 pub struct Posts<C, M> {
@@ -89,6 +96,26 @@ impl<C, Block> PostsApi<<Block as BlockT>::Hash> for Posts<C, Block>
             self.client.info().best_hash));
 
         let runtime_api_result = api.find_unlisted_post_ids_in_space(&at, space_id, offset, limit);
+        runtime_api_result.map_err(|e| RpcError {
+            // TODO: research on error codes and change a value
+            code: ErrorCode::ServerError(9876), // No real reason for this value
+            // TODO: change error message (?use errors macro)
+            message: "Something wrong".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
+    }
+
+    fn find_reply_ids_in_post(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        post_id: PostId
+    ) -> Result<Vec<PostId>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(||
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash));
+
+        let runtime_api_result = api.find_reply_ids_in_post(&at, post_id);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value

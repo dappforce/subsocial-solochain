@@ -463,4 +463,8 @@ impl<T: Trait> Module<T> {
 
         unlisted_post_ids_in_space
     }
+
+    pub fn find_reply_ids_in_post(post_id: PostId ) -> Vec<PostId> {
+        Self::try_get_post_replies_ids(post_id)
+    }
 }

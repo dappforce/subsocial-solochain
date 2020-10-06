@@ -11,5 +11,7 @@ sp_api::decl_runtime_apis! {
         fn find_public_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId>;
 
         fn find_unlisted_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId>;
+
+        fn find_reply_ids_in_post(post_id: PostId) -> Vec<PostId>;
     }
 }

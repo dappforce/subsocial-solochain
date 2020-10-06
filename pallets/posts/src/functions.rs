@@ -240,7 +240,20 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn try_get_post_replies(post_id: PostId) -> Vec<Post<T>> {
+    pub fn try_get_post_replies_ids(post_id: PostId) -> Vec<PostId> {
+        let mut replies: Vec<PostId> = Vec::new();
+
+        if let Some(post) = Self::post_by_id(post_id) {
+            replies.push(post.id);
+            for reply_id in Self::reply_ids_by_post_id(post_id).iter() {
+                replies.extend(Self::try_get_post_replies_ids(*reply_id).iter().cloned());
+            }
+        }
+
+        replies
+    }
+
+    pub fn try_get_post_replies(post_id: PostId) -> Vec<Post<T>> {
         let mut replies: Vec<Post<T>> = Vec::new();
 
         if let Some(post) = Self::post_by_id(post_id) {

@@ -781,5 +781,9 @@ impl_runtime_apis! {
     	fn find_unlisted_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
     		Posts::find_unlisted_post_ids_in_space(space_id, offset, limit)
     	}
+
+    	fn find_reply_ids_in_post(post_id: PostId) -> Vec<PostId> {
+    		Posts::find_reply_ids_in_post(post_id)
+    	}
     }
 }
