@@ -74,6 +74,8 @@ pub trait Trait: system::Trait
     type IsContentBlocked: IsContentBlocked;
 
     type SpaceCreationFee: Get<BalanceOf<Self>>;
+
+    type DefaultRPCLimit: Get<u64>;
 }
 
 decl_error! {
@@ -137,6 +139,8 @@ decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
     const SpaceCreationFee: BalanceOf<T> = T::SpaceCreationFee::get();
+
+    const DefaultRPCLimit: u64 = T::DefaultRPCLimit::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -477,6 +481,50 @@ impl<T: Trait> Module<T> {
 
             Err(Error::<T>::SpaceNotFound.into())
         })
+    }
+
+    pub fn get_last_space() -> Option<Space<T>> {
+        let last_space_id = Self::next_space_id().saturating_sub(1);
+
+        let limit_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
+
+        for space_id in last_space_id..limit_space_id {
+            let space_opt = Self::space_by_id(space_id);
+            if space_opt.is_some() {
+                return space_opt
+            }
+        }
+
+        None
+    }
+
+    pub fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+        let mut last_space_id = Self::next_space_id();
+
+        if let Some(offset) = offset_opt {
+            last_space_id = last_space_id.saturating_sub(offset);
+        }
+
+        let first_space_id: u64;
+        if let Some(limit) = limit_opt {
+            first_space_id = last_space_id.saturating_sub(limit);
+        } else {
+            first_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
+        }
+
+        let mut hidden_space_ids: Vec<SpaceId> = Vec::new();
+
+        for space_id in first_space_id..last_space_id {
+            let space_opt = Self::space_by_id(space_id);
+
+            if let Some(space) = space_opt.clone() {
+                if space.hidden {
+                    hidden_space_ids.push(space.id);
+                }
+            }
+        }
+
+        hidden_space_ids
     }
 }
 

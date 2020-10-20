@@ -50,6 +50,7 @@ use pallet_permissions::{
 	SpacePermissions,
 	SpacePermissionSet
 };
+use pallet_utils::SpaceId;
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -464,6 +465,7 @@ impl pallet_space_ownership::Trait for Runtime {
 
 parameter_types! {
 	pub SpaceCreationFee: Balance = 50 * CENTS;
+	pub const DefaultRPCLimit: u64 = 20;
 }
 
 impl pallet_spaces::Trait for Runtime {
@@ -475,6 +477,7 @@ impl pallet_spaces::Trait for Runtime {
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
 	type SpaceCreationFee = SpaceCreationFee;
+	type DefaultRPCLimit = DefaultRPCLimit;
 }
 
 parameter_types! {}
@@ -748,4 +751,15 @@ impl_runtime_apis! {
 			None
 		}
 	}
+
+	impl spaces_runtime_api::SpacesApi<Block, Space> for Runtime
+	{
+        fn get_last_space() -> Option<Space> {
+            Spaces::get_last_space()
+        }
+
+        fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+        	Spaces::get_hidden_space_ids(limit_opt, offset_opt)
+        }
+    }
 }

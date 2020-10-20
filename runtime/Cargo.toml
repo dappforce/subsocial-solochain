@@ -47,6 +47,7 @@ std = [
 #    'session-keys/std',
 #    'pallet-subscriptions/std',
     'pallet-utils/std',
+    'spaces-runtime-api/std',
 ]
 
 [dependencies.aura]
@@ -320,6 +321,10 @@ version = '0.4.0'
 #package = 'pallet-session-keys'
 #path = '../pallets/session-keys'
 #version = '0.4.0'
+
+[dependencies.spaces-runtime-api]
+default-features = false
+path = '../pallets/spaces/runtime-api'
 
 [package]
 name = 'subsocial-runtime'
