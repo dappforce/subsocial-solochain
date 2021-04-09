@@ -19,6 +19,7 @@ use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermission
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, User, WhoAndWhen, Content};
 
 pub mod functions;
+pub mod rpc;
 
 #[cfg(test)]
 mod mock;

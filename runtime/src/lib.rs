@@ -52,6 +52,7 @@ use pallet_transaction_payment::CurrencyAdapter;
 use static_assertions::const_assert;
 
 use pallet_utils::{SpaceId, PostId};
+use pallet_permissions::SpacePermission;
 use pallet_posts::rpc::FlatPost;
 use pallet_profiles::rpc::FlatSocialAccount;
 use pallet_reactions::{
@@ -890,4 +891,14 @@ impl_runtime_apis! {
 			Reactions::get_reactions_by_account(account, post_ids)
 		}
     }
+
+	impl roles_runtime_api::RolesApi<Block, AccountId> for Runtime
+	{
+		fn get_space_permissions_by_user(
+			account: AccountId,
+			space_id: SpaceId
+		) -> Vec<SpacePermission> {
+			Roles::get_space_permissions_by_user(account, space_id)
+		}
+	}
 }

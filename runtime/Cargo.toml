@@ -63,6 +63,7 @@ posts-runtime-api = { default-features = false, path = '../pallets/posts/rpc/run
 profile-follows-runtime-api = { default-features = false, path = '../pallets/profile-follows/rpc/runtime-api' }
 profiles-runtime-api = { default-features = false, path = '../pallets/profiles/rpc/runtime-api' }
 reactions-runtime-api = { default-features = false, path = '../pallets/reactions/rpc/runtime-api' }
+roles-runtime-api = { default-features = false, path = '../pallets/roles/rpc/runtime-api' }
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3.0.0' }
@@ -163,4 +164,5 @@ std = [
     'reactions-runtime-api/std',
     'profile-follows-runtime-api/std',
     'profiles-runtime-api/std',
+    'roles-runtime-api/std',
 ]

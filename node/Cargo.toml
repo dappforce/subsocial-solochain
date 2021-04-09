@@ -33,6 +33,7 @@ posts-rpc = { path = '../pallets/posts/rpc' }
 profile-follows-rpc = { path = '../pallets/profile-follows/rpc' }
 profiles-rpc = { path = '../pallets/profiles/rpc' }
 reactions-rpc = { path = '../pallets/reactions/rpc' }
+roles-rpc = { path = '../pallets/roles/rpc' }
 
 # Substrate dependencies
 frame-benchmarking = '3.0.0'

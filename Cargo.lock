@@ -5380,6 +5380,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "roles-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "roles-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "roles-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "rpassword"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7599,6 +7630,7 @@ dependencies = [
  "profile-follows-rpc",
  "profiles-rpc",
  "reactions-rpc",
+ "roles-rpc",
  "sc-basic-authorship",
  "sc-cli",
  "sc-client-api",
@@ -7685,6 +7717,7 @@ dependencies = [
  "profile-follows-runtime-api",
  "profiles-runtime-api",
  "reactions-runtime-api",
+ "roles-runtime-api",
  "serde",
  "sp-api",
  "sp-block-builder",

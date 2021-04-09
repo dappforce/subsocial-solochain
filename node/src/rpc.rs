@@ -40,6 +40,7 @@ pub fn create_full<C, P>(
     C::Api: reactions_rpc::ReactionsRuntimeApi<Block, AccountId, BlockNumber>,
     C::Api: space_follows_rpc::SpaceFollowsRuntimeApi<Block, AccountId>,
     C::Api: spaces_rpc::SpacesRuntimeApi<Block, AccountId, BlockNumber>,
+    C::Api: roles_rpc::RolesRuntimeApi<Block, AccountId>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + 'static,
 {
@@ -52,6 +53,7 @@ pub fn create_full<C, P>(
     use reactions_rpc::{Reactions, ReactionsApi};
     use space_follows_rpc::{SpaceFollows, SpaceFollowsApi};
     use spaces_rpc::{Spaces, SpacesApi};
+    use roles_rpc::{Roles, RolesApi};
 
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
@@ -90,6 +92,10 @@ pub fn create_full<C, P>(
 
     io.extend_with(
         ReactionsApi::to_delegate(Reactions::new(client.clone()),
+    ));
+
+    io.extend_with(
+        RolesApi::to_delegate(Roles::new(client.clone()),
     ));
 
     io
