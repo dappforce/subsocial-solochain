@@ -13,6 +13,7 @@ categories = ['cryptography::cryptocurrencies']
 [features]
 default = ['std']
 std = [
+    'serde',
     'codec/std',
     'sp-runtime/std',
     'frame-support/std',
@@ -20,6 +21,11 @@ std = [
     'sp-std/std',
     'pallet-utils/std'
 ]
+
+[dependencies.serde]
+optional = true
+features = ['derive']
+version = "1.0.119"
 
 [dependencies.codec]
 default-features = false

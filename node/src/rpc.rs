@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use subsocial_runtime::{opaque::Block, AccountId, Balance, Index};
+use subsocial_runtime::{opaque::Block, AccountId, Balance, Index, BlockNumber};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
 use sp_block_builder::BlockBuilder;
@@ -34,11 +34,24 @@ pub fn create_full<C, P>(
     C: Send + Sync + 'static,
     C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+    C::Api: posts_rpc::PostsRuntimeApi<Block, AccountId, BlockNumber>,
+    C::Api: profile_follows_rpc::ProfileFollowsRuntimeApi<Block, AccountId>,
+    C::Api: profiles_rpc::ProfilesRuntimeApi<Block, AccountId, BlockNumber>,
+    C::Api: reactions_rpc::ReactionsRuntimeApi<Block, AccountId, BlockNumber>,
+    C::Api: space_follows_rpc::SpaceFollowsRuntimeApi<Block, AccountId>,
+    C::Api: spaces_rpc::SpacesRuntimeApi<Block, AccountId, BlockNumber>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + 'static,
 {
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
+
+    use posts_rpc::{Posts, PostsApi};
+    use profile_follows_rpc::{ProfileFollows, ProfileFollowsApi};
+    use profiles_rpc::{Profiles, ProfilesApi};
+    use reactions_rpc::{Reactions, ReactionsApi};
+    use space_follows_rpc::{SpaceFollows, SpaceFollowsApi};
+    use spaces_rpc::{Spaces, SpacesApi};
 
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
@@ -55,10 +68,29 @@ pub fn create_full<C, P>(
         TransactionPaymentApi::to_delegate(TransactionPayment::new(client.clone()))
     );
 
-    // Extend this RPC with a custom API by using the following syntax.
-    // `YourRpcStruct` should have a reference to a client, which is needed
-    // to call into the runtime.
-    // `io.extend_with(YourRpcTrait::to_delegate(YourRpcStruct::new(ReferenceToClient, ...)));`
+    io.extend_with(
+        SpacesApi::to_delegate(Spaces::new(client.clone()),
+    ));
+
+    io.extend_with(
+    SpaceFollowsApi::to_delegate(SpaceFollows::new(client.clone()),
+    ));
+
+    io.extend_with(
+        PostsApi::to_delegate(Posts::new(client.clone()),
+    ));
+
+    io.extend_with(
+        ProfileFollowsApi::to_delegate(ProfileFollows::new(client.clone()),
+    ));
+
+    io.extend_with(
+        ProfilesApi::to_delegate(Profiles::new(client.clone()),
+    ));
+
+    io.extend_with(
+        ReactionsApi::to_delegate(Reactions::new(client.clone()),
+    ));
 
     io
 }

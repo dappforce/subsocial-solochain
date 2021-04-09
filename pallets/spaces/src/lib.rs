@@ -17,6 +17,8 @@ use df_traits::{
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
 
+pub mod rpc;
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Config> {
     pub id: SpaceId,
@@ -77,6 +79,8 @@ pub trait Config: system::Config
     type IsContentBlocked: IsContentBlocked;
 
     type HandleDeposit: Get<BalanceOf<Self>>;
+
+    type DefaultRPCLimit: Get<u64>;
 }
 
 decl_error! {
@@ -142,6 +146,8 @@ decl_module! {
   pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
     const HandleDeposit: BalanceOf<T> = T::HandleDeposit::get();
+
+    const DefaultRPCLimit: u64 = T::DefaultRPCLimit::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -378,6 +384,12 @@ impl<T: Config> Space<T> {
     pub fn try_get_parent(&self) -> Result<SpaceId, DispatchError> {
         self.parent_id.ok_or_else(|| Error::<T>::SpaceIsAtRoot.into())
     }
+
+    pub fn is_public(&self) -> bool {
+        !self.clone().hidden && !self.content.is_none()
+    }
+
+    // TODO: make not_public function
 }
 
 impl Default for SpaceUpdate {

@@ -1,0 +1,43 @@
+[package]
+name = 'reactions-runtime-api'
+version = '0.1.0'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'Reactions pallet custom Runtime API'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
+
+[dependencies.serde]
+optional = true
+features = ["derive"]
+version = "1.0.119"
+
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '1.3.4'
+
+[dependencies]
+# Local dependencies
+pallet-reactions = { default-features = false, path = '../..' }
+pallet-utils = { default-features = false, path = '../../../utils' }
+
+# Substrate dependencies
+sp-api = { default-features = false, version = '2.0.1' }
+sp-runtime = { default-features = false, version = '2.0.1' }
+sp-std = { default-features = false, version = '2.0.1' }
+
+[features]
+default = ['std']
+std = [
+	'serde',
+	'sp-api/std',
+	'sp-std/std',
+	'sp-runtime/std',
+	'pallet-utils/std',
+	'pallet-reactions/std',
+]

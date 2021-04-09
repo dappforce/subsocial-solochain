@@ -12,6 +12,8 @@ use frame_system::{self as system, ensure_signed};
 
 use pallet_utils::{Module as Utils, WhoAndWhen, Content};
 
+pub mod rpc;
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Config> {
     pub followers_count: u32,

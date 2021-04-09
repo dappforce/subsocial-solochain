@@ -6,8 +6,8 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::Vec;
 use frame_system::{self as system};
 
-use pallet_posts::{PostId, Post, PostUpdate, AfterPostUpdated};
-use pallet_utils::WhoAndWhen;
+use pallet_posts::{Post, PostUpdate, AfterPostUpdated};
+use pallet_utils::{WhoAndWhen, PostId};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PostHistoryRecord<T: Config> {

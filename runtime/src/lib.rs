@@ -8,7 +8,10 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use sp_std::prelude::*;
+use sp_std::{
+	prelude::*,
+	collections::btree_map::BTreeMap,
+};
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 pub use subsocial_primitives::{AccountId, Signature, Balance, Index};
 use subsocial_primitives::{BlockNumber, Hash, Moment};
@@ -47,6 +50,15 @@ use frame_system::{
 };
 use pallet_transaction_payment::CurrencyAdapter;
 use static_assertions::const_assert;
+
+use pallet_utils::{SpaceId, PostId};
+use pallet_posts::rpc::FlatPost;
+use pallet_profiles::rpc::FlatSocialAccount;
+use pallet_reactions::{
+	ReactionId,
+	rpc::FlatReaction,
+};
+use pallet_spaces::rpc::FlatSpace;
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -406,6 +418,7 @@ impl pallet_space_ownership::Config for Runtime {
 
 parameter_types! {
 	pub HandleDeposit: Balance = 50 * CENTS;
+	pub const DefaultRPCLimit: u64 = 20;
 }
 
 impl pallet_spaces::Config for Runtime {
@@ -418,6 +431,7 @@ impl pallet_spaces::Config for Runtime {
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
 	type HandleDeposit = HandleDeposit;
+	type DefaultRPCLimit = DefaultRPCLimit;
 }
 
 parameter_types! {}
@@ -695,8 +709,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-		for Runtime {
+	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance> for Runtime {
 		fn query_info(
 			uxt: <Block as BlockT>::Extrinsic,
 			len: u32,
@@ -750,4 +763,131 @@ impl_runtime_apis! {
 			Ok(batches)
 		}
 	}
+
+	impl space_follows_runtime_api::SpaceFollowsApi<Block, AccountId> for Runtime
+    {
+    	fn get_space_ids_followed_by_account(account: AccountId) -> Vec<SpaceId> {
+    		SpaceFollows::get_space_ids_followed_by_account(account)
+    	}
+
+    	fn filter_followed_spaces(account: AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId> {
+    		SpaceFollows::filter_followed_spaces(account, space_ids)
+    	}
+    }
+
+	impl spaces_runtime_api::SpacesApi<Block, AccountId, BlockNumber> for Runtime
+	{
+		fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_spaces(offset, limit)
+		}
+
+		fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_spaces_by_ids(space_ids)
+		}
+
+		fn get_public_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_public_spaces(offset, limit)
+		}
+
+		fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_unlisted_spaces(offset, limit)
+		}
+
+		fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
+			Spaces::get_space_id_by_handle(handle)
+		}
+
+        fn get_space_by_handle(handle: Vec<u8>) -> Option<FlatSpace<AccountId, BlockNumber>> {
+        	Spaces::get_space_by_handle(handle)
+        }
+
+        fn get_public_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId> {
+        	Spaces::get_public_space_ids_by_owner(owner)
+        }
+
+        fn get_unlisted_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId> {
+        	Spaces::get_unlisted_space_ids_by_owner(owner)
+        }
+
+        fn get_next_space_id() -> SpaceId {
+        	Spaces::get_next_space_id()
+        }
+    }
+
+    impl posts_runtime_api::PostsApi<Block, AccountId, BlockNumber> for Runtime
+    {
+		fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_posts_by_ids(post_ids)
+		}
+
+		fn get_public_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_public_posts_by_space(space_id, offset, limit)
+		}
+
+		fn get_unlisted_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_unlisted_posts_by_space(space_id, offset, limit)
+		}
+
+		fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId> {
+			Posts::get_reply_ids_by_post_id(post_id)
+		}
+
+		fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>> {
+			Posts::get_comment_ids_tree(post_id)
+		}
+
+		fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+			Posts::get_public_post_ids_by_space(space_id)
+		}
+
+		fn get_unlisted_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+			Posts::get_unlisted_post_ids_by_space(space_id)
+		}
+
+		fn get_next_post_id() -> PostId {
+			Posts::get_next_post_id()
+		}
+
+		fn get_feed(account: AccountId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_feed(account, offset, limit)
+		}
+    }
+
+	impl profile_follows_runtime_api::ProfileFollowsApi<Block, AccountId> for Runtime
+    {
+    	fn filter_followed_accounts(account: AccountId, other_accounts: Vec<AccountId>) -> Vec<AccountId> {
+    		ProfileFollows::filter_followed_accounts(account, other_accounts)
+    	}
+    }
+
+	impl profiles_runtime_api::ProfilesApi<Block, AccountId, BlockNumber> for Runtime
+	{
+		fn get_social_accounts_by_ids(
+            account_ids: Vec<AccountId>
+        ) -> Vec<FlatSocialAccount<AccountId, BlockNumber>> {
+        	Profiles::get_social_accounts_by_ids(account_ids)
+        }
+	}
+
+    impl reactions_runtime_api::ReactionsApi<Block, AccountId, BlockNumber> for Runtime
+    {
+		fn get_reactions_by_ids(reaction_ids: Vec<ReactionId>) -> Vec<FlatReaction<AccountId, BlockNumber>> {
+			Reactions::get_reactions_by_ids(reaction_ids)
+		}
+
+		fn get_reactions_by_post_id(
+			post_id: PostId,
+			limit: u64,
+			offset: u64
+		) -> Vec<FlatReaction<AccountId, BlockNumber>> {
+			Reactions::get_reactions_by_post_id(post_id, limit, offset)
+		}
+
+		fn get_reactions_by_account(
+			account: AccountId,
+			post_ids: Vec<PostId>,
+		) -> BTreeMap<PostId, FlatReaction<AccountId, BlockNumber>> {
+			Reactions::get_reactions_by_account(account, post_ids)
+		}
+    }
 }

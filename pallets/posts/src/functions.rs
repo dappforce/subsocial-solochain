@@ -39,6 +39,10 @@ impl<T: Config> Post<T> {
         !self.is_comment()
     }
 
+    pub fn is_regular_post(&self) -> bool {
+        matches!(self.extension, PostExtension::RegularPost)
+    }
+
     pub fn is_comment(&self) -> bool {
         matches!(self.extension, PostExtension::Comment(_))
     }
@@ -51,6 +55,13 @@ impl<T: Config> Post<T> {
         match self.extension {
             PostExtension::Comment(comment_ext) => Ok(comment_ext),
             _ => Err(Error::<T>::NotComment.into())
+        }
+    }
+
+    pub fn get_shared_post_id(&self) -> Result<PostId, DispatchError> {
+        match self.extension {
+            PostExtension::SharedPost(post_id) => Ok(post_id),
+            _ => Err(Error::<T>::NotASharingPost.into())
         }
     }
 
@@ -138,6 +149,10 @@ impl<T: Config> Post<T> {
         } else if diff < 0 {
             self.score = self.score.saturating_sub(diff.abs() as i32);
         }
+    }
+
+    pub fn is_public(&self) -> bool {
+        !self.hidden && !self.content.is_none()
     }
 }
 
@@ -240,7 +255,20 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
-    fn try_get_post_replies(post_id: PostId) -> Vec<Post<T>> {
+    pub fn try_get_post_replies_ids(post_id: PostId) -> Vec<PostId> {
+        let mut replies: Vec<PostId> = Vec::new();
+
+        if let Some(post) = Self::post_by_id(post_id) {
+            replies.push(post.id);
+            for reply_id in Self::reply_ids_by_post_id(post_id).iter() {
+                replies.extend(Self::try_get_post_replies_ids(*reply_id).iter().cloned());
+            }
+        }
+
+        replies
+    }
+
+    pub fn try_get_post_replies(post_id: PostId) -> Vec<Post<T>> {
         let mut replies: Vec<Post<T>> = Vec::new();
 
         if let Some(post) = Self::post_by_id(post_id) {
@@ -251,6 +279,20 @@ impl<T: Config> Module<T> {
         }
 
         replies
+    }
+
+    pub fn get_post_reply_ids_tree(post_id: PostId) -> Vec<(PostId, Vec<PostId>)> {
+        let mut replies_tuple: Vec<(PostId, Vec<PostId>)> = Vec::new();
+        let post_replies: Vec<PostId> = Self::reply_ids_by_post_id(post_id);
+
+        if post_replies.first().is_some() {
+            replies_tuple.push((post_id, post_replies.clone()));
+            for reply_id in post_replies.iter() {
+                replies_tuple.extend(Self::get_post_reply_ids_tree(*reply_id));
+            }
+        }
+
+        replies_tuple
     }
 
     /// Recursively et all nested post replies (reply_ids_by_post_id)

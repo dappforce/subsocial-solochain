@@ -28,8 +28,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 
-use pallet_utils::{Content, WhoAndWhen, SpaceId, Module as Utils};
-use pallet_posts::PostId;
+use pallet_utils::{Content, WhoAndWhen, SpaceId, Module as Utils, PostId};
 use pallet_spaces::Module as Spaces;
 
 #[cfg(test)]

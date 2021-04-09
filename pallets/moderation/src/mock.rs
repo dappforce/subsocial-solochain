@@ -12,9 +12,9 @@ use sp_runtime::{
 use frame_system as system;
 use sp_io::TestExternalities;
 
-use pallet_utils::{Content, SpaceId};
-use pallet_spaces::{RESERVED_SPACE_COUNT, SpaceById};
-use pallet_posts::{PostId, PostExtension};
+use pallet_utils::{Content, SpaceId, PostId};
+use pallet_spaces::{RESERVED_SPACE_COUNT, Space, SpaceById};
+use pallet_posts::{Post, PostById, PostExtension};
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -102,6 +102,10 @@ impl pallet_permissions::Trait for Test {
     type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
+parameter_types! {
+    pub const DefaultRPCLimit: u64 = 20;
+}
+
 impl pallet_spaces::Trait for Test {
     type Event = ();
     type Currency = Balances;
@@ -112,6 +116,7 @@ impl pallet_spaces::Trait for Test {
     type IsAccountBlocked = Moderation;
     type IsContentBlocked = Moderation;
     type HandleDeposit = ();
+    type DefaultRPCLimit = DefaultRPCLimit;
 }
 
 impl pallet_space_follows::Trait for Test {

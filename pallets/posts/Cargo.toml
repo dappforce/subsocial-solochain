@@ -13,6 +13,7 @@ categories = ['cryptography::cryptocurrencies']
 [features]
 default = ['std']
 std = [
+    'serde',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
@@ -20,9 +21,15 @@ std = [
     'sp-std/std',
     'df-traits/std',
     'pallet-permissions/std',
+    'pallet-space-follows/std',
     'pallet-spaces/std',
     'pallet-utils/std',
 ]
+
+[dependencies.serde]
+optional = true
+features = ['derive']
+version = "1.0.119"
 
 [dependencies.codec]
 default-features = false
@@ -36,6 +43,7 @@ impl-trait-for-tuples = '0.1.3'
 # Local dependencies
 df-traits = { default-features = false, path = '../traits' }
 pallet-permissions = { default-features = false, path = '../permissions' }
+pallet-space-follows = { default-features = false, path = '../space-follows' }
 pallet-spaces = { default-features = false, path = '../spaces' }
 pallet-utils = { default-features = false, path = '../utils' }
 

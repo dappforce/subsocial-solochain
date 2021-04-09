@@ -9,13 +9,13 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use frame_system::{self as system};
 
-use pallet_posts::{PostScores, Post, PostById, PostExtension, PostId};
+use pallet_posts::{PostScores, Post, PostById, PostExtension};
 use pallet_profile_follows::{BeforeAccountFollowed, BeforeAccountUnfollowed};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_reactions::{PostReactionScores, ReactionKind};
 use pallet_space_follows::{BeforeSpaceFollowed, BeforeSpaceUnfollowed};
 use pallet_spaces::{Space, SpaceById};
-use pallet_utils::log_2;
+use pallet_utils::{log_2, PostId};
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub enum ScoringAction {

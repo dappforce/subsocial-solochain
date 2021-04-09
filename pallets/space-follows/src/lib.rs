@@ -16,6 +16,8 @@ use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_spaces::{BeforeSpaceCreated, Module as Spaces, Space, SpaceById};
 use pallet_utils::{Error as UtilsError, SpaceId, vec_remove_on};
 
+pub mod rpc;
+
 /// The pallet's configuration trait.
 pub trait Config: system::Config
     + pallet_utils::Config

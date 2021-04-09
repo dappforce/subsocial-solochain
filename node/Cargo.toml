@@ -27,6 +27,12 @@ hex-literal = '0.3.1'
 
 # Local dependencies
 subsocial-runtime = { path = '../runtime' }
+space-follows-rpc = { path = '../pallets/space-follows/rpc' }
+spaces-rpc = { path = '../pallets/spaces/rpc' }
+posts-rpc = { path = '../pallets/posts/rpc' }
+profile-follows-rpc = { path = '../pallets/profile-follows/rpc' }
+profiles-rpc = { path = '../pallets/profiles/rpc' }
+reactions-rpc = { path = '../pallets/reactions/rpc' }
 
 # Substrate dependencies
 frame-benchmarking = '3.0.0'

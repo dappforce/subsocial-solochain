@@ -2,19 +2,21 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_module, decl_storage, decl_event,
+    decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult}, ensure,
     traits::{
         Currency, Get,
         Imbalance, OnUnbalanced,
     },
 };
+use frame_system as system;
+#[cfg(feature = "std")]
+use serde::Deserialize;
 use sp_runtime::RuntimeDebug;
 use sp_std::{
     collections::btree_set::BTreeSet,
     prelude::*,
 };
-use frame_system::{self as system};
 
 #[cfg(test)]
 mod mock;
@@ -22,7 +24,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod rpc;
+
 pub type SpaceId = u64;
+pub type PostId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct WhoAndWhen<T: Config> {
@@ -48,6 +53,8 @@ pub enum User<AccountId> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Deserialize))]
+#[cfg_attr(feature = "std", serde(tag = "contentType", content = "contentId"))]
 pub enum Content {
     /// No content.
     None,
@@ -59,6 +66,23 @@ pub enum Content {
     Hyper(Vec<u8>),
 }
 
+impl Into<Vec<u8>> for Content {
+    fn into(self) -> Vec<u8> {
+        match self {
+            Content::None => b"None".to_vec(),
+            Content::Raw(vec_u8) => vec_u8,
+            Content::IPFS(vec_u8) => vec_u8,
+            Content::Hyper(vec_u8) => vec_u8,
+        }
+    }
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 impl Content {
     pub fn is_none(&self) -> bool {
         self == &Self::None
@@ -66,6 +90,10 @@ impl Content {
 
     pub fn is_some(&self) -> bool {
         !self.is_none()
+    }
+
+    pub fn is_ipfs(&self) -> bool {
+        matches!(self, Self::IPFS(_))
     }
 }
 
@@ -160,8 +188,8 @@ pub fn log_2(x: u32) -> Option<u32> {
     if x > 0 {
         Some(
             num_bits::<u32>() as u32
-            - x.leading_zeros()
-            - 1
+                - x.leading_zeros()
+                - 1
         )
     } else { None }
 }
@@ -171,6 +199,10 @@ pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
         // TODO fix: swap_remove doesn't remove tha last element.
         vector.swap_remove(index);
     }
+}
+
+pub fn from_bool_to_option(value: bool) -> Option<bool> {
+    Some(value).filter(|v| *v == true)
 }
 
 impl<T: Config> Module<T> {
@@ -185,7 +217,7 @@ impl<T: Config> Module<T> {
                 // IPFS CID v1 is 59 bytes.df-integration-tests/src/lib.rs:272:5
                 ensure!(len == 46 || len == 59, Error::<T>::InvalidIpfsCid);
                 Ok(())
-            },
+            }
             Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())
         }
     }

@@ -3863,6 +3863,7 @@ dependencies = [
  "frame-system",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
@@ -3890,9 +3891,11 @@ dependencies = [
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
  "pallet-permissions",
+ "pallet-space-follows",
  "pallet-spaces",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
@@ -3932,6 +3935,7 @@ dependencies = [
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
@@ -3962,6 +3966,7 @@ dependencies = [
  "pallet-spaces",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
@@ -4714,6 +4719,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "posts-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-posts",
+ "pallet-utils",
+ "parity-scale-codec",
+ "posts-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "posts-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-posts",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4795,6 +4831,62 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 dependencies = [
  "unicode-xid",
+]
+
+[[package]]
+name = "profile-follows-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "profile-follows-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "profile-follows-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "profiles-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-profiles",
+ "parity-scale-codec",
+ "profiles-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "profiles-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-profiles",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -5107,6 +5199,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
 dependencies = [
  "rand_core 0.3.1",
+]
+
+[[package]]
+name = "reactions-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-reactions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "reactions-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "reactions-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-reactions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -7307,6 +7430,66 @@ dependencies = [
 ]
 
 [[package]]
+name = "space-follows-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+ "space-follows-runtime-api",
+]
+
+[[package]]
+name = "space-follows-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "spaces-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+ "spaces-runtime-api",
+]
+
+[[package]]
+name = "spaces-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7412,6 +7595,10 @@ dependencies = [
  "hex-literal",
  "jsonrpc-core",
  "pallet-transaction-payment-rpc",
+ "posts-rpc",
+ "profile-follows-rpc",
+ "profiles-rpc",
+ "reactions-rpc",
  "sc-basic-authorship",
  "sc-cli",
  "sc-client-api",
@@ -7435,6 +7622,8 @@ dependencies = [
  "sp-inherents",
  "sp-runtime",
  "sp-transaction-pool",
+ "space-follows-rpc",
+ "spaces-rpc",
  "structopt",
  "subsocial-runtime",
  "substrate-build-script-utils",
@@ -7492,6 +7681,10 @@ dependencies = [
  "pallet-utility",
  "pallet-utils",
  "parity-scale-codec",
+ "posts-runtime-api",
+ "profile-follows-runtime-api",
+ "profiles-runtime-api",
+ "reactions-runtime-api",
  "serde",
  "sp-api",
  "sp-block-builder",
@@ -7505,6 +7698,8 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "space-follows-runtime-api",
+ "spaces-runtime-api",
  "static_assertions",
  "subsocial-primitives",
  "substrate-wasm-builder",
