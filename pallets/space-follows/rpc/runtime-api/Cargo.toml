@@ -26,9 +26,9 @@ version = '1.3.4'
 pallet-utils = { default-features = false, path = '../../../utils' }
 
 # Substrate dependencies
-sp-api = { default-features = false, version = '2.0.1' }
-sp-runtime = { default-features = false, version = '2.0.1' }
-sp-std = { default-features = false, version = '2.0.1' }
+sp-api = { default-features = false, version = '3.0.0' }
+sp-runtime = { default-features = false, version = '3.0.0' }
+sp-std = { default-features = false, version = '3.0.0' }
 
 [features]
 default = ['std']

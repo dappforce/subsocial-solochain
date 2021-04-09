@@ -30,10 +30,10 @@ jsonrpc-derive = '15.0.0'
 profile-follows-runtime-api = { default-features = false, path = 'runtime-api' }
 
 # Substrate dependencies
-sp-api = { default-features = false, version = '2.0.1' }
-sp-blockchain = { default-features = false, version = '2.0.1' }
-sp-rpc = { default-features = false, version = '2.0.1' }
-sp-runtime = { default-features = false, version = '2.0.1' }
+sp-api = { default-features = false, version = '3.0.0' }
+sp-blockchain = { default-features = false, version = '3.0.0' }
+sp-rpc = { default-features = false, version = '3.0.0' }
+sp-runtime = { default-features = false, version = '3.0.0' }
 
 [features]
 default = ['std']
