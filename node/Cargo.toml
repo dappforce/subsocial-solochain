@@ -35,6 +35,8 @@ profiles-rpc = { path = '../pallets/profiles/rpc' }
 reactions-rpc = { path = '../pallets/reactions/rpc' }
 roles-rpc = { path = '../pallets/roles/rpc' }
 
+subsocial-primitives = { default-features = false, path = '../primitives' }
+
 # Substrate dependencies
 frame-benchmarking = '3.0.0'
 frame-benchmarking-cli = '3.0.0'

@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use subsocial_runtime::{opaque::Block, AccountId, Balance, Index, BlockNumber};
+use subsocial_primitives::{Block, AccountId, Balance, Index, BlockNumber};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
 use sp_block_builder::BlockBuilder;
