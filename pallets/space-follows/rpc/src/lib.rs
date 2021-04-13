@@ -41,12 +41,14 @@ impl<C, M> SpaceFollows<C, M> {
     }
 }
 
-impl<C, Block, AccountId> SpaceFollowsApi<<Block as BlockT>::Hash, AccountId>
-    for SpaceFollows<C, Block>
+impl<C, Block, AccountId> SpaceFollowsApi<
+    <Block as BlockT>::Hash,
+    AccountId
+> for SpaceFollows<C, Block>
 where
     Block: BlockT,
     AccountId: Codec,
-    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C: 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: SpaceFollowsRuntimeApi<Block, AccountId>,
 {
     fn get_space_ids_followed_by_account(

@@ -54,13 +54,16 @@ impl<C, M> Reactions<C, M> {
     }
 }
 
-impl<C, Block, AccountId, BlockNumber> ReactionsApi<<Block as BlockT>::Hash, AccountId, BlockNumber>
-    for Reactions<C, Block>
+impl<C, Block, AccountId, BlockNumber> ReactionsApi<
+    <Block as BlockT>::Hash,
+    AccountId,
+    BlockNumber
+> for Reactions<C, Block>
 where
     Block: BlockT,
     AccountId: Codec,
     BlockNumber: Codec,
-    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C: 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: ReactionsRuntimeApi<Block, AccountId, BlockNumber>,
 {
     fn get_reactions_by_ids(

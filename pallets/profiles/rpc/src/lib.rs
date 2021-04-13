@@ -33,13 +33,16 @@ impl<C, M> Profiles<C, M> {
     }
 }
 
-impl<C, Block, AccountId, BlockNumber> ProfilesApi<<Block as BlockT>::Hash, AccountId, BlockNumber>
-    for Profiles<C, Block>
+impl<C, Block, AccountId, BlockNumber> ProfilesApi<
+    <Block as BlockT>::Hash,
+    AccountId,
+    BlockNumber
+> for Profiles<C, Block>
 where
     Block: BlockT,
     AccountId: Codec,
     BlockNumber: Codec,
-    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C: 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: ProfilesRuntimeApi<Block, AccountId, BlockNumber>,
 {
     fn get_social_accounts_by_ids(&self, at: Option<<Block as BlockT>::Hash>, account_ids: Vec<AccountId>) -> Result<Vec<FlatSocialAccount<AccountId, BlockNumber>>> {

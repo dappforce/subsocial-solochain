@@ -35,12 +35,14 @@ impl<C, M> Roles<C, M> {
     }
 }
 
-impl<C, Block, AccountId> RolesApi<<Block as BlockT>::Hash, AccountId>
-    for Roles<C, Block>
+impl<C, Block, AccountId> RolesApi<
+    <Block as BlockT>::Hash,
+    AccountId
+> for Roles<C, Block>
 where
     Block: BlockT,
     AccountId: Codec,
-    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C: 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: RolesRuntimeApi<Block, AccountId>,
 {
     fn get_space_permissions_by_user(
