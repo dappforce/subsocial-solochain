@@ -7,7 +7,7 @@ use sp_std::prelude::*;
 
 use pallet_utils::{PostId, rpc::FlatWhoAndWhen};
 
-use crate::{Module, Reaction, ReactionId, ReactionKind, Trait};
+use crate::{Module, Reaction, ReactionId, ReactionKind, Config};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -19,7 +19,7 @@ pub struct FlatReaction<AccountId, BlockNumber> {
     pub kind: ReactionKind,
 }
 
-impl<T: Trait> From<Reaction<T>> for FlatReaction<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<Reaction<T>> for FlatReaction<T::AccountId, T::BlockNumber> {
     fn from(from: Reaction<T>) -> Self {
         let Reaction { id, created, updated, kind } = from;
 
@@ -31,7 +31,7 @@ impl<T: Trait> From<Reaction<T>> for FlatReaction<T::AccountId, T::BlockNumber> 
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn get_reactions_by_ids(
         reaction_ids: Vec<ReactionId>
     ) -> Vec<FlatReaction<T::AccountId, T::BlockNumber>> {

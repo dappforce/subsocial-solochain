@@ -9,7 +9,7 @@ use pallet_space_follows::Module as SpaceFollows;
 use pallet_spaces::Module as Spaces;
 use pallet_utils::{from_bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
 
-use crate::{Module, Post, PostExtension, Trait};
+use crate::{Module, Post, PostExtension, Config};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -48,7 +48,7 @@ pub struct FlatPost<AccountId, BlockNumber> {
     pub score: i32,
 }
 
-impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
     fn from(from: Post<T>) -> Self {
         let Post {
             id, created, updated, owner,
@@ -81,7 +81,7 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
         let mut posts = Vec::new();
         for post_id in post_ids.iter() {

@@ -5,7 +5,7 @@ use sp_std::prelude::*;
 
 use pallet_utils::{SpaceId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}};
 
-use crate::{Module, Space, Trait};
+use crate::{Module, Space, Config};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -45,7 +45,7 @@ fn bytes_to_string<S>(field: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S
     )
 }
 
-impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
     fn from(from: Space<T>) -> Self {
         let Space {
             id, created, updated, owner,
@@ -70,7 +70,7 @@ impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
         space_ids.iter()
             .filter_map(|id| Self::require_space(*id).ok())
