@@ -3876,6 +3876,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-onboard"
+version = "0.6.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-permissions"
 version = "0.6.0"
 dependencies = [
