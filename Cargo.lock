@@ -3853,6 +3853,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-membership"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87dd8debea7ad0a29d9f4018a4450d628950f621050dd8488f588d1b93880049"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-moderation"
 version = "0.6.1"
 dependencies = [
@@ -7588,6 +7603,7 @@ dependencies = [
  "pallet-balances",
  "pallet-faucets",
  "pallet-grandpa",
+ "pallet-membership",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",

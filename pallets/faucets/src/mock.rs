@@ -13,7 +13,7 @@ use frame_support::{
     weights::Weight,
     dispatch::DispatchResult,
 };
-use frame_system as system;
+use frame_system::{self as system, EnsureRoot};
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -99,6 +99,7 @@ impl pallet_utils::Trait for Test {
     type Currency = Balances;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
+    type AllowTransfers = EnsureRoot<AccountId>;
 }
 
 impl Trait for Test {

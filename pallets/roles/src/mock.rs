@@ -16,7 +16,7 @@ use frame_support::{
     weights::Weight,
     dispatch::{DispatchResult, DispatchError}
 };
-use frame_system as system;
+use frame_system::{self as system, EnsureRoot};
 
 use pallet_permissions::{
     SpacePermission,
@@ -101,6 +101,7 @@ impl pallet_utils::Trait for Test {
     type Currency = Balances;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
+    type AllowTransfers = EnsureRoot<AccountId>;
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;

@@ -9,7 +9,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
 
-use frame_system as system;
+use frame_system::{self as system, EnsureRoot};
 use sp_io::TestExternalities;
 
 use pallet_utils::{Content, SpaceId, PostId};
@@ -81,6 +81,7 @@ impl pallet_utils::Trait for Test {
     type Currency = Balances;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
+    type AllowTransfers = EnsureRoot<AccountId>;
 }
 
 parameter_types! {

@@ -6,6 +6,7 @@ use frame_support::{impl_outer_origin, assert_ok, assert_noop, parameter_types, 
 use sp_runtime::{
   traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
+use frame_system::EnsureRoot;
 
 impl_outer_origin! {
   pub enum Origin for Test {}
@@ -84,6 +85,7 @@ impl pallet_utils::Trait for Test {
   type Currency = Balances;
   type MinHandleLen = MinHandleLen;
   type MaxHandleLen = MaxHandleLen;
+  type AllowTransfers = EnsureRoot<AccountId>;
 }
 
 parameter_types! {

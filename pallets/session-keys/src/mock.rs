@@ -6,7 +6,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill, Perquintill, FixedPointNumber,
 };
 
-use frame_system as system;
+use frame_system::{self as system, EnsureRoot};
 use frame_support::{
     impl_outer_origin, impl_outer_dispatch, parameter_types,
     weights::{Weight, IdentityFee},
@@ -111,6 +111,7 @@ impl pallet_utils::Trait for Test {
     type Currency = Balances;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
+    type AllowTransfers = EnsureRoot<AccountId>;
 }
 
 impl pallet_profile_follows::Trait for Test {

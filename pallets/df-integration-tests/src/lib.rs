@@ -15,7 +15,7 @@ mod tests {
         Perbill,
         Storage,
     };
-    use frame_system::{self as system};
+    use frame_system::{self as system, EnsureRoot};
 
     use pallet_permissions::{
         SpacePermission,
@@ -114,6 +114,7 @@ mod tests {
         type Currency = Balances;
         type MinHandleLen = MinHandleLen;
         type MaxHandleLen = MaxHandleLen;
+        type AllowTransfers = EnsureRoot<AccountId>;
     }
 
     use pallet_permissions::default_permissions::DefaultSpacePermissions;

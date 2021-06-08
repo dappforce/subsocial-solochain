@@ -72,6 +72,7 @@ frame-system-rpc-runtime-api = { default-features = false, version = '2.0.1' }
 pallet-aura = { default-features = false, version = '2.0.1' }
 pallet-balances = { default-features = false, version = '2.0.1' }
 pallet-grandpa = { default-features = false, version = '2.0.1' }
+pallet-membership = { default-features = false, version = '2.0.1' }
 pallet-randomness-collective-flip = { default-features = false, version = '2.0.1' }
 pallet-scheduler = { default-features = false, version = '2.0.1' }
 pallet-sudo = { default-features = false, version = '2.0.1' }
@@ -115,6 +116,7 @@ std = [
     'pallet-aura/std',
     'pallet-balances/std',
     'pallet-grandpa/std',
+    'pallet-membership/std',
     'pallet-randomness-collective-flip/std',
     'pallet-scheduler/std',
     'pallet-sudo/std',

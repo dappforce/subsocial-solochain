@@ -19,7 +19,8 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'sp-std/std',
-    'pallet-timestamp/std'
+    'pallet-balances/std',
+    'pallet-timestamp/std',
 ]
 
 [dependencies.codec]
@@ -36,11 +37,11 @@ jsonrpc-core = '15.0.0'
 # Substrate dependencies
 frame-support = { default-features = false, version = '2.0.1' }
 frame-system = { default-features = false, version = '2.0.1' }
+pallet-balances = { default-features = false, version = '2.0.1' }
 pallet-timestamp = { default-features = false, version = '2.0.1' }
 sp-runtime = { default-features = false, version = '2.0.1' }
 sp-std = { default-features = false, version = '2.0.1' }
 
 [dev-dependencies]
-pallet-balances = { default-features = false, version = '2.0.1' }
 sp-core = { default-features = false, version = '2.0.1' }
 sp-io = { default-features = false, version = '2.0.1' }

@@ -3,17 +3,20 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_module, decl_storage, decl_event,
-    dispatch::{DispatchError, DispatchResult}, ensure,
+    dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo}, ensure,
     traits::{
         Currency, Get,
         Imbalance, OnUnbalanced,
+        EnsureOrigin, UnfilteredDispatchable,
     },
 };
 use frame_system as system;
 
+use pallet_balances::WeightInfo;
+
 #[cfg(feature = "std")]
 use serde::Deserialize;
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{RuntimeDebug, traits::StaticLookup};
 use sp_std::{
     collections::btree_set::BTreeSet,
     prelude::*,
@@ -121,7 +124,7 @@ type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::Ac
 
 type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::NegativeImbalance;
 
-pub trait Trait: system::Trait + pallet_timestamp::Trait
+pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_balances::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -134,6 +137,9 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait
 
     /// Max length of a space handle.
     type MaxHandleLen: Get<u32>;
+
+    /// The set of origins allowed to call transfer dispatch via `pallet-utils`.
+    type AllowTransfers: EnsureOrigin<Self::Origin>;
 }
 
 decl_storage! {
@@ -164,6 +170,18 @@ decl_module! {
 
         // Initializing events
         fn deposit_event() = default;
+
+        /// Transfer some liquid free balance to another account bypass the transfer filter.
+        #[weight = <T as pallet_balances::Trait>::WeightInfo::transfer()]
+        pub fn transfer(
+            origin,
+            dest: <T::Lookup as StaticLookup>::Source,
+            #[compact] value: T::Balance
+        ) -> DispatchResultWithPostInfo {
+            T::AllowTransfers::ensure_origin(origin.clone())?;
+            let c = pallet_balances::Call::<T>::transfer(dest, value);
+            c.dispatch_bypass_filter(origin)
+        }
     }
 }
 

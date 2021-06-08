@@ -36,13 +36,13 @@ pub use pallet_balances::Call as BalancesCall;
 pub use sp_runtime::{Permill, Perbill};
 pub use frame_support::{
     construct_runtime, parameter_types, StorageValue,
-    traits::{KeyOwnerProofSystem, Randomness, Currency, Imbalance, OnUnbalanced, Filter},
+    traits::{KeyOwnerProofSystem, Randomness, Currency, Imbalance, OnUnbalanced, Filter, Contains},
     weights::{
         Weight, IdentityFee,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
 };
-use frame_system::EnsureRoot;
+use frame_system::{EnsureRoot, EnsureOneOf, EnsureSignedBy};
 
 use pallet_permissions::SpacePermission;
 use pallet_posts::rpc::{FlatPost, FlatPostKind, RepliesByPostId};
@@ -116,7 +116,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 11,
+	spec_version: 12,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -267,6 +267,18 @@ impl pallet_balances::Trait for Runtime {
     type MaxLocks = MaxLocks;
 }
 
+type BypassTransferFilterMembership = pallet_membership::Instance1;
+impl pallet_membership::Trait<BypassTransferFilterMembership> for Runtime {
+    type Event = Event;
+    type AddOrigin = EnsureRoot<AccountId>;
+    type RemoveOrigin = EnsureRoot<AccountId>;
+    type SwapOrigin = EnsureRoot<AccountId>;
+    type ResetOrigin = EnsureRoot<AccountId>;
+    type PrimeOrigin = EnsureRoot<AccountId>;
+    type MembershipInitialized = ();
+    type MembershipChanged = ();
+}
+
 parameter_types! {
 	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
 }
@@ -319,6 +331,11 @@ impl pallet_utils::Trait for Runtime {
 	type Currency = Balances;
 	type MinHandleLen = MinHandleLen;
 	type MaxHandleLen = MaxHandleLen;
+    type AllowTransfers = EnsureOneOf<
+        AccountId,
+        EnsureRoot<AccountId>,
+        EnsureSignedBy<AllowTransfers, AccountId>
+    >;
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
@@ -556,11 +573,12 @@ construct_runtime!(
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
-		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+		Utils: pallet_utils::{Module, Call, Storage, Event<T>, Config<T>},
 
 		// New experimental pallets. Not recommended to use in production yet.
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
+		AllowTransfers: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>},
 		// SessionKeys: pallet_session_keys::{Module, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
