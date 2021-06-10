@@ -1,8 +1,10 @@
-use frame_support::dispatch::DispatchResult;
+use super::*;
+
+use frame_support::{
+    dispatch::DispatchResult
+};
 
 use pallet_utils::{SpaceId, remove_from_vec};
-
-use super::*;
 
 impl<T: Trait> Post<T> {
 
@@ -197,43 +199,80 @@ impl Default for PostUpdate {
     }
 }
 
-impl<T: Trait> Module<T> {
+type GetVariantForPostOwnerFn<T> = dyn Fn(bool) -> Result<(SpacePermission, Error<T>), Error<T>>;
+fn get_variant_for_post_owner<T>(is_owner: bool, owner_variant: T, others_variant: Option<T>) -> Option<T> {
+    if is_owner {
+        Some(owner_variant)
+    } else {
+        others_variant
+    }
+}
 
-    pub fn ensure_account_can_update_post(
+impl<T: Trait> Module<T> {
+    fn ensure_account_has_permission(
         editor: &T::AccountId,
         post: &Post<T>,
-        space: &Space<T>
+        space: &Space<T>,
+        comments_fn: &GetVariantForPostOwnerFn<T>,
+        posts_fn: &GetVariantForPostOwnerFn<T>,
     ) -> DispatchResult {
         let is_owner = post.is_owner(&editor);
         let is_comment = post.is_comment();
 
-        let permission_to_check: SpacePermission;
-        let permission_error: DispatchError;
-
-        if is_comment {
-          if is_owner {
-            permission_to_check = SpacePermission::UpdateOwnComments;
-            permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
-          } else {
-            return Err(Error::<T>::NotACommentAuthor.into());
-          }
-        } else {
-          // Not a comment
-
-          if is_owner {
-            permission_to_check = SpacePermission::UpdateOwnPosts;
-            permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
-          } else {
-            permission_to_check = SpacePermission::UpdateAnyPost;
-            permission_error = Error::<T>::NoPermissionToUpdateAnyPost.into();
-          }
-        }
+        let (permission_to_check, permission_error) = {
+            if is_comment {
+                comments_fn(is_owner)?
+            } else {
+                posts_fn(is_owner)?
+            }
+        };
 
         Spaces::ensure_account_has_space_permission(
-          editor.clone(),
-          space,
-          permission_to_check,
-          permission_error
+            editor.clone(),
+            space,
+            permission_to_check,
+            permission_error.into(),
+        )
+    }
+
+    pub fn ensure_account_can_update_post(editor: &T::AccountId, post: &Post<T>, space: &Space<T>) -> DispatchResult {
+        Self::ensure_account_has_permission(
+            editor, post, space,
+            /* Execute if comment */ &|is_owner| {
+                get_variant_for_post_owner::<SpacePermission>(
+                    is_owner, SpacePermission::UpdateOwnComments, None,
+                ).zip(Some(Error::<T>::NoPermissionToUpdateOwnComments)).ok_or(Error::<T>::NotACommentAuthor)
+            },
+            /* Execute if post */ &|is_owner| {
+                Ok(get_variant_for_post_owner::<SpacePermission>(
+                    is_owner, SpacePermission::UpdateOwnPosts, Some(SpacePermission::UpdateAnyPost),
+                ).zip(get_variant_for_post_owner::<Error<T>>(
+                    is_owner, Error::<T>::NoPermissionToUpdateOwnPosts, Some(Error::<T>::NoPermissionToUpdateAnyPost),
+                )).unwrap())
+            },
+        )
+    }
+
+    pub fn ensure_account_can_update_hidden_status(
+        editor: &T::AccountId,
+        post: &Post<T>,
+        space: &Space<T>,
+    ) -> DispatchResult {
+        Self::ensure_account_has_permission(editor, post, space,
+                                            /* Execute if comment */ &|is_owner| {
+                Ok(get_variant_for_post_owner::<SpacePermission>(
+                    is_owner, SpacePermission::HideOwnComments, Some(SpacePermission::HideAnyComment),
+                ).zip(get_variant_for_post_owner::<Error<T>>(
+                    is_owner, Error::<T>::NoPermissionToHideOwnComments, Some(Error::<T>::NoPermissionToHideAnyComments),
+                )).unwrap())
+            },
+                                            /* Execute if post */ &|is_owner| {
+                Ok(get_variant_for_post_owner::<SpacePermission>(
+                    is_owner, SpacePermission::HideOwnPosts, Some(SpacePermission::HideAnyPost),
+                ).zip(get_variant_for_post_owner::<Error<T>>(
+                    is_owner, Error::<T>::NoPermissionToHideOwnPosts, Some(Error::<T>::NoPermissionToHideAnyPost),
+                )).unwrap())
+            },
         )
     }
 
