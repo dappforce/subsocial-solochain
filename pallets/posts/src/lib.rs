@@ -333,7 +333,7 @@ decl_module! {
       ensure!(has_updates, Error::<T>::NoUpdatesForPost);
 
       let mut post = Self::require_post(post_id)?;
-      let mut space_opt = post.try_get_space();
+      let space_opt = &mut post.try_get_space();
 
       if let Some(space) = &space_opt {
         ensure!(T::IsAccountBlocked::is_allowed_account(editor.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
@@ -361,25 +361,14 @@ decl_module! {
       }
 
       if let Some(hidden) = update.hidden {
-        if hidden != post.hidden {
-          space_opt = space_opt.map(|mut space| {
-            if hidden {
-              space.inc_hidden_posts();
-            } else {
-              space.dec_hidden_posts();
-            }
+        let old_hidden = post.hidden;
+        let hidden_changed = post.change_hidden(hidden, space_opt).is_ok();
 
-            space
-          });
-
-          if let PostExtension::Comment(comment_ext) = post.extension {
-            Self::update_counters_on_comment_hidden_change(&comment_ext, hidden)?;
-          }
-
-          old_data.hidden = Some(post.hidden);
-          post.hidden = hidden;
-          is_update_applied = true;
+        if hidden_changed {
+          old_data.hidden = Some(old_hidden);
         }
+
+        is_update_applied |= hidden_changed;
       }
 
       // Update this post only if at least one field should be updated:

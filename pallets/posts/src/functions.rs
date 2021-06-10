@@ -163,6 +163,28 @@ impl<T: Trait> Post<T> {
     pub fn is_unlisted(&self) -> bool {
         !self.is_public()
     }
+
+    pub fn change_hidden(&mut self, hidden: bool, space_opt: &mut Option<Space<T>>) -> DispatchResult {
+        if hidden != self.hidden {
+            *space_opt = space_opt.clone().map(|mut space| {
+                if hidden {
+                    space.inc_hidden_posts();
+                } else {
+                    space.dec_hidden_posts();
+                }
+
+                space
+            });
+
+            if let PostExtension::Comment(comment_ext) = self.extension {
+                Module::<T>::update_counters_on_comment_hidden_change(&comment_ext, hidden)?;
+            }
+
+            self.hidden = hidden;
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for PostUpdate {
