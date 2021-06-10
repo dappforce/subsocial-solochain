@@ -17,11 +17,7 @@ mod tests {
     };
     use frame_system::{self as system};
 
-    use pallet_permissions::{
-        SpacePermission,
-        SpacePermission as SP,
-        SpacePermissions,
-    };
+    use pallet_permissions::{SpacePermission, SpacePermission as SP, SpacePermissions, SpacePermissionSet};
     use pallet_posts::{Post, PostUpdate, PostExtension, Comment, Error as PostsError};
     use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
     use pallet_profile_follows::Error as ProfileFollowsError;
@@ -454,13 +450,34 @@ mod tests {
         space_update(Some(new_handle), None, None)
     }
 
-    fn space_permissions_override_without_hide_own_comments() -> Option<SpacePermissions> {
-        let SpacePermissions { everyone, .. } = DefaultSpacePermissions::get();
+    fn remove_from_space_permission_set(
+        set_opt: Option<SpacePermissionSet>,
+        permissions_to_remove: Vec<SpacePermission>
+    ) -> Option<SpacePermissionSet> {
+        set_opt.map(|mut set| {
+            permissions_to_remove
+              .iter()
+              .for_each(|permission| { set.remove(permission); });
 
-        let new_everyone = everyone.map(|mut permission_set| {
-            permission_set.remove(&SP::HideOwnComments);
-            permission_set
-        });
+            set
+        })
+    }
+    
+    fn space_permissions_override_without_hide_own_comment() -> Option<SpacePermissions> {
+        let SpacePermissions { everyone, .. } = DefaultSpacePermissions::get();
+        let new_everyone = remove_from_space_permission_set(everyone, vec![SP::HideOwnComments]);
+
+        Some(SpacePermissions {
+            none: None,
+            everyone: new_everyone,
+            follower: None,
+            space_owner: None,
+        })
+    }
+
+    fn space_permissions_override_without_hide_own_post() -> Option<SpacePermissions> {
+        let SpacePermissions { everyone, .. } = DefaultSpacePermissions::get();
+        let new_everyone = remove_from_space_permission_set(everyone, vec![SP::HideOwnPosts]);
 
         Some(SpacePermissions {
             none: None,
@@ -703,6 +720,10 @@ mod tests {
 
     fn _hide_post(origin: Option<Origin>, post_id: Option<PostId>) -> DispatchResult {
         _update_post(origin, post_id, Some(post_update(None, Some(true))))
+    }
+
+    fn _show_post(origin: Option<Origin>, post_id: Option<PostId>) -> DispatchResult {
+        _update_post(origin, post_id, Some(post_update(None, Some(false))))
     }
     
     fn _update_post_content(
@@ -2180,16 +2201,6 @@ mod tests {
     }
 
     #[test]
-    fn hide_any_post_should_work_when_one_of_roles_is_permitted() {
-        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyPost]).execute_with(|| {
-            assert_ok!(_create_default_post()); // PostId 1
-
-            // Post update with ID 1 should be fine
-            assert_ok!(_hide_post(Some(Origin::signed(ACCOUNT2)), None));
-        });
-    }
-
-    #[test]
     fn update_post_should_fail_when_no_updates_for_post_provided() {
         ExtBuilder::build_with_post().execute_with(|| {
             // Try to catch an error updating a post with no changes
@@ -2593,6 +2604,53 @@ mod tests {
     // Change hidden tests
 
     #[test]
+    fn hide_any_post_should_work_when_one_of_roles_is_permitted() {
+        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyPost]).execute_with(|| {
+            assert_ok!(_create_default_post()); // PostId 1
+
+            assert_ok!(_hide_post(Some(Origin::signed(ACCOUNT2)), None));
+            assert!(Posts::post_by_id(POST1).unwrap().hidden);
+        });
+    }
+
+    #[test]
+    fn hide_any_post_should_fail_when_account_has_no_permission_to_hide_any_post() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_noop!(_hide_post(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+            ), PostsError::<TestRuntime>::NoPermissionToHideAnyPost);
+        });
+    }
+
+    #[test]
+    fn hide_own_post_should_work() {
+        ExtBuilder::build_with_a_few_roles_granted_to_account1(vec![SP::HideOwnPosts]).execute_with(|| {
+            assert_ok!(_create_default_post());
+
+            let space_update = space_update_with_permissions_override(
+                None, None, None, Some(space_permissions_override_without_hide_own_post())
+            );
+
+            assert_ok!(_update_space(None, None, Some(space_update)));
+            assert_ok!(_hide_post(None, None));
+            assert!(Posts::post_by_id(POST1).unwrap().hidden);
+        });
+    }
+
+    #[test]
+    fn hide_own_post_should_fail_when_account_has_no_permission_to_hide_own_posts() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            let space_update = space_update_with_permissions_override(
+                None, None, None, Some(space_permissions_override_without_hide_own_post())
+            );
+
+            assert_ok!(_update_space(None, None, Some(space_update)));
+            assert_noop!(_hide_post(None, None), PostsError::<TestRuntime>::NoPermissionToHideOwnPosts);
+        });
+    }
+
+    #[test]
     fn hide_comment_should_work_when_comment_has_parents() {
         ExtBuilder::build_with_comment().execute_with(|| {
             let first_comment_id: PostId = 2;
@@ -2618,29 +2676,15 @@ mod tests {
     #[test]
     fn hide_any_comment_should_work_when_one_of_roles_is_permitted() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyComment]).execute_with(|| {
-            assert_ok!(_create_default_post()); // PostId 1
+            assert_ok!(_create_default_post());
             assert_ok!(_create_default_comment()); // PostId 2
 
             assert_ok!(_hide_post(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(POST2)
-            ));
-        });
-    }
-
-    #[test]
-    fn hide_any_comment_should_fail_when_no_right_permission_in_account_roles() {
-        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyComment]).execute_with(|| {
-            assert_ok!(_create_default_post());
-            assert_ok!(_create_default_comment()); // PostId 2
-
-            assert_ok!(_delete_default_role());
-
-            // Post update with ID 1 should be fine
-            assert_noop!(_hide_post(
-                Some(Origin::signed(ACCOUNT2)),
                 Some(POST2),
-            ), PostsError::<TestRuntime>::NoPermissionToHideAnyComments);
+            ));
+
+            assert!(Posts::post_by_id(POST2).unwrap().hidden);
         });
     }
 
@@ -2649,43 +2693,25 @@ mod tests {
         ExtBuilder::build_with_comment().execute_with(|| {
             assert_noop!(_hide_post(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(POST2)
-            ), PostsError::<TestRuntime>::NoPermissionToHideAnyComments);
+                Some(POST2),
+            ), PostsError::<TestRuntime>::NoPermissionToHideAnyComment);
         });
     }
 
     #[test]
     fn hide_own_comment_should_work() {
         ExtBuilder::build_with_a_few_roles_granted_to_account1(vec![SP::HideOwnComments]).execute_with(|| {
-            assert_ok!(_create_default_post()); // PostId 1
-            assert_ok!(_create_default_comment()); // PostId 2
-
-            let space_update = space_update_with_permissions_override(
-                None, None, None, Some(space_permissions_override_without_hide_own_comments())
-            );
-
-            assert_ok!(_update_space(None, None, Some(space_update)));
-
-            assert_ok!(_hide_post(
-                None,
-                Some(POST2)
-            ));
-        });
-    }
-
-    #[test]
-    fn hide_own_comment_should_fail_when_no_right_permission_in_account_roles() {
-        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideOwnComments]).execute_with(|| {
             assert_ok!(_create_default_post());
             assert_ok!(_create_default_comment()); // PostId 2
 
-            assert_ok!(_delete_default_role());
+            let space_update = space_update_with_permissions_override(
+                None, None, None, Some(space_permissions_override_without_hide_own_comment())
+            );
 
-            // Post update with ID 1 should be fine
-            assert_noop!(_hide_post(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(POST2),
-            ), PostsError::<TestRuntime>::NoPermissionToHideAnyComments);
+            assert_ok!(_update_space(None, None, Some(space_update)));
+            assert_ok!(_hide_post(None, Some(POST2)));
+
+            assert!(Posts::post_by_id(POST2).unwrap().hidden);
         });
     }
 
@@ -2693,15 +2719,11 @@ mod tests {
     fn hide_own_comment_should_fail_when_account_has_no_permission_to_hide_own_comments() {
         ExtBuilder::build_with_comment().execute_with(|| {
             let space_update = space_update_with_permissions_override(
-                None, None, None, Some(space_permissions_override_without_hide_own_comments())
+                None, None, None, Some(space_permissions_override_without_hide_own_comment())
             );
 
             assert_ok!(_update_space(None, None, Some(space_update)));
-
-            assert_noop!(_hide_post(
-                None,
-                Some(POST2)
-            ), PostsError::<TestRuntime>::NoPermissionToHideOwnComments);
+            assert_noop!(_hide_post(None, Some(POST2)), PostsError::<TestRuntime>::NoPermissionToHideOwnComments);
         });
     }
 
