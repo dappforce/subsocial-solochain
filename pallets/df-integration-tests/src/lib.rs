@@ -2616,7 +2616,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_any_comment_should_work_when_one_of_roles_is_permitted() {
+    fn hide_any_comment_should_work_when_one_of_roles_is_permitted() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyComment]).execute_with(|| {
             assert_ok!(_create_default_post()); // PostId 1
             assert_ok!(_create_default_comment()); // PostId 2
@@ -2629,7 +2629,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_any_comment_should_fail_when_no_right_permission_in_account_roles() {
+    fn hide_any_comment_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyComment]).execute_with(|| {
             assert_ok!(_create_default_post());
             assert_ok!(_create_default_comment()); // PostId 2
@@ -2645,7 +2645,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_any_comment_should_fail_when_account_has_no_permission_to_hide_any_comments() {
+    fn hide_any_comment_should_fail_when_account_has_no_permission_to_hide_any_comments() {
         ExtBuilder::build_with_comment().execute_with(|| {
             assert_noop!(_hide_post(
                 Some(Origin::signed(ACCOUNT2)),
@@ -2655,7 +2655,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_own_comment_should_work() {
+    fn hide_own_comment_should_work() {
         ExtBuilder::build_with_a_few_roles_granted_to_account1(vec![SP::HideOwnComments]).execute_with(|| {
             assert_ok!(_create_default_post()); // PostId 1
             assert_ok!(_create_default_comment()); // PostId 2
@@ -2674,7 +2674,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_own_comment_should_fail_when_no_right_permission_in_account_roles() {
+    fn hide_own_comment_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideOwnComments]).execute_with(|| {
             assert_ok!(_create_default_post());
             assert_ok!(_create_default_comment()); // PostId 2
@@ -2690,7 +2690,7 @@ mod tests {
     }
 
     #[test]
-    fn hidden_own_comment_should_fail_when_account_has_no_permission_to_hide_own_comments() {
+    fn hide_own_comment_should_fail_when_account_has_no_permission_to_hide_own_comments() {
         ExtBuilder::build_with_comment().execute_with(|| {
             let space_update = space_update_with_permissions_override(
                 None, None, None, Some(space_permissions_override_without_hide_own_comments())
