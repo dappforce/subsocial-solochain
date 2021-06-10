@@ -256,7 +256,7 @@ decl_error! {
         /// User has no permission to hide posts of other users in this space.
         NoPermissionToHideAnyPost,
         /// User has no permission to hide comments of other users in this space.
-        NoPermissionToHideAnyComments,
+        NoPermissionToHideAnyComment,
         /// A post owner is not allowed to hide their own posts in this space.
         NoPermissionToHideOwnPosts,
         /// A comment owner is not allowed to hide their own comments in this space.

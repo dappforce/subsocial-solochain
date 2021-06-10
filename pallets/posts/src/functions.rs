@@ -263,7 +263,7 @@ impl<T: Trait> Module<T> {
                 Ok(get_variant_for_post_owner::<SpacePermission>(
                     is_owner, SpacePermission::HideOwnComments, Some(SpacePermission::HideAnyComment),
                 ).zip(get_variant_for_post_owner::<Error<T>>(
-                    is_owner, Error::<T>::NoPermissionToHideOwnComments, Some(Error::<T>::NoPermissionToHideAnyComments),
+                    is_owner, Error::<T>::NoPermissionToHideOwnComments, Some(Error::<T>::NoPermissionToHideAnyComment),
                 )).unwrap())
             },
                                             /* Execute if post */ &|is_owner| {
