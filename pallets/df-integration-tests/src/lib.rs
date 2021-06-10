@@ -330,6 +330,13 @@ mod tests {
             ext
         }
 
+        /// Custom ext configuration with SpaceId 1, PostId 1 (where `space_id: None`) and BlockNumber 1
+        pub fn build_with_post_moved_to_nowhere() -> TestExternalities {
+            let mut ext = Self::build_with_post();
+            ext.execute_with(|| { assert_ok!(_move_post_to_nowhere(POST1)); });
+            ext
+        }
+
         /// Custom ext configuration with SpaceId 1, PostId 1, PostId 2 (as comment) and BlockNumber 1
         pub fn build_with_comment() -> TestExternalities {
             let mut ext = Self::build();
@@ -361,26 +368,32 @@ mod tests {
             ext
         }
 
-        /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
-        pub fn build_with_a_few_roles_granted_to_account2(perms: Vec<SP>) -> TestExternalities {
-            let mut ext = Self::build_with_space();
-
-            ext.execute_with(|| {
-                let user = User::Account(ACCOUNT2);
-                assert_ok!(_create_role(
+        fn grant_roles_to_user(user: User<AccountId>, perms: Vec<SpacePermission>) {
+            assert_ok!(_create_role(
                     None,
                     None,
                     None,
                     None,
                     Some(perms)
                 ));
-                // RoleId 1
-                assert_ok!(_create_default_role()); // RoleId 2
+            // RoleId 1
+            assert_ok!(_create_default_role()); // RoleId 2
 
-                assert_ok!(_grant_role(None, Some(ROLE1), Some(vec![user.clone()])));
-                assert_ok!(_grant_role(None, Some(ROLE2), Some(vec![user])));
-            });
+            assert_ok!(_grant_role(None, Some(ROLE1), Some(vec![user.clone()])));
+            assert_ok!(_grant_role(None, Some(ROLE2), Some(vec![user])));
+        }
 
+        /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
+        pub fn build_with_a_few_roles_granted_to_account1(perms: Vec<SpacePermission>) -> TestExternalities {
+            let mut ext = Self::build_with_space();
+            ext.execute_with(|| Self::grant_roles_to_user(User::Account(ACCOUNT1), perms));
+            ext
+        }
+
+        /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
+        pub fn build_with_a_few_roles_granted_to_account2(perms: Vec<SpacePermission>) -> TestExternalities {
+            let mut ext = Self::build_with_space();
+            ext.execute_with(|| Self::grant_roles_to_user(User::Account(ACCOUNT2), perms));
             ext
         }
 
@@ -441,6 +454,37 @@ mod tests {
         space_update(Some(new_handle), None, None)
     }
 
+    fn space_permissions_override_without_hide_own_comments() -> Option<SpacePermissions> {
+        let SpacePermissions { everyone, .. } = DefaultSpacePermissions::get();
+
+        let new_everyone = everyone.map(|mut permission_set| {
+            permission_set.remove(&SP::HideOwnComments);
+            permission_set
+        });
+
+        Some(SpacePermissions {
+            none: None,
+            everyone: new_everyone,
+            follower: None,
+            space_owner: None,
+        })
+    }
+
+    fn space_update_with_permissions_override(
+        handle: Option<Option<Vec<u8>>>,
+        content: Option<Content>,
+        hidden: Option<bool>,
+        permissions: Option<Option<SpacePermissions>>,
+    ) -> SpaceUpdate {
+        SpaceUpdate {
+            parent_id: None,
+            handle,
+            content,
+            hidden,
+            permissions,
+        }
+    }
+
     fn space_update(
         handle: Option<Option<Vec<u8>>>,
         content: Option<Content>,
@@ -464,12 +508,11 @@ mod tests {
     }
 
     fn post_update(
-        space_id: Option<SpaceId>,
         content: Option<Content>,
         hidden: Option<bool>,
     ) -> PostUpdate {
         PostUpdate {
-            space_id,
+            space_id: None,
             content,
             hidden,
         }
@@ -654,8 +697,20 @@ mod tests {
         Posts::update_post(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             post_id.unwrap_or(POST1),
-            update.unwrap_or_else(|| post_update(None, None, None)),
+            update.unwrap_or_else(|| post_update(None, None)),
         )
+    }
+
+    fn _hide_post(origin: Option<Origin>, post_id: Option<PostId>) -> DispatchResult {
+        _update_post(origin, post_id, Some(post_update(None, Some(true))))
+    }
+    
+    fn _update_post_content(
+        origin: Option<Origin>,
+        post_id: Option<PostId>,
+        content: Option<Content>
+    ) -> DispatchResult {
+        _update_post(origin, post_id, Some(post_update(content, None)))
     }
 
     fn _move_post_1_to_space_2() -> DispatchResult {
@@ -709,7 +764,7 @@ mod tests {
             origin,
             Some(post_id.unwrap_or(POST2)),
             Some(update.unwrap_or_else(||
-                post_update(None, Some(reply_content_ipfs()), None))
+                post_update(Some(reply_content_ipfs()), None))
             ),
         )
     }
@@ -1156,16 +1211,10 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             block_content_in_space_1();
             assert_noop!(
-                _update_post(
+                _update_post_content(
                     None, // From ACCOUNT1 (has default permission to UpdateOwnPosts)
                     None,
-                    Some(
-                        post_update(
-                            None,
-                            Some(valid_content_ipfs()),
-                            Some(true)
-                        )
-                    )
+                    Some(valid_content_ipfs())
                 ), UtilsError::<TestRuntime>::ContentIsBlocked
             );
         });
@@ -1176,16 +1225,10 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             block_account_in_space_1();
             assert_noop!(
-                _update_post(
+                _update_post_content(
                     None, // From ACCOUNT1 (has default permission to UpdateOwnPosts)
                     None,
-                    Some(
-                        post_update(
-                            None,
-                            Some(valid_content_ipfs()),
-                            Some(true)
-                        )
-                    )
+                    Some(valid_content_ipfs())
                 ), UtilsError::<TestRuntime>::AccountIsBlocked
             );
         });
@@ -1920,18 +1963,13 @@ mod tests {
     fn update_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
             let expected_content_ipfs = updated_post_content();
+            let post_update = post_update(Some(expected_content_ipfs.clone()), Some(true));
 
             // Post update with ID 1 should be fine
             assert_ok!(_update_post(
                 None, // From ACCOUNT1 (has default permission to UpdateOwnPosts)
                 None,
-                Some(
-                    post_update(
-                        None,
-                        Some(expected_content_ipfs.clone()),
-                        Some(true)
-                    )
-                )
+                Some(post_update)
             ));
 
             // Check whether post updates correctly
@@ -1970,6 +2008,11 @@ mod tests {
         assert_eq!(new_space.posts_count, 1);
         assert_eq!(new_space.hidden_posts_count, if post.hidden { 1 } else { 0 });
         assert_eq!(new_space.score, post.score);
+
+        // Check that there are no posts ids in the old space
+        assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
+        // Check that there is the post id in the new space
+        assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
     }
 
     #[test]
@@ -1981,12 +2024,6 @@ mod tests {
             let old_space_id = SPACE1;
             let expected_new_space_id = SPACE2;
             check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
-
-            // Check that there are no posts ids in the old space
-            assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
-
-            // Check that there is the post id in the new space
-            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
         });
     }
 
@@ -2001,12 +2038,6 @@ mod tests {
             assert_ok!(_move_post_1_to_space_2());
 
             check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
-
-            // Check that there are no posts ids in the old space
-            assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
-
-            // Check that there is the post id in the new space
-            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
         });
     }
 
@@ -2018,15 +2049,7 @@ mod tests {
             let expected_new_space_id = SPACE2;
 
             // Hide the post before moving it
-            assert_ok!(_update_post(
-                None,
-                Some(moved_post_id),
-                Some(post_update(
-                    None,
-                    None,
-                    Some(true)
-                ))
-            ));
+            assert_ok!(_hide_post(None, Some(moved_post_id)));
 
             assert_ok!(_move_post_1_to_space_2());
 
@@ -2114,33 +2137,24 @@ mod tests {
     #[test]
     fn update_post_should_work_after_transfer_space_ownership() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let post_update = post_update(
-                None,
-                Some(updated_post_content()),
-                Some(true),
-            );
-
             assert_ok!(_transfer_default_space_ownership());
 
             // Post update with ID 1 should be fine
-            assert_ok!(_update_post(None, None, Some(post_update)));
+            assert_ok!(_update_post_content(None, None, Some(updated_post_content())));
         });
     }
 
     #[test]
     fn update_any_post_should_work_when_account_has_default_permission() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
-            let post_update = post_update(
-                None,
-                Some(updated_post_content()),
-                Some(true),
-            );
             assert_ok!(_create_post(
                 Some(Origin::signed(ACCOUNT2)),
                 None, // SpaceId 1
                 None, // RegularPost extension
                 None // Default post content
             )); // PostId 1
+
+            let post_update = post_update(Some(updated_post_content()), Some(true));
 
             // Post update with ID 1 should be fine
             assert_ok!(_update_post(
@@ -2154,19 +2168,24 @@ mod tests {
     #[test]
     fn update_any_post_should_work_when_one_of_roles_is_permitted() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
-            let post_update = post_update(
-                None,
-                Some(updated_post_content()),
-                Some(true),
-            );
             assert_ok!(_create_default_post()); // PostId 1
 
             // Post update with ID 1 should be fine
-            assert_ok!(_update_post(
+            assert_ok!(_update_post_content(
                 Some(Origin::signed(ACCOUNT2)),
                 Some(POST1),
-                Some(post_update)
+                Some(updated_post_content())
             ));
+        });
+    }
+
+    #[test]
+    fn hide_any_post_should_work_when_one_of_roles_is_permitted() {
+        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyPost]).execute_with(|| {
+            assert_ok!(_create_default_post()); // PostId 1
+
+            // Post update with ID 1 should be fine
+            assert_ok!(_hide_post(Some(Origin::signed(ACCOUNT2)), None));
         });
     }
 
@@ -2180,42 +2199,20 @@ mod tests {
 
     #[test]
     fn update_post_should_fail_when_post_not_found() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
-
+        ExtBuilder::build_with_space().execute_with(|| {
             // Try to catch an error updating a post with wrong post ID
-            assert_noop!(_update_post(
-                None,
-                Some(POST2),
-                Some(
-                    post_update(
-                        // FIXME: when Post's `space_id` update is fully implemented
-                        None/*Some(SPACE2)*/,
-                        None,
-                        Some(true)/*None*/
-                    )
-                )
-            ), PostsError::<TestRuntime>::PostNotFound);
+            assert_noop!(_hide_post(None, None), PostsError::<TestRuntime>::PostNotFound);
         });
     }
 
     #[test]
     fn update_post_should_fail_when_account_has_no_permission_to_update_any_post() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
-
             // Try to catch an error updating a post with different account
-            assert_noop!(_update_post(
+            assert_noop!(_update_post_content(
                 Some(Origin::signed(ACCOUNT2)),
                 None,
-                Some(
-                    post_update(
-                        // FIXME: when Post's `space_id` update is fully implemented
-                        None/*Some(SPACE2)*/,
-                        None,
-                        Some(true)/*None*/
-                    )
-                )
+                Some(updated_post_content()),
             ), PostsError::<TestRuntime>::NoPermissionToUpdateAnyPost);
         });
     }
@@ -2224,16 +2221,10 @@ mod tests {
     fn update_post_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_post().execute_with(|| {
             // Try to catch an error updating a post with invalid content
-            assert_noop!(_update_post(
+            assert_noop!(_update_post_content(
                 None,
                 None,
-                Some(
-                    post_update(
-                        None,
-                        Some(invalid_content_ipfs()),
-                        None
-                    )
-                )
+                Some(invalid_content_ipfs())
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -2241,21 +2232,37 @@ mod tests {
     #[test]
     fn update_post_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
-            let post_update = post_update(
-                None,
-                Some(updated_post_content()),
-                Some(true),
-            );
-            assert_ok!(_create_default_post());
-            // PostId 1
+            assert_ok!(_create_default_post()); // PostId 1
             assert_ok!(_delete_default_role());
 
             // Post update with ID 1 should be fine
-            assert_noop!(_update_post(
+            assert_noop!(_update_post_content(
                 Some(Origin::signed(ACCOUNT2)),
                 Some(POST1),
-                Some(post_update)
+                Some(updated_post_content())
             ), PostsError::<TestRuntime>::NoPermissionToUpdateAnyPost);
+        });
+    }
+
+    #[test]
+    fn update_post_without_space_should_work_when_account_is_post_owner() {
+        ExtBuilder::build_with_post_moved_to_nowhere().execute_with(|| {
+            assert_ok!(_update_post_content(
+                Some(Origin::signed(ACCOUNT1)),
+                Some(POST1),
+                Some(updated_post_content())
+            ));
+        });
+    }
+
+    #[test]
+    fn update_post_without_space_should_fail_when_account_not_post_owner() {
+        ExtBuilder::build_with_post_moved_to_nowhere().execute_with(|| {
+            assert_noop!(_update_post_content(
+                Some(Origin::signed(ACCOUNT2)),
+                Some(POST1),
+                Some(updated_post_content())
+            ), PostsError::<TestRuntime>::NotAPostOwner);
         });
     }
 
@@ -2508,12 +2515,7 @@ mod tests {
     #[test]
     fn create_comment_should_fail_when_trying_create_in_hidden_post_scope() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_update_post(
-                None,
-                None,
-                Some(post_update(None, None, Some(true)))
-            ));
-
+            assert_ok!(_hide_post(None, None));
             assert_noop!(_create_default_comment(), PostsError::<TestRuntime>::CannotCreateInHiddenScope);
         });
     }
@@ -2540,46 +2542,18 @@ mod tests {
     #[test]
     fn update_comment_should_work() {
         ExtBuilder::build_with_comment().execute_with(|| {
+            let post_update = post_update(Some(reply_content_ipfs()), Some(true));
+
             // Post update with ID 1 should be fine
-            assert_ok!(_update_comment(None, None, None));
+            assert_ok!(_update_comment(None, None, Some(post_update)));
 
             // Check whether post updates correctly
             let comment = Posts::post_by_id(POST2).unwrap();
             assert_eq!(comment.content, reply_content_ipfs());
+            assert!(comment.hidden);
 
             // Check whether history recorded correctly
             assert_eq!(PostHistory::edit_history(POST2)[0].old_data.content, Some(comment_content_ipfs()));
-        });
-    }
-
-    #[test]
-    fn update_comment_hidden_should_work_when_comment_has_parents() {
-        ExtBuilder::build_with_comment().execute_with(|| {
-            let first_comment_id: PostId = 2;
-            let penultimate_comment_id: PostId = 8;
-            let last_comment_id: PostId = 9;
-
-            for parent_id in first_comment_id..last_comment_id as PostId {
-                // last created = `last_comment_id`; last parent = `penultimate_comment_id`
-                assert_ok!(_create_comment(None, None, Some(Some(parent_id)), None));
-            }
-
-            assert_ok!(_update_comment(
-                None,
-                Some(last_comment_id),
-                Some(post_update(
-                    None,
-                    None,
-                    Some(true) // make comment hidden
-                ))
-            ));
-
-            for comment_id in first_comment_id..penultimate_comment_id as PostId {
-                let comment = Posts::post_by_id(comment_id).unwrap();
-                assert_eq!(comment.hidden_replies_count, 1);
-            }
-            let last_comment = Posts::post_by_id(last_comment_id).unwrap();
-            assert_eq!(last_comment.hidden_replies_count, 0);
         });
     }
 
@@ -2608,17 +2582,126 @@ mod tests {
     fn update_comment_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_comment().execute_with(|| {
             // Try to catch an error updating a comment with invalid content
-            assert_noop!(_update_comment(
+            assert_noop!(_update_post_content(
                 None,
                 None,
-                Some(
-                    post_update(
-                        None,
-                        Some(invalid_content_ipfs()),
-                        None
-                    )
-                )
+                Some(invalid_content_ipfs())
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
+        });
+    }
+
+    // Change hidden tests
+
+    #[test]
+    fn hide_comment_should_work_when_comment_has_parents() {
+        ExtBuilder::build_with_comment().execute_with(|| {
+            let first_comment_id: PostId = 2;
+            let penultimate_comment_id: PostId = 8;
+            let last_comment_id: PostId = 9;
+
+            for parent_id in first_comment_id..last_comment_id as PostId {
+                // last created = `last_comment_id`; last parent = `penultimate_comment_id`
+                assert_ok!(_create_comment(None, None, Some(Some(parent_id)), None));
+            }
+
+            assert_ok!(_hide_post(None, Some(last_comment_id)));
+
+            for comment_id in first_comment_id..penultimate_comment_id as PostId {
+                let comment = Posts::post_by_id(comment_id).unwrap();
+                assert_eq!(comment.hidden_replies_count, 1);
+            }
+            let last_comment = Posts::post_by_id(last_comment_id).unwrap();
+            assert_eq!(last_comment.hidden_replies_count, 0);
+        });
+    }
+
+    #[test]
+    fn hidden_any_comment_should_work_when_one_of_roles_is_permitted() {
+        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyComment]).execute_with(|| {
+            assert_ok!(_create_default_post()); // PostId 1
+            assert_ok!(_create_default_comment()); // PostId 2
+
+            assert_ok!(_hide_post(
+                Some(Origin::signed(ACCOUNT2)),
+                Some(POST2)
+            ));
+        });
+    }
+
+    #[test]
+    fn hidden_any_comment_should_fail_when_no_right_permission_in_account_roles() {
+        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideAnyComment]).execute_with(|| {
+            assert_ok!(_create_default_post());
+            assert_ok!(_create_default_comment()); // PostId 2
+
+            assert_ok!(_delete_default_role());
+
+            // Post update with ID 1 should be fine
+            assert_noop!(_hide_post(
+                Some(Origin::signed(ACCOUNT2)),
+                Some(POST2),
+            ), PostsError::<TestRuntime>::NoPermissionToHideAnyComments);
+        });
+    }
+
+    #[test]
+    fn hidden_any_comment_should_fail_when_account_has_no_permission_to_hide_any_comments() {
+        ExtBuilder::build_with_comment().execute_with(|| {
+            assert_noop!(_hide_post(
+                Some(Origin::signed(ACCOUNT2)),
+                Some(POST2)
+            ), PostsError::<TestRuntime>::NoPermissionToHideAnyComments);
+        });
+    }
+
+    #[test]
+    fn hidden_own_comment_should_work() {
+        ExtBuilder::build_with_a_few_roles_granted_to_account1(vec![SP::HideOwnComments]).execute_with(|| {
+            assert_ok!(_create_default_post()); // PostId 1
+            assert_ok!(_create_default_comment()); // PostId 2
+
+            let space_update = space_update_with_permissions_override(
+                None, None, None, Some(space_permissions_override_without_hide_own_comments())
+            );
+
+            assert_ok!(_update_space(None, None, Some(space_update)));
+
+            assert_ok!(_hide_post(
+                None,
+                Some(POST2)
+            ));
+        });
+    }
+
+    #[test]
+    fn hidden_own_comment_should_fail_when_no_right_permission_in_account_roles() {
+        ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::HideOwnComments]).execute_with(|| {
+            assert_ok!(_create_default_post());
+            assert_ok!(_create_default_comment()); // PostId 2
+
+            assert_ok!(_delete_default_role());
+
+            // Post update with ID 1 should be fine
+            assert_noop!(_hide_post(
+                Some(Origin::signed(ACCOUNT2)),
+                Some(POST2),
+            ), PostsError::<TestRuntime>::NoPermissionToHideAnyComments);
+        });
+    }
+
+    #[test]
+    fn hidden_own_comment_should_fail_when_account_has_no_permission_to_hide_own_comments() {
+        ExtBuilder::build_with_comment().execute_with(|| {
+            let space_update = space_update_with_permissions_override(
+                None, None, None, Some(space_permissions_override_without_hide_own_comments())
+            );
+
+            assert_ok!(_update_space(None, None, Some(space_update)));
+
+            assert_noop!(_hide_post(
+                None,
+                Some(POST2)
+            ), PostsError::<TestRuntime>::NoPermissionToHideOwnComments);
         });
     }
 
@@ -2707,14 +2790,8 @@ mod tests {
     #[test]
     fn create_post_reaction_should_fail_when_trying_to_react_on_hidden_post() {
         ExtBuilder::build_with_post().execute_with(|| {
-
             // Hide the post
-            assert_ok!(_update_post(
-                None,
-                None,
-                Some(post_update(None, None, Some(true)))
-            ));
-
+            assert_ok!(_hide_post(None, None));
             assert_noop!(_create_default_post_reaction(), ReactionsError::<TestRuntime>::CannotReactWhenPostHidden);
         });
     }
@@ -3185,7 +3262,7 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(Some(b"space2_handle".to_vec())),
+                Some(Some(space_handle_2())),
                 None,
                 None
             )); // SpaceId 2 by ACCOUNT2
@@ -3272,7 +3349,7 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(Some(b"space2_handle".to_vec())),
+                Some(Some(space_handle_2())),
                 None,
                 None
             )); // SpaceId 2 by ACCOUNT2
@@ -3311,7 +3388,7 @@ mod tests {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(Some(b"space2_handle".to_vec())),
+                Some(Some(space_handle_2())),
                 None,
                 None
             )); // SpaceId 2 by ACCOUNT2
@@ -3331,7 +3408,7 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(Some(b"space2_handle".to_vec())),
+                Some(Some(space_handle_2())),
                 None,
                 None
             )); // SpaceId 2 by ACCOUNT2
