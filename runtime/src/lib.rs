@@ -309,12 +309,15 @@ impl pallet_utility::Trait for Runtime {
 // Subsocial custom pallets go below:
 // ------------------------------------------------------------------------------------------------
 
+use pallet_rate_limiter::RateConfig;
+
 parameter_types! {
-  pub const RateConfigs: Vec<RateConfig<BlockNumber>> = RATE_CONFIGS;
+  pub RateConfigs: Vec<RateConfig<BlockNumber>> = RATE_CONFIGS.to_vec();
 }
 
 impl pallet_rate_limiter::Trait for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type RateConfigs = RateConfigs;
 }
 
