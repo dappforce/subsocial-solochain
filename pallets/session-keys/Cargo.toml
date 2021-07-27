@@ -38,7 +38,7 @@ pallet-utils = { default-features = false, path = '../utils' }
 # Substrate dependencies
 frame-support = { default-features = false, version = '2.0.1' }
 frame-system = { default-features = false, version = '2.0.1' }
-pallet-transaction-payment = { default-features = false, version = '2.0.1' }
+pallet-transaction-payment = { default-features = false, path = '../transaction-payment' }
 sp-runtime = { default-features = false, version = '2.0.1' }
 sp-std = { default-features = false, version = '2.0.1' }
 
