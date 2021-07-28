@@ -54,3 +54,13 @@ pub trait PermissionChecker {
     )
   }
 }
+
+pub trait OnFreeTransaction<AccountId> {
+  fn can_account_make_free_call(who: &AccountId) -> bool;
+}
+
+impl<AccountId> OnFreeTransaction<AccountId> for () {
+  fn can_account_make_free_call(_who: &AccountId) -> bool {
+    false
+  }
+}

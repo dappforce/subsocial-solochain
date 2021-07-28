@@ -19,11 +19,14 @@ use frame_support::{
     traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
-use sp_runtime::{RuntimeDebug, DispatchResult, traits::Dispatchable};
-// use sp_runtime::traits::{Saturating, Zero};
+use sp_runtime::{
+    RuntimeDebug, DispatchResult,
+    traits::Dispatchable,
+};
 use sp_std::{
     prelude::*,
 };
+use df_traits::OnFreeTransaction;
 
 // #[cfg(test)]
 // mod mock;
@@ -176,12 +179,14 @@ decl_module! {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Trait> OnFreeTransaction<T::AccountId> for Module<T> {
 
     // TODO Test
     /// This function can update stats of a corresponding window,
     /// if account is eligible to have a free call withing a given window.
     fn can_account_make_free_call(sender: &T::AccountId) -> bool {
+        if !Self::permitted_account(sender) { return false }
+
         let current_block = frame_system::Module::<T>::block_number();
         let windows = T::RateConfigs::get();
         let mut has_free_calls = false;
