@@ -185,8 +185,6 @@ impl<T: Trait> OnFreeTransaction<T::AccountId> for Module<T> {
     /// This function can update stats of a corresponding window,
     /// if account is eligible to have a free call withing a given window.
     fn can_account_make_free_call(sender: &T::AccountId) -> bool {
-        if !Self::permitted_account(sender) { return false }
-
         let current_block = frame_system::Module::<T>::block_number();
         let windows = T::RateConfigs::get();
         let mut has_free_calls = false;
