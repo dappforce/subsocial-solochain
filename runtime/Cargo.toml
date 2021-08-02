@@ -77,8 +77,8 @@ pallet-randomness-collective-flip = { default-features = false, version = '2.0.1
 pallet-scheduler = { default-features = false, version = '2.0.1' }
 pallet-sudo = { default-features = false, version = '2.0.1' }
 pallet-timestamp = { default-features = false, version = '2.0.1' }
-pallet-transaction-payment = { default-features = false, path = '../pallets/transaction-payment' }
-pallet-transaction-payment-rpc-runtime-api = { default-features = false, path = '../pallets/transaction-payment/rpc/runtime-api' }
+pallet-transaction-payment = { default-features = false, version = '2.0.1' }
+pallet-transaction-payment-rpc-runtime-api = { default-features = false, version = '2.0.1' }
 pallet-utility = { default-features = false, version = '2.0.1' }
 
 sp-api = { default-features = false, version = '2.0.1' }
