@@ -26,7 +26,7 @@ use sp_runtime::{
 use sp_std::{
     prelude::*,
 };
-use df_traits::OnFreeTransaction;
+use df_traits::{OnFreeTransaction, TrustHandler};
 
 // #[cfg(test)]
 // mod mock;
@@ -151,7 +151,7 @@ decl_module! {
         fn try_free_call(origin, call: Box<<T as Trait>::Call>) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin.clone())?;
 
-            if Self::can_account_make_free_call(&sender) {
+            if Self::can_account_make_free_call_and_update_stats(&sender) {
 
                 // Dispatch the call
                 let result = call.dispatch(origin);
@@ -179,14 +179,19 @@ decl_module! {
             }
         }
     }
-}
+impl <T: Trait> Module<T> {
+    fn update_account_stats(who: &T::AccountId, window_type: WindowType, stats: &mut ConsumerStats<T::BlockNumber>) {
+        stats.consumed_permits = stats.consumed_permits.saturating_add(1);
+        StatsByAccount::<T>::insert(who, window_type, stats);
+    }
 
-impl<T: Trait> OnFreeTransaction<T::AccountId> for Module<T> {
-
-    // TODO Test
     /// This function can update stats of a corresponding window,
     /// if account is eligible to have a free call withing a given window.
-    fn can_account_make_free_call(sender: &T::AccountId) -> bool {
+    fn can_account_make_free_call<F>(sender: &T::AccountId, update_stats: F) -> bool
+        where F: FnOnce(&T::AccountId, WindowType, &mut ConsumerStats<T::BlockNumber>) + Copy
+    {
+        if !T::TrustHandler::is_trusted_account(sender) { return false }
+
         let current_block = frame_system::Module::<T>::block_number();
         let windows = T::RateConfigs::get();
         let mut has_free_calls = false;
@@ -201,12 +206,12 @@ impl<T: Trait> OnFreeTransaction<T::AccountId> for Module<T> {
             let reset_stats = || { ConsumerStats::new(current_window) };
 
             // Get stats for this type of window
-            let stats = &mut StatsByAccount::<T>::get(&sender, window_type)
+            let mut stats = StatsByAccount::<T>::get(&sender, window_type)
                 .unwrap_or_else(reset_stats);
 
             // If this is a new window for the user, reset their consumed permits.
             if stats.last_window < current_window {
-                *stats = reset_stats();
+                stats = reset_stats();
             }
 
             // Check that the user has an available free call
@@ -215,11 +220,24 @@ impl<T: Trait> OnFreeTransaction<T::AccountId> for Module<T> {
             if !has_free_calls {
                 break;
             }
-            
-            stats.consumed_permits = stats.consumed_permits.saturating_add(1);
-            StatsByAccount::<T>::insert(&sender, window_type, stats);
+
+            update_stats(&sender, window_type, &mut stats);
         }
 
         has_free_calls
+    }
+
+    pub fn check_account_can_make_free_call(sender: &T::AccountId) -> bool {
+        Self::can_account_make_free_call(sender, |_, _, _| ())
+    }
+
+    pub fn can_account_make_free_call_and_update_stats(sender: &T::AccountId) -> bool {
+        Self::can_account_make_free_call(sender, Self::update_account_stats)
+    }
+}
+
+impl<T: Trait> OnFreeTransaction<T::AccountId> for Module<T> {
+    fn can_account_make_free_call(sender: &T::AccountId) -> bool {
+        Self::check_account_can_make_free_call(sender)
     }
 }
