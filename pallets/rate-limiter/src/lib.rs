@@ -15,7 +15,7 @@ use codec::{Decode, Encode};
 use frame_support::{
     decl_module, decl_storage, decl_event, decl_error, ensure, Parameter, IsSubType,
     weights::{Pays, GetDispatchInfo, DispatchClass},
-    traits::Get,
+    traits::{Filter, Get},
 };
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::{
@@ -86,6 +86,8 @@ pub trait Trait: system::Trait {
 
     /// The call type from the runtime which has all the calls available in your runtime.
     type Call: Parameter + GetDispatchInfo + Dispatchable<Origin=Self::Origin>;
+
+    type CallFilter: Filter<<Self as Trait>::Call>;
 
     // TODO Rename to RateLimitingWindows or SlidingWindows?
     type RateConfigs: Get<Vec<RateConfig<Self::BlockNumber>>>;
@@ -261,7 +263,8 @@ impl<T: Trait + Send + Sync> PrevalidateFreeCall<T> where
 
 #[repr(u8)]
 enum ValidityError {
-    UserNotPermitted = 0,
+    DisallowedCall = 0,
+    UserNotPermitted = 1,
 }
 
 impl From<ValidityError> for u8 {
@@ -295,8 +298,8 @@ impl<T: Trait + Send + Sync> SignedExtension for PrevalidateFreeCall<T> where
     ) -> TransactionValidity {
         if let Some(local_call) = call.is_sub_type() {
             if let Call::try_free_call(boxed_call) = local_call {
-                let e = InvalidTransaction::Custom(ValidityError::UserNotPermitted.into());
-                ensure!(T::TrustHandler::is_trusted_account(who), e);
+                ensure!(T::TrustHandler::is_trusted_account(who), InvalidTransaction::Custom(ValidityError::UserNotPermitted.into()));
+                ensure!(T::CallFilter::filter(boxed_call), InvalidTransaction::Custom(ValidityError::DisallowedCall.into()));
             }
         }
         Ok(ValidTransaction::default())

@@ -47,6 +47,7 @@ use frame_system::EnsureRoot;
 use pallet_permissions::SpacePermission;
 use pallet_posts::rpc::{FlatPost, FlatPostKind, RepliesByPostId};
 use pallet_profiles::rpc::FlatSocialAccount;
+use pallet_rate_limiter::RateConfig;
 use pallet_reactions::{
 	ReactionId,
 	ReactionKind,
@@ -309,7 +310,20 @@ impl pallet_utility::Trait for Runtime {
 // Subsocial custom pallets go below:
 // ------------------------------------------------------------------------------------------------
 
-use pallet_rate_limiter::RateConfig;
+pub struct RateLimiterCallsFilter;
+impl Default for RateLimiterCallsFilter { fn default() -> Self { Self } }
+impl Filter<Call> for RateLimiterCallsFilter {
+	fn filter(c: &Call) -> bool {
+		match *c {
+			Call::Spaces(..) => true,
+			Call::SpaceFollows(..) => true,
+			Call::ProfileFollows(..) => true,
+			Call::Posts(..) => true,
+			Call::Reactions(..) => true,
+			_ => false,
+		}
+	}
+}
 
 parameter_types! {
   pub RateConfigs: Vec<RateConfig<BlockNumber>> = RATE_CONFIGS.to_vec();
@@ -318,6 +332,7 @@ parameter_types! {
 impl pallet_rate_limiter::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type CallFilter = RateLimiterCallsFilter;
 	type RateConfigs = RateConfigs;
 	type TrustHandler = Trust;
 }
