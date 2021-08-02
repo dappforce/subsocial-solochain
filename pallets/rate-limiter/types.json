@@ -1,0 +1,12 @@
+{
+  "PermitUnit": "u16",
+  "WindowType": "u8",
+  "RateConfig": {
+    "period": "BlockNumber",
+    "max_permits": "PermitUnit"
+  },
+  "ConsumerStats": {
+    "last_window": "BlockNumber",
+    "consumed_permits": "PermitUnit"
+  }
+}
