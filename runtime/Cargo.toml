@@ -44,6 +44,7 @@ pallet-reactions = { default-features = false, path = '../pallets/reactions' }
 pallet-roles = { default-features = false, path = '../pallets/roles' }
 pallet-scores = { default-features = false, path = '../pallets/scores' }
 #pallet-session-keys = { default-features = false, path = '../pallets/session-keys' }
+pallet-trust = { default-features = false, path = '../pallets/trust' }
 
 pallet-space-follows = { default-features = false, path = '../pallets/space-follows' }
 pallet-space-history = { default-features = false, path = '../pallets/space-history' }
@@ -148,6 +149,7 @@ std = [
     'pallet-reactions/std',
     'pallet-roles/std',
     'pallet-scores/std',
+    'pallet-trust/std',
     'pallet-space-follows/std',
     'pallet-space-history/std',
     'pallet-space-ownership/std',

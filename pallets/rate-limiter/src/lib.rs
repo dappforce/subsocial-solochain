@@ -86,6 +86,8 @@ pub trait Trait: system::Trait {
 
     // TODO Rename to RateLimitingWindows or SlidingWindows?
     type RateConfigs: Get<Vec<RateConfig<Self::BlockNumber>>>;
+
+    type TrustHandler: TrustHandler<Self::AccountId>;
 }
 
 decl_event!(

@@ -64,3 +64,25 @@ impl<AccountId> OnFreeTransaction<AccountId> for () {
     false
   }
 }
+
+pub trait TrustHandler<AccountId> {
+  fn is_trusted_account(who: &AccountId) -> bool;
+
+  fn is_email_confirmed(who: &AccountId) -> bool;
+
+  fn is_phone_number_confirmed(who: &AccountId) -> bool;
+}
+
+impl<AccountId> TrustHandler<AccountId> for () {
+  fn is_trusted_account(_who: &AccountId) -> bool {
+    false
+  }
+
+  fn is_email_confirmed(_who: &AccountId) -> bool {
+    false
+  }
+
+  fn is_phone_number_confirmed(_who: &AccountId) -> bool {
+    false
+  }
+}

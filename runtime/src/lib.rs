@@ -319,6 +319,12 @@ impl pallet_rate_limiter::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type RateConfigs = RateConfigs;
+	type TrustHandler = Trust;
+}
+
+impl pallet_trust::Trait for Runtime {
+	type Event = Event;
+	type SetTrustLevel = EnsureRoot<AccountId>;
 }
 
 parameter_types! {
@@ -574,6 +580,7 @@ construct_runtime!(
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
 		RateLimiter: pallet_rate_limiter::{Module, Call, Storage, Event<T>},
+		Trust: pallet_trust::{Module, Call, Storage, Event<T>},
 		// SessionKeys: pallet_session_keys::{Module, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
