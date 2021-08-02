@@ -13,18 +13,21 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_module, decl_storage, decl_event, decl_error, Parameter,
-    weights::{Pays, GetDispatchInfo},
-    dispatch::DispatchResultWithPostInfo,
+    decl_module, decl_storage, decl_event, decl_error, ensure, Parameter, IsSubType,
+    weights::{Pays, GetDispatchInfo, DispatchClass},
     traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::{
     RuntimeDebug, DispatchResult,
-    traits::Dispatchable,
+    traits::{Dispatchable, DispatchInfoOf, SignedExtension},
+    transaction_validity::{
+        TransactionValidity, ValidTransaction, InvalidTransaction, TransactionValidityError,
+    },
 };
 use sp_std::{
     prelude::*,
+    fmt::Debug,
 };
 use df_traits::{OnFreeTransaction, TrustHandler};
 
@@ -44,7 +47,7 @@ pub type WindowType = u8;
 pub type PermitUnit = u16;
 
 // TODO maybe rename to TimeWindow WindowConfig SlidingWindow or RateLimitingWindow
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, PartialOrd, RuntimeDebug)]
 pub struct RateConfig<BlockNumber> {
 
     /// Duration of a period in the number of blocks.
@@ -142,13 +145,13 @@ decl_module! {
         #[weight = {
             let dispatch_info = call.get_dispatch_info();
             (
-                // TODO review reads / writes
-                dispatch_info.weight.saturating_add(T::DbWeight::get().reads_writes(3, 1)),
-                dispatch_info.class,
-                dispatch_info.pays_fee
+                // TODO: use benchmarking for setting a weight
+                dispatch_info.weight.saturating_add(T::DbWeight::get().reads_writes(2, 1)),
+                DispatchClass::Normal,
+                Pays::No,
             )
         }]
-        fn try_free_call(origin, call: Box<<T as Trait>::Call>) -> DispatchResultWithPostInfo {
+        fn try_free_call(origin, call: Box<<T as Trait>::Call>) -> DispatchResult {
             let sender = ensure_signed(origin.clone())?;
 
             if Self::can_account_make_free_call_and_update_stats(&sender) {
@@ -163,22 +166,13 @@ decl_module! {
                         result.map(|_| ()).map_err(|e| e.error),
                     )
                 );
-
-                // Make the tx feeless!
-                return Ok(Pays::No.into())
-            } else {
-                // They do not have enough feeless txs, so we charge them
-                // for the reads.
-
-                // TODO: This could be moved into a signed extension check to
-                // avoid charging them any fees at all in any situation.
-                let check_logic_weight = T::DbWeight::get().reads(3);
-
-                // Return the reduced weight
-                return Ok(Some(check_logic_weight).into())
             }
+
+            Ok(())
         }
     }
+}
+
 impl <T: Trait> Module<T> {
     fn update_account_stats(who: &T::AccountId, window_type: WindowType, stats: &mut ConsumerStats<T::BlockNumber>) {
         stats.consumed_permits = stats.consumed_permits.saturating_add(1);
@@ -233,6 +227,79 @@ impl <T: Trait> Module<T> {
 
     pub fn can_account_make_free_call_and_update_stats(sender: &T::AccountId) -> bool {
         Self::can_account_make_free_call(sender, Self::update_account_stats)
+    }
+}
+
+/// Validate `try_free_call` calls prior to execution. Needed to avoid a DoS attack since they are
+/// otherwise free to place on chain.
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct PrevalidateFreeCall<T: Trait + Send + Sync>(sp_std::marker::PhantomData<T>) where
+    <T as frame_system::Trait>::Call: IsSubType<Call<T>>;
+
+impl<T: Trait + Send + Sync> Debug for PrevalidateFreeCall<T> where
+    <T as frame_system::Trait>::Call: IsSubType<Call<T>>
+{
+    #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        write!(f, "PrevalidateFreeCall")
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        Ok(())
+    }
+}
+
+impl<T: Trait + Send + Sync> PrevalidateFreeCall<T> where
+    <T as frame_system::Trait>::Call: IsSubType<Call<T>>
+{
+    /// Create new `SignedExtension` to check runtime version.
+    pub fn new() -> Self {
+        Self(sp_std::marker::PhantomData)
+    }
+}
+
+#[repr(u8)]
+enum ValidityError {
+    UserNotPermitted = 0,
+}
+
+impl From<ValidityError> for u8 {
+    fn from(err: ValidityError) -> Self {
+        err as u8
+    }
+}
+
+impl<T: Trait + Send + Sync> SignedExtension for PrevalidateFreeCall<T> where
+    <T as frame_system::Trait>::Call: IsSubType<Call<T>>
+{
+    const IDENTIFIER: &'static str = "PrevalidateFreeCall";
+    type AccountId = T::AccountId;
+    type Call = <T as frame_system::Trait>::Call;
+    type AdditionalSigned = ();
+    type Pre = ();
+
+    fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+        Ok(())
+    }
+
+    /// <weight>
+    /// The weight of this logic is included in the `attest` dispatchable.
+    /// </weight>
+    fn validate(
+        &self,
+        who: &Self::AccountId,
+        call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> TransactionValidity {
+        if let Some(local_call) = call.is_sub_type() {
+            if let Call::try_free_call(boxed_call) = local_call {
+                let e = InvalidTransaction::Custom(ValidityError::UserNotPermitted.into());
+                ensure!(T::TrustHandler::is_trusted_account(who), e);
+            }
+        }
+        Ok(ValidTransaction::default())
     }
 }
 
