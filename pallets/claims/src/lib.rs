@@ -1,3 +1,7 @@
+//! # Token Claim Module for DOT/KSM holders
+//!
+//! Pallet that allows DOT and KSM holders from historical snapshots to claim some tokens.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
@@ -50,16 +54,16 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::storage]
-    #[pallet::getter(fn claim_by_account)]
-    pub(super) type ClaimedByAccount<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
+    #[pallet::getter(fn rewards_sender)]
+    pub(super) type RewardsSender<T: Config> = StorageValue<_, T::AccountId>;
 
     #[pallet::storage]
-    #[pallet::getter(fn eligible_claim_account)]
-    pub(super) type EligibleClaimAccounts<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, bool, ValueQuery>;
+    #[pallet::getter(fn eligible_account)]
+    pub(super) type EligibleAccounts<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, bool, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn rewards_account)]
-    pub(super) type RewardsAccount<T: Config> = StorageValue<_, T::AccountId>;
+    #[pallet::getter(fn tokens_claimed_by_account)]
+    pub(super) type TokensClaimedByAccount<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
 
     // Pallets use events to inform users when important changes are made.
     // https://substrate.dev/docs/en/knowledgebase/runtime/events
@@ -67,19 +71,20 @@ pub mod pallet {
     #[pallet::metadata(T::AccountId = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        Claimed(T::AccountId, BalanceOf<T>),
-        RewardsAccountAdded(T::AccountId),
+        RewardsSenderSet(T::AccountId),
+        RewardsSenderRemoved(),
         EligibleAccountsAdded(u16),
+        TokensClaimed(T::AccountId, BalanceOf<T>),
     }
 
     // Errors inform users that something went wrong.
     #[pallet::error]
     pub enum Error<T> {
-        TokensAlreadyClaimed,
+        NoRewardsSenderSet,
+        NoFreeBalanceOnRewardsSender,
+        AddingTooManyAccountsAtOnce,
         AccountNotEligible,
-        NoRewardsAccount,
-        NoFreeBalanceOnRewardsAccount,
-        ToManyAccounts,
+        TokensAlreadyClaimed,
     }
 
     #[pallet::hooks]
@@ -97,59 +102,59 @@ pub mod pallet {
 
             Self::prevalidate_tokens_claim(&who)?;
 
-            let rewards_account: T::AccountId;
+            let rewards_sender: T::AccountId;
 
-            if let Some(account) = Self::rewards_account() {
-                rewards_account = account;
+            if let Some(account) = Self::rewards_sender() {
+                rewards_sender = account;
             } else {
-                fail!(Error::<T>::NoRewardsAccount);
+                fail!(Error::<T>::NoRewardsSenderSet);
             }
 
             let amount = T::InitialClaimAmount::get();
 
-            <T as pallet_utils::Config>::Currency::transfer(&rewards_account, &who, amount, ExistenceRequirement::KeepAlive)?;
+            <T as pallet_utils::Config>::Currency::transfer(&rewards_sender, &who, amount, ExistenceRequirement::KeepAlive)?;
 
-            <ClaimedByAccount<T>>::insert(&who, amount);
+            <TokensClaimedByAccount<T>>::insert(&who, amount);
 
-            Self::deposit_event(Event::Claimed(who, amount));
+            Self::deposit_event(Event::TokensClaimed(who, amount));
             Ok(().into())
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-        pub fn set_rewards_account(origin: OriginFor<T>, reward_account_opt: Option<T::AccountId>) -> DispatchResultWithPostInfo {
+        pub fn set_rewards_sender(origin: OriginFor<T>, rewards_sender_opt: Option<T::AccountId>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            if let Some(reward_account) = reward_account_opt {
+            if let Some(rewards_sender) = rewards_sender_opt {
                 ensure!(
-                    T::Currency::free_balance(&reward_account) >=
+                    T::Currency::free_balance(&rewards_sender) >=
                     T::Currency::minimum_balance(),
-                    Error::<T>::NoFreeBalanceOnRewardsAccount
+                    Error::<T>::NoFreeBalanceOnRewardsSender
                  );
 
-                <RewardsAccount<T>>::put(&reward_account);
-                Self::deposit_event(Event::RewardsAccountAdded(reward_account));
-
+                <RewardsSender<T>>::put(&rewards_sender);
+                Self::deposit_event(Event::RewardsSenderSet(rewards_sender));
             } else {
-                <RewardsAccount<T>>::kill();
+                <RewardsSender<T>>::kill();
+                Self::deposit_event(Event::RewardsSenderRemoved());
             }
 
             Ok(().into())
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-        pub fn add_eligible_claim_accounts(origin: OriginFor<T>, eligible_claim_accounts: Vec<T::AccountId>) -> DispatchResultWithPostInfo {
+        pub fn add_eligible_accounts(origin: OriginFor<T>, eligible_accounts: Vec<T::AccountId>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let accounts_len = eligible_claim_accounts.len();
+            let accounts_len = eligible_accounts.len();
             let accounts_set_limit = T::AccountsSetLimit::get();
 
             ensure!(
                 accounts_len < accounts_set_limit.into(),
-                Error::<T>::ToManyAccounts
+                Error::<T>::AddingTooManyAccountsAtOnce
             );
 
-            for eligible_claim_account in eligible_claim_accounts {
-                <EligibleClaimAccounts<T>>::insert(&eligible_claim_account, true);
+            for eligible_account in eligible_accounts {
+                <EligibleAccounts<T>>::insert(&eligible_account, true);
             }
 
             Self::deposit_event(Event::EligibleAccountsAdded(accounts_len as u16));
@@ -158,9 +163,12 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+
+        // TODO maybe rename to `prevalidate_claim_tokens` ??
+
         pub(super) fn prevalidate_tokens_claim(who: &T::AccountId) -> DispatchResultWithPostInfo {
-            ensure!(Self::eligible_claim_account(who), Error::<T>::AccountNotEligible);
-            ensure!(Self::claim_by_account(who).is_zero(), Error::<T>::TokensAlreadyClaimed);
+            ensure!(Self::eligible_account(who), Error::<T>::AccountNotEligible);
+            ensure!(Self::tokens_claimed_by_account(who).is_zero(), Error::<T>::TokensAlreadyClaimed);
             Ok(().into())
         }
     }
@@ -169,6 +177,9 @@ pub mod pallet {
 /// Validate `tokens_claim` calls prior to execution. Needed to avoid a DoS attack since they are
 /// otherwise free to place on chain.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
+
+// TODO maybe rename to `PrevalidateClaimTokens` ??
+
 pub struct PrevalidateTokenClaim<T: Config + Send + Sync>(sp_std::marker::PhantomData<T>)
     where
         <T as frame_system::Config>::Call: IsSubType<Call<T>>;
@@ -217,6 +228,7 @@ impl<T: Config + Send + Sync> SignedExtension for PrevalidateTokenClaim<T>
     type Call = <T as frame_system::Config>::Call;
     type AdditionalSigned = ();
     type Pre = ();
+
     const IDENTIFIER: &'static str = "PrevalidateTokenClaim";
 
     fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
