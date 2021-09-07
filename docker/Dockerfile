@@ -1,31 +1,21 @@
-FROM phusion/baseimage:0.11 as builder
-LABEL maintainer "dappforce@pm.me"
+FROM paritytech/ci-linux:production as builder
+LABEL description="This is the build stage for Subsocial. Here we create the binary."
 
 WORKDIR /subsocial
 
 COPY . /subsocial
 
-RUN apt-get update && \
-	apt-get upgrade -y && \
-	apt-get install -y cmake pkg-config libssl-dev git clang
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
-        export PATH=$PATH:$HOME/.cargo/bin && \
-        scripts/init.sh && \
-        cargo build --release
+RUN cargo build --release
 
-FROM phusion/baseimage:0.11
-LABEL maintainer "dappforce@pm.me"
-
+FROM debian:buster-slim
+LABEL description="This is the 2nd stage: a very small image where we copy the Subsocial binary."
 COPY --from=builder /subsocial/target/release/subsocial-node /usr/local/bin
 
-RUN mv /usr/share/ca* /tmp && \
-	rm -rf /usr/share/*  && \
-	mv /tmp/ca-certificates /usr/share/ && \
-	rm -rf /usr/lib/python* && \
-	useradd -m -u 1000 -U -s /bin/sh -d /subsocial subsocial && \
-	mkdir -p /subsocial/.local/share/subsocial-node && \
-	chown -R subsocial:subsocial /subsocial/.local && \
-	ln -s /subsocial/.local/share/subsocial-node /data && \
+RUN useradd -m -u 1000 -U -s /bin/sh -d /subsocial subsocial && \
+	mkdir -p /subsocial/.local/share && \
+	mkdir /data && \
+	chown -R subsocial:subsocial /data && \
+	ln -s /data /subsocial/.local/share/subsocial-node && \
 	rm -rf /usr/bin /usr/sbin
 
 USER subsocial
