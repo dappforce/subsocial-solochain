@@ -4,7 +4,7 @@ use frame_support::dispatch::DispatchError;
 use pallet_permissions::SpacePermissionsContext;
 use pallet_spaces::Module as SpacesModule;
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 
   /// Check that there is a `Role` with such `role_id` in the storage
   /// or return`RoleNotFound` error.
@@ -123,7 +123,7 @@ impl<T: Trait> Module<T> {
   }
 }
 
-impl<T: Trait> Role<T> {
+impl<T: Config> Role<T> {
 
   pub fn new(
     created_by: T::AccountId,
@@ -187,7 +187,7 @@ impl<T: Trait> Role<T> {
   }
 }
 
-impl<T: Trait> PermissionChecker for Module<T> {
+impl<T: Config> PermissionChecker for Module<T> {
   type AccountId = T::AccountId;
 
   fn ensure_user_has_space_permission(

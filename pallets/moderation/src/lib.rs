@@ -60,7 +60,7 @@ pub enum EntityStatus {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Report<T: Trait> {
+pub struct Report<T: Config> {
     id: ReportId,
     created: WhoAndWhen<T>,
     /// An id of reported entity: account, space, post or IPFS CID.
@@ -73,7 +73,7 @@ pub struct Report<T: Trait> {
 
 // TODO rename to SuggestedEntityStatus
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct SuggestedStatus<T: Trait> {
+pub struct SuggestedStatus<T: Config> {
     /// An account id of a moderator who suggested this status.
     suggested: WhoAndWhen<T>,
     /// `None` if a moderator wants to signal that they have reviewed the entity,
@@ -96,14 +96,14 @@ pub struct SpaceModerationSettingsUpdate {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_posts::Trait
-    + pallet_spaces::Trait
-    + pallet_space_follows::Trait
-    + pallet_utils::Trait
+pub trait Config: system::Config
+    + pallet_posts::Config
+    + pallet_spaces::Config
+    + pallet_space_follows::Config
+    + pallet_utils::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     type DefaultAutoblockThreshold: Get<u16>;
 }
@@ -112,7 +112,7 @@ pub const FIRST_REPORT_ID: u64 = 1;
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as ModerationModule {
+    trait Store for Module<T: Config> as ModerationModule {
 
         /// The next moderation report id.
         pub NextReportId get(fn next_report_id): ReportId = FIRST_REPORT_ID;
@@ -160,8 +160,8 @@ decl_storage! {
 // The pallet's events
 decl_event!(
     pub enum Event<T> where
-        AccountId = <T as system::Trait>::AccountId,
-        EntityId = EntityId<<T as system::Trait>::AccountId>
+        AccountId = <T as system::Config>::AccountId,
+        EntityId = EntityId<<T as system::Config>::AccountId>
     {
         EntityReported(AccountId, SpaceId, EntityId, ReportId),
         EntityStatusSuggested(AccountId, SpaceId, EntityId, Option<EntityStatus>),
@@ -173,7 +173,7 @@ decl_event!(
 
 // The pallet's errors
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// The account has already reported this entity.
         AlreadyReportedEntity,
         /// The entity has no status in this space. Nothing to delete.
@@ -209,7 +209,7 @@ decl_error! {
 // The pallet's dispatchable functions.
 decl_module! {
     /// The module declaration.
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+    pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
         const DefaultAutoblockThreshold: u16 = T::DefaultAutoblockThreshold::get();
 

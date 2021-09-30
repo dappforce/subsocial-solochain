@@ -46,7 +46,7 @@ pub mod rpc;
 
 /// Information about a space's owner, its' content, visibility and custom permissions.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Space<T: Trait> {
+pub struct Space<T: Config> {
 
     /// Unique sequential identifier of a space. Examples of space ids: `1`, `2`, `3`, and so on.
     pub id: SpaceId,
@@ -98,7 +98,7 @@ pub struct SpaceUpdate {
 }
 
 type BalanceOf<T> =
-  <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+  <<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
 
 pub trait WeightInfo {
     fn create_space() -> Weight;
@@ -106,12 +106,12 @@ pub trait WeightInfo {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_utils::Trait
-    + pallet_permissions::Trait
+pub trait Config: system::Config
+    + pallet_utils::Config
+    + pallet_permissions::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     type Currency: ReservableCurrency<Self::AccountId>;
 
@@ -133,7 +133,7 @@ pub trait Trait: system::Trait
 }
 
 decl_error! {
-  pub enum Error for Module<T: Trait> {
+  pub enum Error for Module<T: Config> {
     /// Space was not found by id.
     SpaceNotFound,
     /// Space handle is not unique.
@@ -156,7 +156,7 @@ pub const RESERVED_SPACE_COUNT: u64 = 1000;
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as SpacesModule {
+    trait Store for Module<T: Config> as SpacesModule {
 
         /// The next space id.
         pub NextSpaceId get(fn next_space_id): SpaceId = RESERVED_SPACE_COUNT + 1;
@@ -188,7 +188,7 @@ decl_storage! {
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId,
+        <T as system::Config>::AccountId,
     {
         SpaceCreated(AccountId, SpaceId),
         SpaceUpdated(AccountId, SpaceId),
@@ -198,7 +198,7 @@ decl_event!(
 
 // The pallet's dispatchable functions.
 decl_module! {
-  pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+  pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
     const HandleDeposit: BalanceOf<T> = T::HandleDeposit::get();
 
@@ -362,7 +362,7 @@ decl_module! {
   }
 }
 
-impl<T: Trait> Space<T> {
+impl<T: Config> Space<T> {
     pub fn new(
         id: SpaceId,
         parent_id: Option<SpaceId>,
@@ -459,7 +459,7 @@ impl Default for SpaceUpdate {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 
     /// Check that there is a `Space` with such `space_id` in the storage
     /// or return`SpaceNotFound` error.
@@ -532,11 +532,11 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn reserve_handle_deposit(space_owner: &T::AccountId) -> DispatchResult {
-        <T as Trait>::Currency::reserve(space_owner, T::HandleDeposit::get())
+        <T as Config>::Currency::reserve(space_owner, T::HandleDeposit::get())
     }
 
     pub fn unreserve_handle_deposit(space_owner: &T::AccountId) -> BalanceOf<T> {
-        <T as Trait>::Currency::unreserve(space_owner, T::HandleDeposit::get())
+        <T as Config>::Currency::unreserve(space_owner, T::HandleDeposit::get())
     }
 
     /// This function will be performed only if a space has a handle.
@@ -547,7 +547,7 @@ impl<T: Trait> Module<T> {
         if space.handle.is_some() {
             let old_owner = &space.owner;
             Self::unreserve_handle_deposit(old_owner);
-            <T as Trait>::Currency::transfer(
+            <T as Config>::Currency::transfer(
                 old_owner,
                 new_owner,
                 T::HandleDeposit::get(),
@@ -592,7 +592,7 @@ impl<T: Trait> Module<T> {
                         // Change the current handle to a new one
 
                         // Validate data first
-                        let old_handle_lc = Utils::<T>::lowercase_handle(old_handle.clone());
+                        let old_handle_lc = Utils::<T>::lowercase_handle(old_handle);
                         let new_handle_lc = Self::lowercase_and_ensure_unique_handle(new_handle)?;
 
                         // Update storage once data is valid
@@ -602,12 +602,12 @@ impl<T: Trait> Module<T> {
                     }
                 } else {
                     // Unreserve the current handle
-                    Self::unreserve_handle(space, old_handle.clone())?;
+                    Self::unreserve_handle(space, old_handle)?;
                     is_handle_updated = true;
                 }
             } else if let Some(new_handle) = new_handle_opt {
                 // Reserve a handle for the space that has no handle yet
-                Self::reserve_handle(space, new_handle.clone())?;
+                Self::reserve_handle(space, new_handle)?;
                 is_handle_updated = true;
             }
         }
@@ -615,17 +615,17 @@ impl<T: Trait> Module<T> {
     }
 }
 
-pub trait BeforeSpaceCreated<T: Trait> {
+pub trait BeforeSpaceCreated<T: Config> {
     fn before_space_created(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
 }
 
-impl<T: Trait> BeforeSpaceCreated<T> for () {
+impl<T: Config> BeforeSpaceCreated<T> for () {
     fn before_space_created(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(10)]
-pub trait AfterSpaceUpdated<T: Trait> {
+pub trait AfterSpaceUpdated<T: Config> {
     fn after_space_updated(sender: T::AccountId, space: &Space<T>, old_data: SpaceUpdate);
 }

@@ -10,30 +10,30 @@ use pallet_utils::WhoAndWhen;
 use pallet_profiles::{Profile, ProfileUpdate, AfterProfileUpdated};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct ProfileHistoryRecord<T: Trait> {
+pub struct ProfileHistoryRecord<T: Config> {
     pub edited: WhoAndWhen<T>,
     pub old_data: ProfileUpdate,
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_utils::Trait
-    + pallet_profiles::Trait
+pub trait Config: system::Config
+    + pallet_utils::Config
+    + pallet_profiles::Config
 {}
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as ProfileHistoryModule {
+    trait Store for Module<T: Config> as ProfileHistoryModule {
         pub EditHistory get(fn edit_history):
             map hasher(blake2_128_concat) T::AccountId => Vec<ProfileHistoryRecord<T>>;
     }
 }
 
 decl_module! {
-  pub struct Module<T: Trait> for enum Call where origin: T::Origin {}
+  pub struct Module<T: Config> for enum Call where origin: T::Origin {}
 }
 
-impl<T: Trait> ProfileHistoryRecord<T> {
+impl<T: Config> ProfileHistoryRecord<T> {
     fn new(updated_by: T::AccountId, old_data: ProfileUpdate) -> Self {
         ProfileHistoryRecord {
             edited: WhoAndWhen::<T>::new(updated_by),
@@ -42,7 +42,7 @@ impl<T: Trait> ProfileHistoryRecord<T> {
     }
 }
 
-impl<T: Trait> AfterProfileUpdated<T> for Module<T> {
+impl<T: Config> AfterProfileUpdated<T> for Module<T> {
     fn after_profile_updated(sender: T::AccountId, _profile: &Profile<T>, old_data: ProfileUpdate) {
         <EditHistory<T>>::mutate(sender.clone(), |ids|
             ids.push(ProfileHistoryRecord::<T>::new(sender, old_data)));

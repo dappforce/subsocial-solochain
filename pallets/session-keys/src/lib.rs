@@ -17,7 +17,7 @@ use codec::{Decode, Encode};
 use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 use sp_runtime::traits::{Zero, Dispatchable, Saturating};
-use pallet_transaction_payment::Trait as TransactionPaymentTrait;
+use pallet_transaction_payment::Config as TransactionPaymentConfig;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure, fail,
     weights::{
@@ -41,33 +41,33 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-struct CalculateProxyWeight<T: Trait>(Box<<T as Trait>::Call>);
+struct CalculateProxyWeight<T: Config>(Box<<T as Config>::Call>);
 
-impl<T: Trait> WeighData<(&Box<<T as Trait>::Call>,)> for CalculateProxyWeight<T> {
-    fn weigh_data(&self, target: (&Box<<T as Trait>::Call>,)) -> Weight {
+impl<T: Config> WeighData<(&Box<<T as Config>::Call>,)> for CalculateProxyWeight<T> {
+    fn weigh_data(&self, target: (&Box<<T as Config>::Call>,)) -> Weight {
         target.0.get_dispatch_info().weight
     }
 }
 
-impl<T: Trait> ClassifyDispatch<(&Box<<T as Trait>::Call>,)> for CalculateProxyWeight<T> {
-    fn classify_dispatch(&self, _target: (&Box<<T as Trait>::Call>,)) -> DispatchClass {
+impl<T: Config> ClassifyDispatch<(&Box<<T as Config>::Call>,)> for CalculateProxyWeight<T> {
+    fn classify_dispatch(&self, _target: (&Box<<T as Config>::Call>,)) -> DispatchClass {
         DispatchClass::Normal
     }
 }
 
-impl<T: Trait> PaysFee<(&Box<<T as Trait>::Call>,)> for CalculateProxyWeight<T> {
-    fn pays_fee(&self, target: (&Box<<T as Trait>::Call>,)) -> Pays {
+impl<T: Config> PaysFee<(&Box<<T as Config>::Call>,)> for CalculateProxyWeight<T> {
+    fn pays_fee(&self, target: (&Box<<T as Config>::Call>,)) -> Pays {
         target.0.get_dispatch_info().pays_fee
     }
 }
 
 type BalanceOf<T> =
-    <<T as TransactionPaymentTrait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+    <<T as TransactionPaymentConfig>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 // TODO define session key permissions
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct SessionKey<T: Trait> {
+pub struct SessionKey<T: Config> {
     /// Who and when created this session key.
     pub created: WhoAndWhen<T>,
 
@@ -87,24 +87,24 @@ pub struct SessionKey<T: Trait> {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_utils::Trait
-    + pallet_transaction_payment::Trait
+pub trait Config: system::Config
+    + pallet_utils::Config
+    + pallet_transaction_payment::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     /// The overarching call type.
     type Call: Parameter
         + Dispatchable<Origin=Self::Origin, PostInfo=PostDispatchInfo>
         + GetDispatchInfo + From<frame_system::Call<Self>>
-        + IsType<<Self as frame_system::Trait>::Call>;
+        + IsType<<Self as frame_system::Config>::Call>;
 
     /// The maximum amount of session keys allowed for a single account.
     type MaxSessionKeysPerAccount: Get<u16>;
 
     /// Base Call filter for the session keys' proxy
-    type BaseFilter: Filter<<Self as Trait>::Call>;
+    type BaseFilter: Filter<<Self as Config>::Call>;
 
     /// The amount of money transferred to session key
     type BaseSessionKeyBond: Get<BalanceOf<Self>>;
@@ -112,7 +112,7 @@ pub trait Trait: system::Trait
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId
+        <T as system::Config>::AccountId
     {
         SessionKeyAdded(/* owner */ AccountId, /* session key */ AccountId),
         SessionKeyRemoved(/* session key */ AccountId),
@@ -123,7 +123,7 @@ decl_event!(
 );
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Session key details was not found by its account id.
         SessionKeyNotFound,
         /// Account already added as a session key.
@@ -145,7 +145,7 @@ decl_error! {
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as SessionKeysModule {
+    trait Store for Module<T: Config> as SessionKeysModule {
 
         /// Session key details by its account id (key).
         pub KeyDetails get(fn key_details):
@@ -167,7 +167,7 @@ decl_storage! {
 
 // The pallet's dispatchable functions.
 decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+    pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
         const MaxSessionKeysPerAccount: u16 = T::MaxSessionKeysPerAccount::get();
 
@@ -247,7 +247,7 @@ decl_module! {
 
         /// Execute the call by a session key (`origin`) on behalf of its owner.
         #[weight = CalculateProxyWeight::<T>(call.clone())]
-        fn proxy(origin, call: Box<<T as Trait>::Call>) -> DispatchResult {
+        fn proxy(origin, call: Box<<T as Config>::Call>) -> DispatchResult {
             let key = ensure_signed(origin)?;
 
             let mut details = Self::require_key(key.clone())?;
@@ -262,8 +262,8 @@ decl_module! {
 
             // TODO check that this call is among allowed calls per this account/session key.
             let mut origin: T::Origin = frame_system::RawOrigin::Signed(real.clone()).into();
-			origin.add_filter(move |c: &<T as frame_system::Trait>::Call| {
-				let c = <T as Trait>::Call::from_ref(c);
+			origin.add_filter(move |c: &<T as frame_system::Config>::Call| {
+				let c = <T as Config>::Call::from_ref(c);
 				T::BaseFilter::filter(c)
 			});
 
@@ -277,7 +277,7 @@ decl_module! {
                     ensure!(can_spend >= spent_on_call, Error::<T>::SessionKeyLimitReached);
                 }
 
-                <T as TransactionPaymentTrait>::Currency::transfer(&real, &key, spent_on_call, ExistenceRequirement::KeepAlive)?;
+                <T as TransactionPaymentConfig>::Currency::transfer(&real, &key, spent_on_call, ExistenceRequirement::KeepAlive)?;
 
                 // TODO: what if balance left is less than fees on the next call?
 
@@ -304,7 +304,7 @@ decl_module! {
     }
 }
 
-impl<T: Trait> SessionKey<T> {
+impl<T: Config> SessionKey<T> {
     pub fn new(
         created_by: T::AccountId,
         time_to_live: T::BlockNumber,
@@ -332,7 +332,7 @@ impl<T: Trait> SessionKey<T> {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 
     /// Get `SessionKey` details by `key_account` from the storage
     /// or return `SessionKeyNotFound` error.
@@ -361,18 +361,18 @@ impl<T: Trait> Module<T> {
         owner: &T::AccountId,
         amount: Option<BalanceOf<T>>
     ) -> DispatchResult {
-        <T as TransactionPaymentTrait>::Currency::transfer(
+        <T as TransactionPaymentConfig>::Currency::transfer(
             key_account,
             owner,
             amount.unwrap_or_else(||
-                <T as TransactionPaymentTrait>::Currency::free_balance(key_account)
+                <T as TransactionPaymentConfig>::Currency::free_balance(key_account)
             ),
             ExistenceRequirement::AllowDeath
         )
     }
 
     fn keep_session_alive(source: &T::AccountId, key_account: &T::AccountId) -> DispatchResult {
-        <T as TransactionPaymentTrait>::Currency::transfer(
+        <T as TransactionPaymentConfig>::Currency::transfer(
             source,
             key_account,
             T::BaseSessionKeyBond::get(),
@@ -380,7 +380,7 @@ impl<T: Trait> Module<T> {
         )
     }
 
-    fn get_extrinsic_fees(call: Box<<T as Trait>::Call>) -> BalanceOf<T> {
+    fn get_extrinsic_fees(call: Box<<T as Config>::Call>) -> BalanceOf<T> {
         let byte_fee = T::TransactionByteFee::get();
         let call_length = call.encode().len() as u32;
         let length_fee = BalanceOf::<T>::from(call_length).saturating_mul(byte_fee);

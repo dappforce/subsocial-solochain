@@ -7,7 +7,8 @@
 
 use std::sync::Arc;
 
-use subsocial_runtime::{opaque::Block, AccountId, Balance, Index, BlockNumber};
+use subsocial_runtime::opaque::Block;
+use subsocial_primitives::{AccountId, Balance, Index, BlockNumber};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
 use sp_block_builder::BlockBuilder;
@@ -95,7 +96,7 @@ pub fn create_full<C, P>(
     ));
 
     io.extend_with(
-        RolesApi::to_delegate(Roles::new(client.clone()),
+        RolesApi::to_delegate(Roles::new(client),
     ));
 
     io

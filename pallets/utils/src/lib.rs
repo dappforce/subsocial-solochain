@@ -31,14 +31,17 @@ pub mod rpc;
 pub type SpaceId = u64;
 pub type PostId = u64;
 
+pub const DEFAULT_MIN_HANDLE_LEN: u32 = 5;
+pub const DEFAULT_MAX_HANDLE_LEN: u32 = 50;
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct WhoAndWhen<T: Trait> {
+pub struct WhoAndWhen<T: Config> {
     pub account: T::AccountId,
     pub block: T::BlockNumber,
     pub time: T::Moment,
 }
 
-impl<T: Trait> WhoAndWhen<T> {
+impl<T: Config> WhoAndWhen<T> {
     pub fn new(account: T::AccountId) -> Self {
         WhoAndWhen {
             account,
@@ -56,7 +59,7 @@ pub enum User<AccountId> {
 
 impl<AccountId> User<AccountId> {
     pub fn maybe_account(self) -> Option<AccountId> {
-        return if let User::Account(account_id) = self {
+        if let User::Account(account_id) = self {
             Some(account_id)
         } else {
             None
@@ -64,7 +67,7 @@ impl<AccountId> User<AccountId> {
     }
 
     pub fn maybe_space(self) -> Option<SpaceId> {
-        return if let User::Space(space_id) = self {
+        if let User::Space(space_id) = self {
             Some(space_id)
         } else {
             None
@@ -81,14 +84,15 @@ pub enum Content {
     /// A raw vector of bytes.
     Raw(Vec<u8>),
     /// IPFS CID v0 of content.
+    #[allow(clippy::upper_case_acronyms)]
     IPFS(Vec<u8>),
     /// Hypercore protocol (former DAT) id of content.
     Hyper(Vec<u8>),
 }
 
-impl Into<Vec<u8>> for Content {
-    fn into(self) -> Vec<u8> {
-        match self {
+impl From<Content> for Vec<u8> {
+    fn from(content: Content) -> Vec<u8> {
+        match content {
             Content::None => vec![],
             Content::Raw(vec_u8) => vec_u8,
             Content::IPFS(vec_u8) => vec_u8,
@@ -117,14 +121,14 @@ impl Content {
     }
 }
 
-pub type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
 
-type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::NegativeImbalance;
+type NegativeImbalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
-pub trait Trait: system::Trait + pallet_timestamp::Trait
+pub trait Config: system::Config + pallet_timestamp::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
@@ -137,7 +141,7 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as UtilsModule {
+    trait Store for Module<T: Config> as UtilsModule {
         pub TreasuryAccount get(fn treasury_account) build(|config| config.treasury_account.clone()): T::AccountId;
     }
     add_extra_genesis {
@@ -153,7 +157,7 @@ decl_storage! {
 }
 
 decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+    pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
         const MinHandleLen: u32 = T::MinHandleLen::get();
 
@@ -168,7 +172,7 @@ decl_module! {
 }
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Account is blocked in a given space.
         AccountIsBlocked,
         /// Content is blocked in a given space.
@@ -224,7 +228,8 @@ pub fn bool_to_option(value: bool) -> Option<bool> {
     if value { Some(value) } else { None }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
+
     pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
             Content::None => Ok(()),
@@ -290,7 +295,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> OnUnbalanced<NegativeImbalanceOf<T>> for Module<T> {
+impl<T: Config> OnUnbalanced<NegativeImbalanceOf<T>> for Module<T> {
     fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<T>) {
         let numeric_amount = amount.peek();
         let treasury_account = TreasuryAccount::<T>::get();

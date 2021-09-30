@@ -8,7 +8,7 @@ use pallet_space_follows::Module as SpaceFollows;
 use pallet_spaces::Module as Spaces;
 use pallet_utils::{bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}, SpaceId};
 
-use crate::{Module, Post, PostExtension, FIRST_POST_ID, Trait};
+use crate::{Module, Post, PostExtension, FIRST_POST_ID, Config};
 pub type RepliesByPostId<AccountId, BlockNumber> = BTreeMap<PostId, Vec<FlatPost<AccountId, BlockNumber>>>;
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
@@ -95,7 +95,7 @@ pub enum FlatPostKind {
     SharedPost
 }
 
-impl<T: Trait> From<Post<T>> for FlatPostKind {
+impl<T: Config> From<Post<T>> for FlatPostKind {
     fn from(from: Post<T>) -> Self {
         match from.extension {
             PostExtension::RegularPost => { Self::RegularPost }
@@ -105,7 +105,7 @@ impl<T: Trait> From<Post<T>> for FlatPostKind {
     }
 }
 
-impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
     fn from(from: Post<T>) -> Self {
         let Post {
             id, created, updated, owner,
@@ -132,7 +132,7 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     fn get_posts_by_ids_with_filter<F: FnMut(&Post<T>) -> bool>(
         all_post_ids: Vec<PostId>,
         offset: u64,

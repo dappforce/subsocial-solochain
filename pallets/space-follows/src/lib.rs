@@ -27,13 +27,13 @@ pub trait WeightInfo {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_utils::Trait
-    + pallet_spaces::Trait
-    + pallet_profiles::Trait
+pub trait Config: system::Config
+    + pallet_utils::Config
+    + pallet_spaces::Config
+    + pallet_profiles::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     type BeforeSpaceFollowed: BeforeSpaceFollowed<Self>;
 
@@ -43,7 +43,7 @@ pub trait Trait: system::Trait
 }
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Social account was not found by id.
         SocialAccountNotFound,
         /// Account is already a space follower.
@@ -57,7 +57,7 @@ decl_error! {
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as SpaceFollowsModule {
+    trait Store for Module<T: Config> as SpaceFollowsModule {
         pub SpaceFollowers get(fn space_followers):
             map hasher(twox_64_concat) SpaceId => Vec<T::AccountId>;
 
@@ -71,7 +71,7 @@ decl_storage! {
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId,
+        <T as system::Config>::AccountId,
     {
         SpaceFollowed(/* follower */ AccountId, /* following */ SpaceId),
         SpaceUnfollowed(/* follower */ AccountId, /* unfollowing */ SpaceId),
@@ -80,7 +80,7 @@ decl_event!(
 
 // The pallet's dispatchable functions.
 decl_module! {
-  pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+  pub struct Module<T: Config> for enum Call where origin: T::Origin {
     // Initializing errors
     type Error = Error<T>;
 
@@ -115,7 +115,7 @@ decl_module! {
   }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
         space.inc_followers();
 
@@ -162,7 +162,7 @@ impl<T: Trait> SpaceFollowsProvider<T::AccountId> for Module<T> {
     }
 }
 
-impl<T: Trait> BeforeSpaceCreated<T> for Module<T> {
+impl<T: Config> BeforeSpaceCreated<T> for Module<T> {
     fn before_space_created(creator: T::AccountId, space: &mut Space<T>) -> DispatchResult {
         // Make a space creator the first follower of this space:
         Module::<T>::add_space_follower(creator, space)
@@ -170,22 +170,22 @@ impl<T: Trait> BeforeSpaceCreated<T> for Module<T> {
 }
 
 /// Handler that will be called right before the space is followed.
-pub trait BeforeSpaceFollowed<T: Trait> {
+pub trait BeforeSpaceFollowed<T: Config> {
     fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult;
 }
 
-impl<T: Trait> BeforeSpaceFollowed<T> for () {
+impl<T: Config> BeforeSpaceFollowed<T> for () {
     fn before_space_followed(_follower: T::AccountId, _follower_reputation: u32, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }
 }
 
 /// Handler that will be called right before the space is unfollowed.
-pub trait BeforeSpaceUnfollowed<T: Trait> {
+pub trait BeforeSpaceUnfollowed<T: Config> {
     fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
 }
 
-impl<T: Trait> BeforeSpaceUnfollowed<T> for () {
+impl<T: Config> BeforeSpaceUnfollowed<T> for () {
     fn before_space_unfollowed(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }

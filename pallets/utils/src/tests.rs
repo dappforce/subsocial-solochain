@@ -1,7 +1,5 @@
 use crate::{mock::*, remove_from_vec, log_2};
 
-use sp_std::iter::FromIterator;
-
 #[test]
 fn log_2_should_work() {
     ExtBuilder::build().execute_with(|| {
@@ -75,19 +73,19 @@ fn convert_users_vec_to_btree_set_should_work() {
 
         assert_eq!(
             _convert_users_vec_to_btree_set(vec![USER1]).ok().unwrap(),
-            UsersSet::from_iter(vec![USER1].into_iter())
+            vec![USER1].into_iter().collect()
         );
 
         // Duplicates should produce 1 unique element
         assert_eq!(
             _convert_users_vec_to_btree_set(vec![USER1, USER1, USER3]).ok().unwrap(),
-            UsersSet::from_iter(vec![USER1, USER3].into_iter())
+            vec![USER1, USER3].into_iter().collect()
         );
 
         // Randomly filled vec should produce sorted set
         assert_eq!(
             _convert_users_vec_to_btree_set(vec![USER3, USER1, USER3, USER2, USER1]).ok().unwrap(),
-            UsersSet::from_iter(vec![USER1, USER2, USER3].into_iter())
+            vec![USER1, USER2, USER3].into_iter().collect()
         );
     });
 }

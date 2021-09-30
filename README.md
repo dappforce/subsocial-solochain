@@ -96,3 +96,7 @@ cargo run -- \
 ```
 
 Additional CLI usage options are available and may be shown by running `cargo run -- --help`.
+
+## License
+
+Subsocial is [GPL 3.0](./LICENSE) licensed.

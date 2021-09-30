@@ -1,4 +1,4 @@
-use crate::{Module, Trait};
+use crate::{Module, Config};
 
 use sp_io::TestExternalities;
 use sp_core::H256;
@@ -18,10 +18,10 @@ use frame_support::traits::Currency;
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
 // TODO: replace with imported constants from Runtime
-pub const UNITS: Balance = 100_000_000_000;
-pub const DOLLARS: Balance = UNITS;            // 100_000_000_000
-pub const CENTS: Balance = DOLLARS / 100;      // 1_000_000_000
-pub const MILLICENTS: Balance = CENTS / 1_000; // 1_000_000
+pub const UNIT: Balance = 100_000_000_000;
+pub const DOLLAR: Balance = UNIT;            // 100_000_000_000
+pub const CENT: Balance = DOLLAR / 100;      // 1_000_000_000
+pub const MILLICENT: Balance = CENT / 1_000; // 1_000_000
 
 impl_outer_origin! {
 	pub enum Origin for Test {}
@@ -45,7 +45,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-impl system::Trait for Test {
+impl system::Config for Test {
     type BaseCallFilter = ();
     type Origin = Origin;
     type Call = Call;
@@ -73,12 +73,12 @@ impl system::Trait for Test {
     type SystemWeightInfo = ();
 }
 
-pub(crate) const EXISTENTIAL_DEPOSIT: Balance = 10 * CENTS;
+pub(crate) const EXISTENTIAL_DEPOSIT: Balance = 10 * CENT;
 parameter_types! {
     pub const ExistentialDeposit: u64 = EXISTENTIAL_DEPOSIT;
 }
 
-impl pallet_balances::Trait for Test {
+impl pallet_balances::Config for Test {
     type Balance = u64;
     type DustRemoval = ();
     type Event = ();
@@ -92,7 +92,7 @@ parameter_types! {
     pub const MinimumPeriod: u64 = 5;
 }
 
-impl pallet_timestamp::Trait for Test {
+impl pallet_timestamp::Config for Test {
     type Moment = u64;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
@@ -102,18 +102,18 @@ impl pallet_timestamp::Trait for Test {
 // TODO export to a common place
 parameter_types! {
   pub const IpfsCidLen: u32 = 46;
-  pub const MinHandleLen: u32 = 5;
-  pub const MaxHandleLen: u32 = 50;
+  pub const MinHandleLen: u32 = DEFAULT_MIN_HANDLE_LEN;
+  pub const MaxHandleLen: u32 = DEFAULT_MAX_HANDLE_LEN;
 }
 
-impl pallet_utils::Trait for Test {
+impl pallet_utils::Config for Test {
     type Event = ();
     type Currency = Balances;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
 }
 
-impl pallet_profile_follows::Trait for Test {
+impl pallet_profile_follows::Config for Test {
     type Event = ();
     type BeforeAccountFollowed = ();
     type BeforeAccountUnfollowed = ();
@@ -122,7 +122,7 @@ impl pallet_profile_follows::Trait for Test {
 
 parameter_types! {}
 
-impl pallet_profiles::Trait for Test {
+impl pallet_profiles::Config for Test {
     type Event = ();
     type AfterProfileUpdated = ();
     type WeightInfo = ();
@@ -130,13 +130,13 @@ impl pallet_profiles::Trait for Test {
 
 // TODO export to a common place
 parameter_types! {
-	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
+	pub const TransactionByteFee: Balance = 10 * MILLICENT;
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
 }
 
-impl pallet_transaction_payment::Trait for Test {
+impl pallet_transaction_payment::Config for Test {
     type Currency = Balances;
     type OnTransactionPayment = ();
     type TransactionByteFee = TransactionByteFee;
@@ -150,7 +150,7 @@ parameter_types! {
     pub const BaseSessionKeyBond: Balance = DEFAULT_SESSION_KEY_BALANCE;
 }
 
-impl Trait for Test {
+impl Config for Test {
     type Event = ();
     type Call = Call;
     type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
@@ -190,7 +190,7 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
 
-            Balances::make_free_balance_be(&ACCOUNT_MAIN, 10 * DOLLARS);
+            Balances::make_free_balance_be(&ACCOUNT_MAIN, 10 * DOLLAR);
         });
 
         ext
@@ -202,7 +202,7 @@ pub(crate) const ACCOUNT_PROXY: AccountId = 2;
 pub(crate) const ACCOUNT3: AccountId = 3;
 pub(crate) const ACCOUNT4: AccountId = 4;
 
-pub(crate) const DEFAULT_SESSION_KEY_BALANCE: Balance = 1 * DOLLARS;
+pub(crate) const DEFAULT_SESSION_KEY_BALANCE: Balance = DOLLAR;
 pub(crate) const BLOCKS_TO_LIVE: BlockNumber = 20;
 
 pub(crate) const fn follow_account_proxy_call() -> Call {
@@ -263,6 +263,8 @@ pub(crate) fn _proxy(
 ) -> DispatchResult {
     SessionKeys::proxy(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT_PROXY)),
-        Box::new(call.unwrap_or(follow_account_proxy_call())),
+        Box::new(
+            call.unwrap_or_else(follow_account_proxy_call)
+        ),
     )
 }

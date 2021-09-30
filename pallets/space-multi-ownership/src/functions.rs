@@ -3,7 +3,7 @@ use super::*;
 use sp_std::collections::btree_set::BTreeSet;
 use frame_support::{dispatch::DispatchResult};
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 
   pub fn update_space_owners(who: T::AccountId, mut space_owners: SpaceOwners<T>, change: Change<T>) -> DispatchResult {
     let space_id = space_owners.space_id;

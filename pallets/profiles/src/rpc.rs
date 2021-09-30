@@ -7,7 +7,7 @@ use pallet_utils::rpc::{FlatContent, FlatWhoAndWhen};
 
 use frame_system::Module as SystemModule;
 
-use crate::{Module, Profile, SocialAccount, Trait};
+use crate::{Module, Profile, SocialAccount, Config};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -31,7 +31,7 @@ pub struct FlatSocialAccount<AccountId, BlockNumber> {
     pub profile: Option<FlatProfile<AccountId, BlockNumber>>,
 }
 
-impl<T: Trait> From<Profile<T>> for FlatProfile<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<Profile<T>> for FlatProfile<T::AccountId, T::BlockNumber> {
     fn from(from: Profile<T>) -> Self {
         let Profile { created, updated, content } = from;
 
@@ -42,7 +42,7 @@ impl<T: Trait> From<Profile<T>> for FlatProfile<T::AccountId, T::BlockNumber> {
     }
 }
 
-impl<T: Trait> From<SocialAccount<T>> for FlatSocialAccount<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<SocialAccount<T>> for FlatSocialAccount<T::AccountId, T::BlockNumber> {
     fn from(from: SocialAccount<T>) -> Self {
         let SocialAccount {
             followers_count, following_accounts_count, following_spaces_count, reputation, profile
@@ -59,7 +59,7 @@ impl<T: Trait> From<SocialAccount<T>> for FlatSocialAccount<T::AccountId, T::Blo
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn get_social_accounts_by_ids(
         account_ids: Vec<T::AccountId>
     ) -> Vec<FlatSocialAccount<T::AccountId, T::BlockNumber>> {

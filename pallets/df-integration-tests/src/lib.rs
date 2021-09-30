@@ -1,21 +1,21 @@
 #[cfg(test)]
 mod tests {
-    use frame_support::{
-        assert_ok, assert_noop,
-        impl_outer_origin, parameter_types,
-        weights::Weight,
-        dispatch::DispatchResult,
-        storage::StorageMap,
-    };
     use sp_core::H256;
     use sp_io::TestExternalities;
+
     use sp_runtime::{
         traits::{BlakeTwo256, IdentityLookup, Zero},
         testing::Header,
-        Perbill,
         Storage,
     };
-    use frame_system::{self as system};
+
+    use frame_support::{
+        assert_ok, assert_noop,
+        parameter_types,
+        dispatch::DispatchResult,
+        storage::StorageMap,
+    };
+    use frame_system as system;
 
     use pallet_permissions::{
         SpacePermission,
@@ -33,57 +33,75 @@ mod tests {
     use pallet_moderation::{EntityId, EntityStatus, ReportId};
     use pallet_utils::{
         mock_functions::*,
-        Error as UtilsError, Module as Utils,
+        DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN,
+        Error as UtilsError,
         SpaceId, PostId, User, Content,
     };
 
-    impl_outer_origin! {
-        pub enum Origin for TestRuntime {}
-    }
+    type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
+    type Block = frame_system::mocking::MockBlock<TestRuntime>;
 
-    #[derive(Clone, Eq, PartialEq)]
-    pub struct TestRuntime;
+    frame_support::construct_runtime!(
+        pub enum TestRuntime where
+            Block = Block,
+            NodeBlock = Block,
+            UncheckedExtrinsic = UncheckedExtrinsic,
+        {
+            System: system::{Module, Call, Config, Storage, Event<T>},
+            Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+            Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+            Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+            Permissions: pallet_permissions::{Module, Call},
+            Posts: pallet_posts::{Module, Call, Storage, Event<T>},
+            PostHistory: pallet_post_history::{Module, Storage},
+            ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
+            Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
+            ProfileHistory: pallet_profile_history::{Module, Storage},
+            Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},
+            Roles: pallet_roles::{Module, Call, Storage, Event<T>},
+            Scores: pallet_scores::{Module, Call, Storage, Event<T>},
+            SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
+            SpaceHistory: pallet_space_history::{Module, Storage},
+            SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
+            Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
+            Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+        }
+    );
 
     parameter_types! {
         pub const BlockHashCount: u64 = 250;
-        pub const MaximumBlockWeight: Weight = 1024;
-        pub const MaximumBlockLength: u32 = 2 * 1024;
-        pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
 
-    impl system::Trait for TestRuntime {
+    impl system::Config for TestRuntime {
         type BaseCallFilter = ();
+        type BlockWeights = ();
+        type BlockLength = ();
         type Origin = Origin;
-        type Call = ();
+        type Call = Call;
         type Index = u64;
-        type BlockNumber = u64;
+        type BlockNumber = BlockNumber;
         type Hash = H256;
         type Hashing = BlakeTwo256;
-        type AccountId = u64;
+        type AccountId = AccountId;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
-        type Event = ();
+        type Event = Event;
         type BlockHashCount = BlockHashCount;
-        type MaximumBlockWeight = MaximumBlockWeight;
         type DbWeight = ();
-        type BlockExecutionWeight = ();
-        type ExtrinsicBaseWeight = ();
-        type MaximumExtrinsicWeight = MaximumBlockWeight;
-        type MaximumBlockLength = MaximumBlockLength;
-        type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
-        type PalletInfo = ();
+        type PalletInfo = PalletInfo;
         type AccountData = pallet_balances::AccountData<u64>;
         type OnNewAccount = ();
         type OnKilledAccount = ();
         type SystemWeightInfo = ();
+        type SS58Prefix = ();
     }
 
     parameter_types! {
         pub const MinimumPeriod: u64 = 5;
     }
 
-    impl pallet_timestamp::Trait for TestRuntime {
+    impl pallet_timestamp::Config for TestRuntime {
         type Moment = u64;
         type OnTimestampSet = ();
         type MinimumPeriod = MinimumPeriod;
@@ -94,10 +112,10 @@ mod tests {
         pub const ExistentialDeposit: u64 = 1;
     }
 
-    impl pallet_balances::Trait for TestRuntime {
+    impl pallet_balances::Config for TestRuntime {
         type Balance = u64;
         type DustRemoval = ();
-        type Event = ();
+        type Event = Event;
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
         type WeightInfo = ();
@@ -105,12 +123,12 @@ mod tests {
     }
 
     parameter_types! {
-      pub const MinHandleLen: u32 = 5;
-      pub const MaxHandleLen: u32 = 50;
+      pub const MinHandleLen: u32 = DEFAULT_MIN_HANDLE_LEN;
+      pub const MaxHandleLen: u32 = DEFAULT_MAX_HANDLE_LEN;
     }
 
-    impl pallet_utils::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_utils::Config for TestRuntime {
+        type Event = Event;
         type Currency = Balances;
         type MinHandleLen = MinHandleLen;
         type MaxHandleLen = MaxHandleLen;
@@ -118,7 +136,7 @@ mod tests {
 
     use pallet_permissions::default_permissions::DefaultSpacePermissions;
 
-    impl pallet_permissions::Trait for TestRuntime {
+    impl pallet_permissions::Config for TestRuntime {
         type DefaultSpacePermissions = DefaultSpacePermissions;
     }
 
@@ -126,8 +144,8 @@ mod tests {
         pub const MaxCommentDepth: u32 = 10;
     }
 
-    impl pallet_posts::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_posts::Config for TestRuntime {
+        type Event = Event;
         type MaxCommentDepth = MaxCommentDepth;
         type PostScores = Scores;
         type AfterPostUpdated = PostHistory;
@@ -137,12 +155,12 @@ mod tests {
 
     parameter_types! {}
 
-    impl pallet_post_history::Trait for TestRuntime {}
+    impl pallet_post_history::Config for TestRuntime {}
 
     parameter_types! {}
 
-    impl pallet_profile_follows::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_profile_follows::Config for TestRuntime {
+        type Event = Event;
         type BeforeAccountFollowed = Scores;
         type BeforeAccountUnfollowed = Scores;
         type WeightInfo = ();
@@ -150,20 +168,20 @@ mod tests {
 
     parameter_types! {}
 
-    impl pallet_profiles::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_profiles::Config for TestRuntime {
+        type Event = Event;
         type AfterProfileUpdated = ProfileHistory;
         type WeightInfo = ();
     }
 
     parameter_types! {}
 
-    impl pallet_profile_history::Trait for TestRuntime {}
+    impl pallet_profile_history::Config for TestRuntime {}
 
     parameter_types! {}
 
-    impl pallet_reactions::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_reactions::Config for TestRuntime {
+        type Event = Event;
         type PostReactionScores = Scores;
         type WeightInfo = ();
     }
@@ -172,8 +190,8 @@ mod tests {
         pub const MaxUsersToProcessPerDeleteRole: u16 = 40;
     }
 
-    impl pallet_roles::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_roles::Config for TestRuntime {
+        type Event = Event;
         type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
@@ -194,8 +212,8 @@ mod tests {
         pub const DownvoteCommentActionWeight: i16 = -2;
     }
 
-    impl pallet_scores::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_scores::Config for TestRuntime {
+        type Event = Event;
 
         type FollowSpaceActionWeight = FollowSpaceActionWeight;
         type FollowAccountActionWeight = FollowAccountActionWeight;
@@ -212,8 +230,8 @@ mod tests {
 
     parameter_types! {}
 
-    impl pallet_space_follows::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_space_follows::Config for TestRuntime {
+        type Event = Event;
         type BeforeSpaceFollowed = Scores;
         type BeforeSpaceUnfollowed = Scores;
         type WeightInfo = ();
@@ -221,15 +239,15 @@ mod tests {
 
     parameter_types! {}
 
-    impl pallet_space_ownership::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_space_ownership::Config for TestRuntime {
+        type Event = Event;
         type WeightInfo = ();
     }
 
     const HANDLE_DEPOSIT: u64 = 0;
 
-    impl pallet_spaces::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_spaces::Config for TestRuntime {
+        type Event = Event;
         type Currency = Balances;
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
@@ -243,35 +261,18 @@ mod tests {
 
     parameter_types! {}
 
-    impl pallet_space_history::Trait for TestRuntime {}
+    impl pallet_space_history::Config for TestRuntime {}
 
     parameter_types! {
         pub const DefaultAutoblockThreshold: u16 = 20;
     }
 
-    impl pallet_moderation::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_moderation::Config for TestRuntime {
+        type Event = Event;
         type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
     }
 
-    type System = system::Module<TestRuntime>;
-    type Balances = pallet_balances::Module<TestRuntime>;
-
-    type Posts = pallet_posts::Module<TestRuntime>;
-    type PostHistory = pallet_post_history::Module<TestRuntime>;
-    type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;
-    type Profiles = pallet_profiles::Module<TestRuntime>;
-    type ProfileHistory = pallet_profile_history::Module<TestRuntime>;
-    type Reactions = pallet_reactions::Module<TestRuntime>;
-    type Roles = pallet_roles::Module<TestRuntime>;
-    type Scores = pallet_scores::Module<TestRuntime>;
-    type SpaceFollows = pallet_space_follows::Module<TestRuntime>;
-    type SpaceHistory = pallet_space_history::Module<TestRuntime>;
-    type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
-    type Spaces = pallet_spaces::Module<TestRuntime>;
-    type Moderation = pallet_moderation::Module<TestRuntime>;
-
-    pub type AccountId = u64;
+    type AccountId = u64;
     type BlockNumber = u64;
 
 
@@ -325,28 +326,28 @@ mod tests {
         /// Custom ext configuration with SpaceId 1 and BlockNumber 1
         pub fn build_with_space() -> TestExternalities {
             let mut ext = Self::build();
-            ext.execute_with(|| Self::add_default_space());
+            ext.execute_with(Self::add_default_space);
             ext
         }
 
         /// Custom ext configuration with SpaceId 1, PostId 1 and BlockNumber 1
         pub fn build_with_post() -> TestExternalities {
             let mut ext = Self::build();
-            ext.execute_with(|| Self::add_post());
+            ext.execute_with(Self::add_post);
             ext
         }
 
         /// Custom ext configuration with SpaceId 1, PostId 1, PostId 2 (as comment) and BlockNumber 1
         pub fn build_with_comment() -> TestExternalities {
             let mut ext = Self::build();
-            ext.execute_with(|| Self::add_comment());
+            ext.execute_with(Self::add_comment);
             ext
         }
 
         /// Custom ext configuration with SpaceId 1-2, PostId 1 where BlockNumber 1
         pub fn build_with_post_and_two_spaces() -> TestExternalities {
             let mut ext = Self::build_with_post();
-            ext.execute_with(|| Self::add_space_with_no_handle());
+            ext.execute_with(Self::add_space_with_no_handle);
             ext
         }
 
@@ -421,7 +422,7 @@ mod tests {
 
     /// Lowercase a handle and then try to find a space id by it.
     fn find_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
-        let lc_handle = Utils::<TestRuntime>::lowercase_handle(handle);
+        let lc_handle = Utils::lowercase_handle(handle);
         Spaces::space_id_by_handle(lc_handle)
     }
 
@@ -991,7 +992,7 @@ mod tests {
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             entity.unwrap_or(EntityId::Post(POST1)),
             scope.unwrap_or(SPACE1),
-            reason.unwrap_or_else(|| valid_content_ipfs()),
+            reason.unwrap_or_else(valid_content_ipfs),
         )
     }
 
@@ -2529,7 +2530,7 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_comment(None, None, Some(None), None)); // PostId 2
 
-            for parent_id in 2..11 as PostId {
+            for parent_id in 2..11_u64 {
                 assert_ok!(_create_comment(None, None, Some(Some(parent_id)), None)); // PostId N (last = 10)
             }
 

@@ -1,70 +1,78 @@
-use crate::{Module, Trait, EntityId, EntityStatus, ReportId, SpaceModerationSettingsUpdate};
-use sp_core::H256;
-use frame_support::{
-    impl_outer_origin, parameter_types, assert_ok, StorageMap,
-    weights::Weight,
-    dispatch::{DispatchResult},
-};
-use sp_runtime::{
-    traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
-};
+use super::*;
 
-use frame_system as system;
+use sp_core::H256;
 use sp_io::TestExternalities;
 
-use pallet_utils::{Content, SpaceId, PostId};
-use pallet_spaces::{RESERVED_SPACE_COUNT, SpaceById};
+use sp_runtime::{
+    traits::{BlakeTwo256, IdentityLookup}, testing::Header,
+};
+use frame_support::{parameter_types, assert_ok, StorageMap, dispatch::DispatchResult};
+use frame_system as system;
+
+use crate as moderation;
+
 use pallet_posts::PostExtension;
+use pallet_spaces::{RESERVED_SPACE_COUNT, SpaceById};
 
 pub use pallet_utils::mock_functions::valid_content_ipfs;
+use pallet_utils::{Content, SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
 
-impl_outer_origin! {
-    pub enum Origin for Test {}
-}
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type Block = frame_system::mocking::MockBlock<Test>;
 
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
+frame_support::construct_runtime!(
+    pub enum Test where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: system::{Module, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        Moderation: moderation::{Module, Call, Storage, Event<T>},
+		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
+        Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
+		Roles: pallet_roles::{Module, Call, Storage, Event<T>},
+		SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
+		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
+        Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+    }
+);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-impl system::Trait for Test {
+impl system::Config for Test {
     type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
     type Origin = Origin;
-    type Call = ();
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = u64;
+    type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = ();
+    type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
-    type PalletInfo = ();
+    type PalletInfo = PalletInfo;
     type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
+    type SS58Prefix = ();
 }
 
 parameter_types! {
     pub const MinimumPeriod: u64 = 5;
 }
 
-impl pallet_timestamp::Trait for Test {
+impl pallet_timestamp::Config for Test {
     type Moment = u64;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
@@ -72,12 +80,12 @@ impl pallet_timestamp::Trait for Test {
 }
 
 parameter_types! {
-    pub const MinHandleLen: u32 = 5;
-    pub const MaxHandleLen: u32 = 50;
+    pub const MinHandleLen: u32 = DEFAULT_MIN_HANDLE_LEN;
+    pub const MaxHandleLen: u32 = DEFAULT_MAX_HANDLE_LEN;
 }
 
-impl pallet_utils::Trait for Test {
-    type Event = ();
+impl pallet_utils::Config for Test {
+    type Event = Event;
     type Currency = Balances;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
@@ -87,10 +95,10 @@ parameter_types! {
     pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Trait for Test {
+impl pallet_balances::Config for Test {
     type Balance = u64;
     type DustRemoval = ();
-    type Event = ();
+    type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
@@ -99,12 +107,12 @@ impl pallet_balances::Trait for Test {
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
 
-impl pallet_permissions::Trait for Test {
+impl pallet_permissions::Config for Test {
     type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
-impl pallet_spaces::Trait for Test {
-    type Event = ();
+impl pallet_spaces::Config for Test {
+    type Event = Event;
     type Currency = Balances;
     type Roles = Roles;
     type SpaceFollows = SpaceFollows;
@@ -116,8 +124,8 @@ impl pallet_spaces::Trait for Test {
     type WeightInfo = ();
 }
 
-impl pallet_space_follows::Trait for Test {
-    type Event = ();
+impl pallet_space_follows::Config for Test {
+    type Event = Event;
     type BeforeSpaceFollowed = ();
     type BeforeSpaceUnfollowed = ();
     type WeightInfo = ();
@@ -127,8 +135,8 @@ parameter_types! {
     pub const MaxCommentDepth: u32 = 10;
 }
 
-impl pallet_posts::Trait for Test {
-    type Event = ();
+impl pallet_posts::Config for Test {
+    type Event = Event;
     type MaxCommentDepth = MaxCommentDepth;
     type PostScores = ();
     type AfterPostUpdated = ();
@@ -140,16 +148,16 @@ parameter_types! {
     pub const MaxUsersToProcessPerDeleteRole: u16 = 40;
 }
 
-impl pallet_roles::Trait for Test {
-    type Event = ();
+impl pallet_roles::Config for Test {
+    type Event = Event;
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type IsAccountBlocked = Moderation;
     type IsContentBlocked = Moderation;
     type WeightInfo = ();
 }
 
-impl pallet_profiles::Trait for Test {
-    type Event = ();
+impl pallet_profiles::Config for Test {
+    type Event = Event;
     type AfterProfileUpdated = ();
     type WeightInfo = ();
 }
@@ -158,20 +166,12 @@ parameter_types! {
     pub const DefaultAutoblockThreshold: u16 = 20;
 }
 
-impl Trait for Test {
-    type Event = ();
+impl Config for Test {
+    type Event = Event;
     type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
 }
 
-type System = system::Module<Test>;
-pub(crate) type Moderation = Module<Test>;
-type SpaceFollows = pallet_space_follows::Module<Test>;
-type Balances = pallet_balances::Module<Test>;
-type Spaces = pallet_spaces::Module<Test>;
-type Posts = pallet_posts::Module<Test>;
-type Roles = pallet_roles::Module<Test>;
-
-pub type AccountId = u64;
+pub(crate) type AccountId = u64;
 
 pub struct ExtBuilder;
 
@@ -292,7 +292,7 @@ pub(crate) fn _report_entity(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
-        reason.unwrap_or_else(|| valid_content_ipfs()),
+        reason.unwrap_or_else(valid_content_ipfs),
     )
 }
 
@@ -362,7 +362,7 @@ pub(crate) fn _update_moderation_settings(
     Moderation::update_moderation_settings(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         space_id.unwrap_or(SPACE1),
-        settings_update.unwrap_or_else(|| new_autoblock_threshold()),
+        settings_update.unwrap_or_else(new_autoblock_threshold),
     )
 }
 

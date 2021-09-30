@@ -24,7 +24,7 @@ fn create_role_should_work() {
         assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_default().into_iter())
+            self::permission_set_default().into_iter().collect()
         );
     });
 }
@@ -55,7 +55,7 @@ fn create_role_should_work_with_a_few_roles() {
         assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_updated().into_iter())
+            self::permission_set_updated().into_iter().collect()
         );
     });
 }
@@ -153,7 +153,7 @@ fn update_role_should_work() {
         assert_eq!(role.content, self::updated_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_updated().into_iter())
+            self::permission_set_updated().into_iter().collect()
         );
     });
 }
@@ -170,7 +170,7 @@ fn update_role_should_work_with_empty_perms_provided_no_changes() {
                     self::role_update(
                         Some(true),
                         None,
-                        Some(BTreeSet::from_iter(self::permission_set_empty().into_iter()))
+                        Some(self::permission_set_empty().into_iter().collect())
                     )
                 )
             )
@@ -185,7 +185,7 @@ fn update_role_should_work_with_empty_perms_provided_no_changes() {
         assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_default().into_iter())
+            self::permission_set_default().into_iter().collect()
         );
     });
 }
@@ -202,9 +202,7 @@ fn update_role_should_work_with_same_perms_provided_no_update() {
                     self::role_update(
                         None, // No changes for disabled
                         None, // No content changes
-                        Some(
-                            BTreeSet::from_iter(self::permission_set_default().into_iter())
-                        ) // The same permissions_set (no changes should apply)
+                        Some(self::permission_set_default().into_iter().collect()) // The same permissions_set (no changes should apply)
                     )
                 )
             )
@@ -216,7 +214,7 @@ fn update_role_should_work_with_same_perms_provided_no_update() {
         assert!(role.updated.is_none());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_default().into_iter())
+            self::permission_set_default().into_iter().collect()
         );
     });
 }
@@ -231,7 +229,7 @@ fn update_role_should_work_with_a_few_roles() {
                 Some(self::role_update(
                     None,
                     None,
-                    Some(BTreeSet::from_iter(self::permission_set_updated().into_iter()))
+                    Some(self::permission_set_updated().into_iter().collect())
                 ))
             )
         );
@@ -248,7 +246,7 @@ fn update_role_should_work_with_a_few_roles() {
         assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_updated().into_iter())
+            self::permission_set_updated().into_iter().collect()
         );
     });
 }
@@ -265,7 +263,7 @@ fn update_role_should_work_not_updated_all_the_same() {
                     self::role_update(
                         Some(false),
                         Some(self::default_role_content_ipfs()),
-                        Some(BTreeSet::from_iter(self::permission_set_default().into_iter()))
+                        Some(self::permission_set_default().into_iter().collect())
                     )
                 )
             )
@@ -283,7 +281,7 @@ fn update_role_should_work_not_updated_all_the_same() {
         assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_default().into_iter())
+            self::permission_set_default().into_iter().collect()
         );
     });
 }
@@ -344,7 +342,7 @@ fn update_role_should_fail_with_a_few_roles_no_permission() {
                 Some(self::role_update(
                     None,
                     None,
-                    Some(BTreeSet::from_iter(self::permission_set_default().into_iter()))
+                    Some(self::permission_set_default().into_iter().collect())
                 ))
             ), Error::<Test>::NoPermissionToManageRoles
         );

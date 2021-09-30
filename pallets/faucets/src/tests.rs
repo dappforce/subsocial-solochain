@@ -20,7 +20,7 @@ fn add_faucet_should_fail_when_origin_is_not_root() {
     ExtBuilder::build().execute_with(|| {
         let not_root = Origin::signed(ACCOUNT1);
         assert_noop!(
-            _add_faucet(Some(not_root), None),
+            _add_faucet(Some(not_root), None, None),
             BadOrigin
         );
     });
@@ -44,8 +44,20 @@ fn add_faucet_should_fail_when_no_free_balance_on_account() {
         assert_ok!(_add_default_faucet());
 
         assert_noop!(
-            _add_faucet(None, Some(FAUCET9)),
+            _add_faucet(None, Some(FAUCET9), None),
             Error::<Test>::NoFreeBalanceOnFaucet
+        );
+    });
+}
+
+#[test]
+fn add_faucet_should_fail_when_drip_limit_exceeds_period_limit() {
+    ExtBuilder::build().execute_with(|| {
+        let mut settings = default_faucet();
+        settings.drip_limit = settings.period_limit + 1;
+        assert_noop!(
+            _add_faucet(None, None, Some(settings)),
+            Error::<Test>::DripLimitCannotExceedPeriodLimit
         );
     });
 }
@@ -167,6 +179,40 @@ fn update_faucet_should_fail_when_same_drip_limit_provided() {
     });
 }
 
+#[test]
+fn update_faucet_should_fail_when_new_period_limit_below_drip_limit() {
+    ExtBuilder::build_with_faucet().execute_with(|| {
+        assert_noop!(
+            _update_faucet_settings(
+                FaucetUpdate {
+                    enabled: None,
+                    period: None,
+                    period_limit: Some(default_faucet().drip_limit - 1),
+                    drip_limit: None
+                }
+            ),
+            Error::<Test>::DripLimitCannotExceedPeriodLimit
+        );
+    });
+}
+
+#[test]
+fn update_faucet_should_fail_when_new_drip_limit_exceeds_period_limit() {
+    ExtBuilder::build_with_faucet().execute_with(|| {
+        assert_noop!(
+            _update_faucet_settings(
+                FaucetUpdate {
+                    enabled: None,
+                    period: None,
+                    period_limit: None,
+                    drip_limit: Some(default_faucet().period_limit + 1)
+                }
+            ),
+            Error::<Test>::DripLimitCannotExceedPeriodLimit
+        );
+    });
+}
+
 // Remove faucets
 // ----------------------------------------------------------------------------
 
@@ -176,7 +222,7 @@ fn remove_faucets_should_work() {
         // This will add faucets with accounts ids [1; 8]
         let mut faucets = Vec::new();
         for account in FAUCET1..=FAUCET8 {
-            assert_ok!(_add_faucet(None, Some(account)));
+            assert_ok!(_add_faucet(None, Some(account), None));
             faucets.push(account);
         }
 
@@ -202,7 +248,7 @@ fn remove_faucets_should_handle_duplicate_addresses() {
         // This will add faucets with accounts ids [1; 8]
         let mut faucets = Vec::new();
         for account in FAUCET1..=FAUCET8 {
-            assert_ok!(_add_faucet(None, Some(account)));
+            assert_ok!(_add_faucet(None, Some(account), None));
             faucets.push(account);
         }
 

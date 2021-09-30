@@ -1,6 +1,6 @@
 [package]
 name = 'df-traits'
-version = '0.6.1'
+version = '0.7.0'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
@@ -25,5 +25,5 @@ pallet-permissions = { default-features = false, path = '../permissions' }
 pallet-utils = { default-features = false, path = '../utils' }
 
 # Substrate dependencies
-frame-support = { default-features = false, version = '2.0.1' }
-sp-runtime = { default-features = false, version = '2.0.1' }
+frame-support = { default-features = false, version = '3.0.0' }
+sp-runtime = { default-features = false, version = '3.0.0' }

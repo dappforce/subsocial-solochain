@@ -19,7 +19,7 @@ use frame_support::{
     weights::Weight
 };
 use sp_runtime::RuntimeDebug;
-use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
+use sp_std::{collections::btree_set::BTreeSet, prelude::*};
 use frame_system::{self as system, ensure_signed};
 
 use df_traits::{
@@ -45,7 +45,7 @@ type RoleId = u64;
 
 /// Information about a role's permissions, its' containing space, and its' content.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Role<T: Trait> {
+pub struct Role<T: Config> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
 
@@ -90,13 +90,13 @@ pub trait WeightInfo {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_permissions::Trait
-    + pallet_spaces::Trait
-    + pallet_utils::Trait
+pub trait Config: system::Config
+    + pallet_permissions::Config
+    + pallet_spaces::Config
+    + pallet_utils::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     /// When deleting a role via `delete_role()` dispatch, this parameter is checked. 
     /// If the number of users that own a given role is greater or equal to this number,
@@ -112,7 +112,7 @@ pub trait Trait: system::Trait
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId
+        <T as system::Config>::AccountId
     {
         RoleCreated(AccountId, SpaceId, RoleId),
         RoleUpdated(AccountId, RoleId),
@@ -123,7 +123,7 @@ decl_event!(
 );
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Role was not found by id.
         RoleNotFound,
 
@@ -160,7 +160,7 @@ pub const FIRST_ROLE_ID: u64 = 1;
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as PermissionsModule {
+    trait Store for Module<T: Config> as PermissionsModule {
 
         /// The next role id.
         pub NextRoleId get(fn next_role_id): RoleId = FIRST_ROLE_ID;
@@ -188,7 +188,7 @@ decl_storage! {
 
 // The pallet's dispatchable functions.
 decl_module! {
-  pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+  pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
     const MaxUsersToProcessPerDeleteRole: u16 = T::MaxUsersToProcessPerDeleteRole::get();
 
@@ -221,7 +221,7 @@ decl_module! {
 
       Self::ensure_role_manager(who.clone(), space_id)?;
       
-      let permissions_set = BTreeSet::from_iter(permissions.into_iter());
+      let permissions_set = permissions.into_iter().collect();
       let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, content, permissions_set)?;
 
       // TODO review strange code:

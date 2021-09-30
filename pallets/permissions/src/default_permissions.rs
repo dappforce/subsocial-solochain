@@ -1,6 +1,5 @@
-use crate::{SpacePermission as SP, SpacePermissions, SpacePermissionSet};
+use crate::{SpacePermission as SP, SpacePermissions};
 
-use sp_std::iter::FromIterator;
 use sp_std::vec;
 use frame_support::parameter_types;
 
@@ -10,7 +9,7 @@ parameter_types! {
     // No permissions disabled by default
     none: None,
 
-    everyone: Some(SpacePermissionSet::from_iter(vec![
+    everyone: Some(vec![
       SP::UpdateOwnSubspaces,
       SP::DeleteOwnSubspaces,
       SP::HideOwnSubspaces,
@@ -27,12 +26,12 @@ parameter_types! {
       SP::Upvote,
       SP::Downvote,
       SP::Share,
-    ].into_iter())),
+    ].into_iter().collect()),
 
     // Followers can do everything that everyone else can.
     follower: None,
 
-    space_owner: Some(SpacePermissionSet::from_iter(vec![
+    space_owner: Some(vec![
       SP::ManageRoles,
       SP::RepresentSpaceInternally,
       SP::RepresentSpaceExternally,
@@ -57,6 +56,6 @@ parameter_types! {
       SP::UpdateEntityStatus,
 
       SP::UpdateSpaceSettings,
-    ].into_iter())),
+    ].into_iter().collect()),
   };
 }

@@ -1,5 +1,5 @@
 pub mod currency {
-	use crate::Balance;
+	use subsocial_primitives::Balance;
 
 	pub const UNITS: Balance = 100_000_000_000;
 	pub const DOLLARS: Balance = UNITS;            // 100_000_000_000
@@ -12,7 +12,7 @@ pub mod currency {
 }
 
 pub mod time {
-	use crate::{Moment, BlockNumber};
+	use subsocial_primitives::{Moment, BlockNumber};
 
 	pub const MILLISECS_PER_BLOCK: Moment = 6000;
 	pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;

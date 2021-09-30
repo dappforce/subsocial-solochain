@@ -19,7 +19,7 @@ use pallet_posts::Module as Posts;
 use pallet_spaces::{Module as Spaces};
 use pallet_utils::{Content, WhoAndWhen, SpaceId, PostId};
 
-type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as pallet_utils::Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
 
 pub type DonationId = u64;
 
@@ -33,7 +33,7 @@ pub enum DonationRecipient<AccountId> {
 
 /// A struct that describes a single donation made by an account.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Donation<T: Trait> {
+pub struct Donation<T: Config> {
     pub id: DonationId,
     pub created: WhoAndWhen<T>,
     pub recipient: DonationRecipient<T::AccountId>, // TODO rename to 'reason'?
@@ -60,16 +60,16 @@ pub struct DonationSettingsUpdate<BalanceOf> {
     pub max_amount: Option<Option<BalanceOf>>,
 }
 
-pub trait Trait: system::Trait
-    + pallet_posts::Trait
-    + pallet_spaces::Trait
-    + pallet_utils::Trait
+pub trait Config: system::Config
+    + pallet_posts::Config
+    + pallet_spaces::Config
+    + pallet_utils::Config
 {
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as DonationsModule {
+    trait Store for Module<T: Config> as DonationsModule {
 
         /// An id for the next donation.
         pub NextDonationId get(fn next_donation_id):
@@ -109,8 +109,8 @@ decl_storage! {
 
 decl_event!(
     pub enum Event<T> where
-        AccountId = <T as system::Trait>::AccountId,
-        DonationRecipient = DonationRecipient<<T as system::Trait>::AccountId>,
+        AccountId = <T as system::Config>::AccountId,
+        DonationRecipient = DonationRecipient<<T as system::Config>::AccountId>,
         BalanceOf = BalanceOf<T>
     {
         Donated(
@@ -145,7 +145,7 @@ decl_event!(
 );
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Thrown if an origin is not allowed to change a donation wallet,
         /// because their are not an owner of this recipient (e.g. space or post owner).
         NotRecipientManager,
@@ -161,7 +161,7 @@ decl_error! {
 }
 
 decl_module! {
-  pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+  pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
     type Error = Error<T>;
 
@@ -205,7 +205,7 @@ decl_module! {
         };
 
         // Transfer donated tokens from a supporter to a donation wallet of this reason.
-        <T as pallet_utils::Trait>::Currency::transfer(&supporter, &donation_wallet, amount, ExistenceRequirement::KeepAlive)?;
+        <T as pallet_utils::Config>::Currency::transfer(&supporter, &donation_wallet, amount, ExistenceRequirement::KeepAlive)?;
 
         DonationById::<T>::insert(donation_id, donation);
         DonationIdsBySupporter::<T>::mutate(supporter.clone(), |ids| ids.push(donation_id));
@@ -313,7 +313,7 @@ impl<BalanceOf> Default for DonationSettings<BalanceOf> {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 
     /// Get a space owner and wrap it into `DonationRecipient`.
     pub fn resolve_space_owner_as_recipient(space_id: SpaceId) -> Result<DonationRecipient<T::AccountId>, DispatchError> {
