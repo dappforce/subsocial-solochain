@@ -550,7 +550,7 @@ construct_runtime!(
 		Permissions: pallet_permissions::{Module, Call},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
-		ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
+		ProfileFollowsModule: pallet_profile_follows::{Module, Call, Storage, Event<T>},
 		Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
 		ProfileHistory: pallet_profile_history::{Module, Storage},
 		Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},
@@ -883,7 +883,7 @@ impl_runtime_apis! {
 	impl profile_follows_runtime_api::ProfileFollowsApi<Block, AccountId> for Runtime
     {
     	fn filter_followed_accounts(account: AccountId, maybe_following: Vec<AccountId>) -> Vec<AccountId> {
-    		ProfileFollows::filter_followed_accounts(account, maybe_following)
+    		ProfileFollowsModule::filter_followed_accounts(account, maybe_following)
     	}
     }
 
