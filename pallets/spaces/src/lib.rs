@@ -1,16 +1,16 @@
 //! # Spaces Module
-//! 
+//!
 //! Spaces are the primary components of Subsocial. This module allows you to create a Space
 //! and customize it by updating its' owner(s), content, unique handle, and permissions.
-//! 
-//! To understand how Spaces fit into the Subsocial ecosystem, you can think of how 
-//! folders and files work in a file system. Spaces are similar to folders, that can contain Posts, 
-//! in this sense. The permissions of the Space and Posts can be customized so that a Space 
-//! could be as simple as a personal blog (think of a page on Facebook) or as complex as community 
+//!
+//! To understand how Spaces fit into the Subsocial ecosystem, you can think of how
+//! folders and files work in a file system. Spaces are similar to folders, that can contain Posts,
+//! in this sense. The permissions of the Space and Posts can be customized so that a Space
+//! could be as simple as a personal blog (think of a page on Facebook) or as complex as community
 //! (think of a subreddit) governed DAO.
-//! 
+//!
 //! Spaces can be compared to existing entities on web 2.0 platforms such as:
-//! 
+//!
 //! - Blogs on Blogger,
 //! - Publications on Medium,
 //! - Groups or pages on Facebook,
@@ -21,15 +21,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod benchmarking;
-pub mod weights;
-
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
     traits::{Get, Currency, ExistenceRequirement, ReservableCurrency},
-    weights::Weight
+    weights::Weight,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -41,6 +38,10 @@ use df_traits::{
 };
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
 
 pub mod rpc;
 
@@ -67,7 +68,7 @@ pub struct Space<T: Config> {
 
     pub content: Content,
 
-    /// Hidden field is used to recommend to end clients (web and mobile apps) that a particular 
+    /// Hidden field is used to recommend to end clients (web and mobile apps) that a particular
     /// space and its' posts should not be shown.
     pub hidden: bool,
 
@@ -82,7 +83,7 @@ pub struct Space<T: Config> {
 
     pub score: i32,
 
-    /// This allows you to override Subsocial's default permissions by enabling or disabling role 
+    /// This allows you to override Subsocial's default permissions by enabling or disabling role
     /// permissions.
     pub permissions: Option<SpacePermissions>,
 }
@@ -115,7 +116,7 @@ pub trait Config: system::Config
 
     type Currency: ReservableCurrency<Self::AccountId>;
 
-    type Roles: PermissionChecker<AccountId=Self::AccountId>;
+    type Roles: PermissionChecker<Self::AccountId>;
 
     type SpaceFollows: SpaceFollowsProvider<Self::AccountId>;
 
@@ -208,7 +209,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = <T as Trait>::WeightInfo::create_space()]
+    #[weight = <T as Config>::WeightInfo::create_space()]
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
@@ -256,7 +257,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::update_space()]
+    #[weight = <T as Config>::WeightInfo::update_space()]
     pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

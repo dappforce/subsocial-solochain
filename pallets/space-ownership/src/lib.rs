@@ -1,13 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod benchmarking;
-pub mod weights;
-
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     ensure,
     dispatch::DispatchResult,
-    weights::Weight
+    weights::Weight,
 };
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
@@ -15,6 +12,10 @@ use frame_system::{self as system, ensure_signed};
 use df_traits::moderation::IsAccountBlocked;
 use pallet_spaces::{Module as Spaces, SpaceById, SpaceIdsByOwner};
 use pallet_utils::{Error as UtilsError, SpaceId, remove_from_vec};
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
 
 pub trait WeightInfo {
     fn transfer_space_ownership() -> Weight;
@@ -76,7 +77,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = <T as Trait>::WeightInfo::transfer_space_ownership()]
+    #[weight = <T as Config>::WeightInfo::transfer_space_ownership()]
     pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -92,7 +93,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::accept_pending_ownership()]
+    #[weight = <T as Config>::WeightInfo::accept_pending_ownership()]
     pub fn accept_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let new_owner = ensure_signed(origin)?;
 
@@ -123,7 +124,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::reject_pending_ownership()]
+    #[weight = <T as Config>::WeightInfo::reject_pending_ownership()]
     pub fn reject_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 

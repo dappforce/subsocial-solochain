@@ -24,7 +24,7 @@ mod tests {
     };
     use pallet_posts::{Post, PostUpdate, PostExtension, Comment, Error as PostsError};
     use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
-    use pallet_profile_follows::{Error as ProfileFollowsError};
+    use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
     use pallet_scores::ScoringAction;
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};

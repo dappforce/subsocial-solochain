@@ -1,8 +1,8 @@
 //! # Posts Module
 //!
-//! Posts are the second crucial component of Subsocial after Spaces. This module allows you to 
+//! Posts are the second crucial component of Subsocial after Spaces. This module allows you to
 //! create, update, move (between spaces), and hide posts as well as manage owner(s).
-//! 
+//!
 //! Posts can be compared to existing entities on web 2.0 platforms such as:
 //! - Posts on Facebook,
 //! - Tweets on Twitter,
@@ -19,7 +19,7 @@ use serde::{Serialize, Deserialize};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, fail,
     dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
-    weights::Weight
+    weights::Weight,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -34,6 +34,8 @@ use pallet_utils::{
 };
 
 pub mod functions;
+
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 pub mod weights;
 
@@ -52,7 +54,7 @@ pub struct Post<T: Config> {
     /// The current owner of a given post.
     pub owner: T::AccountId,
 
-    /// Through post extension you can provide specific information necessary for different kinds 
+    /// Through post extension you can provide specific information necessary for different kinds
     /// of posts such as regular posts, comments, and shared posts.
     pub extension: PostExtension,
 
@@ -61,7 +63,7 @@ pub struct Post<T: Config> {
 
     pub content: Content,
 
-    /// Hidden field is used to recommend to end clients (web and mobile apps) that a particular 
+    /// Hidden field is used to recommend to end clients (web and mobile apps) that a particular
     /// posts and its' comments should not be shown.
     pub hidden: bool,
 
@@ -93,7 +95,7 @@ pub struct PostUpdate {
     pub hidden: Option<bool>,
 }
 
-/// Post extension provides specific information necessary for different kinds 
+/// Post extension provides specific information necessary for different kinds
 /// of posts such as regular posts, comments, and shared posts.
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -121,20 +123,6 @@ pub trait WeightInfo {
     fn create_post() -> Weight;
     fn update_post() -> Weight;
     fn move_post() -> Weight;
-}
-
-impl<T: Trait>WeightInfo for Module<T> {
-    fn create_post() -> u64 {
-        todo!()
-    }
-
-    fn update_post() -> u64 {
-        todo!()
-    }
-
-    fn move_post() -> u64 {
-        todo!()
-    }
 }
 
 /// The pallet's configuration trait.
@@ -289,7 +277,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = <T as Trait>::WeightInfo::create_post()]
+    #[weight = <T as Config>::WeightInfo::create_post()]
     pub fn create_post(
       origin,
       space_id_opt: Option<SpaceId>,
@@ -347,7 +335,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::update_post()]
+    #[weight = <T as Config>::WeightInfo::update_post()]
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) -> DispatchResult {
       let editor = ensure_signed(origin)?;
 
@@ -423,7 +411,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::move_post()]
+    #[weight = <T as Config>::WeightInfo::move_post()]
     pub fn move_post(origin, post_id: PostId, new_space_id: Option<SpaceId>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 

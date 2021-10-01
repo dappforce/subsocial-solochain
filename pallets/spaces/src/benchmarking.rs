@@ -3,7 +3,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use sp_std::{vec, prelude::*};
+use sp_std::vec;
 use sp_runtime::traits::Bounded;
 use frame_system::RawOrigin;
 use frame_support::ensure;
@@ -23,11 +23,9 @@ fn space_handle_2() -> Option<Vec<u8>> {
 }
 
 benchmarks! {
-	_ { }
-
     create_space {
         let caller: T::AccountId = whitelisted_caller();
-        <T as Trait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+        <T as Config>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
     }: _(RawOrigin::Signed(caller), None, space_handle_1(), space_content_ipfs(), None)
     verify {
         ensure!(SpaceById::<T>::get(SPACE).is_some(), Error::<T>::SpaceNotFound)
@@ -44,7 +42,7 @@ benchmarks! {
             hidden: Some(true),
             permissions: None,
         };
-        <T as Trait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+        <T as Config>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
         Module::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
 

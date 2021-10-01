@@ -2,12 +2,12 @@
 //!
 //! The Faucets module allows a root key (sudo) to add accounts (faucets) that are eligible
 //! to drip free tokens to other accounts (recipients).
-//! 
+//!
 //! Currently, only sudo account can add, update and remove faucets.
 //! But this can be changed in the future to allow anyone else
 //! to set up new faucets for their needs.
 //!
-//! This would allow each space to create its own faucet(s) and distribute its tokens to its 
+//! This would allow each space to create its own faucet(s) and distribute its tokens to its
 //! members based on a set of conditions the space decides suits the needs of its community.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -33,6 +33,8 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 pub mod weights;
 
@@ -136,7 +138,7 @@ decl_module! {
         // Initializing events
         fn deposit_event() = default;
 
-        #[weight = <T as Trait>::WeightInfo::add_faucet()]
+        #[weight = <T as Config>::WeightInfo::add_faucet()]
         pub fn add_faucet(
             origin,
             faucet: T::AccountId,
@@ -174,7 +176,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = <T as Trait>::WeightInfo::update_faucet()]
+        #[weight = <T as Config>::WeightInfo::update_faucet()]
         pub fn update_faucet(
             origin,
             faucet: T::AccountId,
@@ -241,7 +243,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = <T as Trait>::WeightInfo::remove_faucets()]
+        #[weight = <T as Config>::WeightInfo::remove_faucets()]
         pub fn remove_faucets(
             origin,
             faucets: Vec<T::AccountId>
@@ -260,7 +262,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = <T as Trait>::WeightInfo::drip()]
+        #[weight = <T as Config>::WeightInfo::drip()]
         pub fn drip(
             origin, // Should be a faucet account
             recipient: T::AccountId,

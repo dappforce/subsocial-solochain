@@ -8,7 +8,7 @@ use frame_system::RawOrigin;
 use frame_support::ensure;
 use sp_runtime::traits::Bounded;
 use frame_benchmarking::{benchmarks, whitelisted_caller};
-use pallet_utils::{Trait as UtilsTrait, BalanceOf};
+use pallet_utils::{Config as UtilsConfig, BalanceOf};
 use frame_support::{
     dispatch::DispatchError,
     traits::Currency,
@@ -38,7 +38,7 @@ fn space_handle_2() -> Option<Vec<u8>> {
     Some(b"space_handle_2".to_vec())
 }
 
-fn check_if_post_moved_correctly<T: Trait>(
+fn check_if_post_moved_correctly<T: Config>(
     moved_post_id: PostId,
     old_space_id: SpaceId,
     expected_new_space_id: SpaceId
@@ -59,11 +59,11 @@ fn check_if_post_moved_correctly<T: Trait>(
     assert_eq!(new_space.score, post.score);
 }
 
-fn add_origin_with_space_post_and_balance<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+fn add_origin_with_space_post_and_balance<T: Config>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
     let caller: T::AccountId = whitelisted_caller();
     let origin = RawOrigin::Signed(caller.clone());
 
-    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+    <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
     SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
     Module::<T>::create_post(origin.clone().into(), Some(SPACE1), PostExtension::RegularPost, post_content_ipfs())?;
@@ -72,13 +72,11 @@ fn add_origin_with_space_post_and_balance<T: Trait>() -> Result<RawOrigin<T::Acc
 }
 
 benchmarks! {
-	_ { }
-
     create_post {
         let caller: T::AccountId = whitelisted_caller();
         let origin = RawOrigin::Signed(caller.clone());
 
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+        <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
         SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
     }: _(origin, Some(SPACE1), PostExtension::RegularPost, post_content_ipfs())

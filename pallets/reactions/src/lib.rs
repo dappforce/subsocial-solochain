@@ -1,8 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod benchmarking;
-pub mod weights;
-
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
@@ -23,6 +20,10 @@ use pallet_spaces::Module as Spaces;
 use pallet_utils::{Error as UtilsError, remove_from_vec, WhoAndWhen, PostId};
 
 pub mod rpc;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
 
 pub type ReactionId = u64;
 
@@ -136,7 +137,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = <T as Trait>::WeightInfo::create_post_reaction()]
+    #[weight = <T as Config>::WeightInfo::create_post_reaction()]
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
@@ -188,7 +189,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::update_post_reaction()]
+    #[weight = <T as Config>::WeightInfo::update_post_reaction()]
     pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
@@ -232,7 +233,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::delete_post_reaction()]
+    #[weight = <T as Config>::WeightInfo::delete_post_reaction()]
     pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

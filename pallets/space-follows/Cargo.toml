@@ -17,6 +17,7 @@ std = [
     'frame-benchmarking/std',
     'frame-support/std',
     'frame-system/std',
+    'sp-runtime/std',
     'sp-std/std',
     'df-traits/std',
     'pallet-profiles/std',

@@ -7,7 +7,7 @@ use sp_std::vec;
 use frame_system::RawOrigin;
 use frame_benchmarking::{benchmarks, account, whitelisted_caller};
 use sp_runtime::traits::Bounded;
-use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
+use pallet_utils::{Config as UtilsConfig, BalanceOf, Content, SpaceId};
 use pallet_spaces::Module as SpacesModule;
 use frame_support::{
     dispatch::DispatchError, traits::Currency,
@@ -41,18 +41,18 @@ fn permission_set_updated() -> Vec<SpacePermission> {
     vec![SpacePermission::ManageRoles, SpacePermission::CreatePosts]
 }
 
-fn add_origin_with_space_and_balance<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+fn add_origin_with_space_and_balance<T: Config>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
     let caller: T::AccountId = whitelisted_caller();
     let origin = RawOrigin::Signed(caller.clone());
 
-    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+    <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
     SpacesModule::<T>::create_space(origin.clone().into(), None, space_handle(), space_content_ipfs(), None)?;
 
     Ok(origin)
 }
 
-fn add_origin_with_space_balance_and_role<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+fn add_origin_with_space_balance_and_role<T: Config>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
     let origin = add_origin_with_space_and_balance::<T>()?;
 
     Module::<T>::create_role(origin.clone().into(), SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())?;
@@ -61,8 +61,6 @@ fn add_origin_with_space_balance_and_role<T: Trait>() -> Result<RawOrigin<T::Acc
 }
 
 benchmarks! {
-	_ { }
-
     create_role {
         let origin = add_origin_with_space_and_balance::<T>()?;
     }: _(origin, SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())
@@ -77,7 +75,7 @@ benchmarks! {
         assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_default().into_iter())
+            self::permission_set_default().into_iter().collect()
         );
     }
 
@@ -88,7 +86,7 @@ benchmarks! {
             disabled: Some(true),
             content: Some(updated_role_content_ipfs()),
             permissions: Some(
-                BTreeSet::from_iter(self::permission_set_updated().into_iter())
+                self::permission_set_updated().into_iter().collect()
             ),
         };
     }: _(origin, ROLE, role_update)
@@ -104,7 +102,7 @@ benchmarks! {
         assert_eq!(role.content, updated_role_content_ipfs());
         assert_eq!(
             role.permissions,
-            BTreeSet::from_iter(self::permission_set_updated().into_iter())
+            self::permission_set_updated().into_iter().collect()
         );
     }
 

@@ -14,9 +14,9 @@ categories = ['cryptography::cryptocurrencies']
 default = ['std']
 std = [
     'codec/std',
+    'frame-benchmarking/std',
     'frame-support/std',
     'frame-system/std',
-    'frame-benchmarking/std',
     'pallet-balances/std',
     'pallet-timestamp/std',
     'sp-io/std',

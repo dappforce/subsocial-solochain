@@ -3,11 +3,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use sp_std::{vec, prelude::*};
+use sp_std::vec;
 use frame_system::RawOrigin;
 use frame_benchmarking::{benchmarks, account, whitelisted_caller};
 use sp_runtime::traits::Bounded;
-use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content};
+use pallet_utils::{Config as UtilsConfig, BalanceOf, Content};
 use pallet_profiles::Module as ProfilesModule;
 use frame_support::{
     dispatch::DispatchError,
@@ -20,11 +20,11 @@ fn profile_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
 }
 
-fn caller_with_profile_and_balance<T: Trait>() -> Result<T::AccountId, DispatchError> {
+fn caller_with_profile_and_balance<T: Config>() -> Result<T::AccountId, DispatchError> {
     let caller: T::AccountId = whitelisted_caller();
     let origin = RawOrigin::Signed(caller.clone());
 
-    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+    <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
     ProfilesModule::<T>::create_profile(origin.into(), profile_content_ipfs())?;
 
@@ -32,8 +32,6 @@ fn caller_with_profile_and_balance<T: Trait>() -> Result<T::AccountId, DispatchE
 }
 
 benchmarks! {
-	_ { }
-
     follow_account {
         let caller: T::AccountId = caller_with_profile_and_balance::<T>()?;
 

@@ -3,11 +3,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use sp_std::{vec, prelude::*};
+use sp_std::vec;
 use frame_system::RawOrigin;
 use frame_benchmarking::{benchmarks, account, whitelisted_caller};
 use sp_runtime::traits::Bounded;
-use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
+use pallet_utils::{Config as UtilsConfig, BalanceOf, Content, SpaceId};
 use pallet_spaces::Module as SpaceModule;
 use frame_support::{
     dispatch::DispatchError,
@@ -25,17 +25,17 @@ fn space_handle() -> Option<Vec<u8>> {
     Some(b"Space_Handle".to_vec())
 }
 
-fn add_origin_with_space_and_balance<T: Trait>(caller: T::AccountId) -> Result<RawOrigin<T::AccountId>, DispatchError> {
+fn add_origin_with_space_and_balance<T: Config>(caller: T::AccountId) -> Result<RawOrigin<T::AccountId>, DispatchError> {
     let origin = RawOrigin::Signed(caller.clone());
 
-    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+    <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
     SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle(), space_content_ipfs(), None)?;
 
     Ok(origin)
 }
 
-fn add_new_owner_origin_and_transfer_ownership<T: Trait>(caller: T::AccountId, new_owner: T::AccountId) -> Result<RawOrigin<T::AccountId>, DispatchError> {
+fn add_new_owner_origin_and_transfer_ownership<T: Config>(caller: T::AccountId, new_owner: T::AccountId) -> Result<RawOrigin<T::AccountId>, DispatchError> {
     let origin = add_origin_with_space_and_balance::<T>(caller)?;
     let new_owner_origin = RawOrigin::Signed(new_owner.clone());
 
@@ -45,8 +45,6 @@ fn add_new_owner_origin_and_transfer_ownership<T: Trait>(caller: T::AccountId, n
 }
 
 benchmarks! {
-	_ { }
-
     transfer_space_ownership {
         let caller: T::AccountId = whitelisted_caller();
         let new_owner: T::AccountId = account("user", 0, SEED);

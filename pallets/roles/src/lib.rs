@@ -2,7 +2,7 @@
 //!
 //! This module allow you to create dynalic roles with an associated set of permissions
 //! and grant them to users (accounts or space ids) within a given space.
-//! 
+//!
 //! For example if you want to create a space that enables editors in a similar way to Medium,
 //! you would create a role "Editor" with permissions such as `CreatePosts`, `UpdateAnyPost`,
 //! and `HideAnyComment`. Then you would grant this role to the specific accounts you would like
@@ -12,11 +12,10 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    ensure,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
     traits::Get,
     dispatch::DispatchResult,
-    weights::Weight
+    weights::Weight,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::{collections::btree_set::BTreeSet, prelude::*};
@@ -27,7 +26,6 @@ use df_traits::{
     moderation::{IsAccountBlocked, IsContentBlocked},
 };
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
-
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, User, WhoAndWhen, Content};
 
 pub mod functions;
@@ -38,6 +36,8 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 pub mod weights;
 
@@ -65,7 +65,7 @@ pub struct Role<T: Config> {
     /// with a given role will have no affect.
     pub expires_at: Option<T::BlockNumber>,
 
-    /// Content can optionally contain additional information associated with a role, 
+    /// Content can optionally contain additional information associated with a role,
     /// such as a name, description, and image for a role. This may be useful for end users.
     pub content: Content,
 
@@ -98,7 +98,7 @@ pub trait Config: system::Config
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
-    /// When deleting a role via `delete_role()` dispatch, this parameter is checked. 
+    /// When deleting a role via `delete_role()` dispatch, this parameter is checked.
     /// If the number of users that own a given role is greater or equal to this number,
     /// then `TooManyUsersToDeleteRole` error will be returned and the dispatch will fail.
     type MaxUsersToProcessPerDeleteRole: Get<u16>;
@@ -200,11 +200,11 @@ decl_module! {
 
     /// Create a new role, with a list of permissions, within a given space.
     ///
-    /// `content` can optionally contain additional information associated with a role, 
+    /// `content` can optionally contain additional information associated with a role,
     /// such as a name, description, and image for a role. This may be useful for end users.
     ///
     /// Only the space owner or a user with `ManageRoles` permission can call this dispatch.
-    #[weight = <T as Trait>::WeightInfo::create_role()]
+    #[weight = <T as Config>::WeightInfo::create_role()]
     pub fn create_role(
       origin,
       space_id: SpaceId,
@@ -217,10 +217,10 @@ decl_module! {
       ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
 
       Utils::<T>::is_valid_content(content.clone())?;
-      ensure!(<T as Trait>::IsContentBlocked::is_allowed_content(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
+      ensure!(<T as Config>::IsContentBlocked::is_allowed_content(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
 
       Self::ensure_role_manager(who.clone(), space_id)?;
-      
+
       let permissions_set = permissions.into_iter().collect();
       let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, content, permissions_set)?;
 
@@ -237,7 +237,7 @@ decl_module! {
 
     /// Update an existing role by a given id.
     /// Only the space owner or a user with `ManageRoles` permission can call this dispatch.
-    #[weight = <T as Trait>::WeightInfo::update_role()]
+    #[weight = <T as Config>::WeightInfo::update_role()]
     pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -264,7 +264,7 @@ decl_module! {
       if let Some(content) = update.content {
         if content != role.content {
           Utils::<T>::is_valid_content(content.clone())?;
-          ensure!(<T as Trait>::IsContentBlocked::is_allowed_content(content.clone(), role.space_id), UtilsError::<T>::ContentIsBlocked);
+          ensure!(<T as Config>::IsContentBlocked::is_allowed_content(content.clone(), role.space_id), UtilsError::<T>::ContentIsBlocked);
 
           role.content = content;
           is_update_applied = true;
@@ -293,7 +293,7 @@ decl_module! {
 
     /// Delete a given role and clean all associated storage items.
     /// Only the space owner or a user with `ManageRoles` permission can call this dispatch.
-    #[weight = <T as Trait>::WeightInfo::delete_role()]
+    #[weight = <T as Config>::WeightInfo::delete_role()]
     pub fn delete_role(origin, role_id: RoleId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -325,7 +325,7 @@ decl_module! {
 
     /// Grant a given role to a list of users.
     /// Only the space owner or a user with `ManageRoles` permission can call this dispatch.
-    #[weight = <T as Trait>::WeightInfo::grant_role()]
+    #[weight = <T as Config>::WeightInfo::grant_role()]
     pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -351,7 +351,7 @@ decl_module! {
 
     /// Revoke a given role from a list of users.
     /// Only the space owner or a user with `ManageRoles` permission can call this dispatch.
-    #[weight = <T as Trait>::WeightInfo::revoke_role()]
+    #[weight = <T as Config>::WeightInfo::revoke_role()]
     pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 

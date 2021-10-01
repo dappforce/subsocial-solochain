@@ -15,14 +15,14 @@ default = ['std']
 std = [
     'serde',
     'codec/std',
-    'sp-runtime/std',
     'frame-benchmarking/std',
     'frame-support/std',
     'frame-system/std',
+    'sp-runtime/std',
     'sp-std/std',
-    'pallet-utils/std',
     'df-traits/std',
-    'pallet-permissions/std'
+    'pallet-permissions/std',
+    'pallet-utils/std',
 ]
 
 runtime-benchmarks = [

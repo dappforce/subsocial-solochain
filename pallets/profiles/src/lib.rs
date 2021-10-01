@@ -1,8 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod benchmarking;
-pub mod weights;
-
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
@@ -16,6 +13,10 @@ use frame_system::{self as system, ensure_signed};
 use pallet_utils::{Module as Utils, WhoAndWhen, Content};
 
 pub mod rpc;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Config> {
@@ -46,14 +47,12 @@ pub trait WeightInfo {
 pub trait Config: system::Config
     + pallet_utils::Config
 {
-
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     type AfterProfileUpdated: AfterProfileUpdated<Self>;
 
     type WeightInfo: WeightInfo;
-
 }
 
 // This pallet's storage items.
@@ -95,7 +94,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = <T as Trait>::WeightInfo::create_profile()]
+    #[weight = <T as Config>::WeightInfo::create_profile()]
     pub fn create_profile(origin, content: Content) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
@@ -117,7 +116,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::update_profile()]
+    #[weight = <T as Config>::WeightInfo::update_profile()]
     pub fn update_profile(origin, update: ProfileUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

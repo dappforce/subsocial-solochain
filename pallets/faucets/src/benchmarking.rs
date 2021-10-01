@@ -11,15 +11,15 @@ use frame_support::traits::Currency;
 
 const SEED: u32 = 0;
 
-fn faucet_with_free_balance<T: Trait>() -> T::AccountId {
+fn faucet_with_free_balance<T: Config>() -> T::AccountId {
     let faucet: T::AccountId = account("user", 0, SEED);
 
     T::Currency::make_free_balance_be(&faucet, BalanceOf::<T>::max_value());
-    
+
     faucet
 }
 
-fn add_faucet_with_balance<T: Trait>() -> Result<T::AccountId, DispatchError> {
+fn add_faucet_with_balance<T: Config>() -> Result<T::AccountId, DispatchError> {
     let faucet: T::AccountId = faucet_with_free_balance::<T>();
 
     Module::<T>::add_faucet(
@@ -34,8 +34,6 @@ fn add_faucet_with_balance<T: Trait>() -> Result<T::AccountId, DispatchError> {
 }
 
 benchmarks! {
-	_ { }
-
     add_faucet {
         let faucet: T::AccountId = faucet_with_free_balance::<T>();
     }: _(RawOrigin::Root, faucet.clone(), 100u32.into(), BalanceOf::<T>::max_value(), BalanceOf::<T>::max_value())
@@ -79,7 +77,7 @@ benchmarks! {
 
         let caller: T::AccountId = whitelisted_caller();
         let origin = RawOrigin::Signed(caller.clone());
-        
+
         let amount = T::Currency::minimum_balance();
     }: _(faucet_origin, caller.clone(), amount.clone())
     verify {

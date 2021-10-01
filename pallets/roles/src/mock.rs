@@ -11,9 +11,8 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
 use frame_support::{
-    impl_outer_origin, parameter_types, assert_ok,
-    weights::Weight,
-    dispatch::{DispatchResult, DispatchError}
+    parameter_types, assert_ok,
+    dispatch::DispatchResult,
 };
 use frame_system as system;
 
@@ -38,6 +37,7 @@ frame_support::construct_runtime!(
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Roles: roles::{Module, Call, Storage, Event<T>},
+        Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
         Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
     }
 );
@@ -99,8 +99,8 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {}
 
-impl pallet_spaces::Trait for Test {
-    type Event = ();
+impl pallet_spaces::Config for Test {
+    type Event = Event;
     type Currency = Balances;
     type Roles = Roles;
     type SpaceFollows = ();
@@ -152,7 +152,6 @@ impl ExtBuilder {
         let storage = system::GenesisConfig::default()
             .build_storage::<Test>()
             .unwrap();
-
 
         let mut ext = TestExternalities::from(storage);
 

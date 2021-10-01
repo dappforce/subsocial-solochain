@@ -3,11 +3,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use sp_std::{vec, prelude::*};
+use sp_std::vec;
 use frame_system::RawOrigin;
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use sp_runtime::traits::Bounded;
-use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
+use pallet_utils::{Config as UtilsConfig, BalanceOf, Content, SpaceId};
 use pallet_spaces::Module as SpaceModule;
 use pallet_posts::{Module as PostsModule, PostExtension};
 use frame_support::{
@@ -39,11 +39,11 @@ fn space_handle_1() -> Option<Vec<u8>> {
     Some(b"Space_Handle".to_vec())
 }
 
-fn origin_with_space_post_and_balance<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+fn origin_with_space_post_and_balance<T: Config>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
     let caller: T::AccountId = whitelisted_caller();
     let origin = RawOrigin::Signed(caller.clone());
 
-    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+    <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
     SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
     PostsModule::<T>::create_post(origin.clone().into(), Some(SPACE), PostExtension::RegularPost, post_content_ipfs())?;
@@ -52,8 +52,6 @@ fn origin_with_space_post_and_balance<T: Trait>() -> Result<RawOrigin<T::Account
 }
 
 benchmarks! {
-	_ { }
-
     create_post_reaction {
         let origin = origin_with_space_post_and_balance::<T>()?;
     }: _(origin, POST, reaction_upvote())

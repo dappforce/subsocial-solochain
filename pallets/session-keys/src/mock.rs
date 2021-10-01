@@ -13,7 +13,7 @@ use frame_support::{
     dispatch::{DispatchResult},
 };
 
-use pallet_profile_follows::{Call as ProfileFollowsCall};
+use pallet_profile_follows::Call as ProfileFollowsCall;
 use frame_support::traits::Currency;
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 

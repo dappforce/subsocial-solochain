@@ -20,18 +20,16 @@ impl<AccountId> SpaceFollowsProvider<AccountId> for () {
   }
 }
 
-pub trait PermissionChecker {
-  type AccountId;
-
+pub trait PermissionChecker<AccountId> {
   fn ensure_user_has_space_permission(
-    user: User<Self::AccountId>,
+    user: User<AccountId>,
     ctx: SpacePermissionsContext,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult;
 
   fn ensure_account_has_space_permission(
-    account: Self::AccountId,
+    account: AccountId,
     ctx: SpacePermissionsContext,
     permission: SpacePermission,
     error: DispatchError,
@@ -43,5 +41,16 @@ pub trait PermissionChecker {
       permission,
       error
     )
+  }
+}
+
+impl<AccountId> PermissionChecker<AccountId> for () {
+  fn ensure_user_has_space_permission(
+    _user: User<AccountId>,
+    _ctx: SpacePermissionsContext,
+    _permission: SpacePermission,
+    _error: DispatchError,
+  ) -> DispatchResult {
+    Ok(())
   }
 }

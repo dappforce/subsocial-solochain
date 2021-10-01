@@ -7,7 +7,7 @@ use sp_std::{vec};
 use frame_system::{RawOrigin};
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use sp_runtime::traits::Bounded;
-use pallet_utils::{Trait as UtilsTrait, BalanceOf};
+use pallet_utils::{Config as UtilsConfig, BalanceOf};
 use frame_support::traits::Currency;
 
 fn profile_content_ipfs() -> Content {
@@ -18,16 +18,14 @@ fn updated_profile_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiajthdyeW2CuagwxkA5".to_vec())
 }
 
-fn caller_with_balance<T: Trait>() -> T::AccountId {
+fn caller_with_balance<T: Config>() -> T::AccountId {
     let caller: T::AccountId = whitelisted_caller();
-    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+    <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
     caller
 }
 
 benchmarks! {
-	_ { }
-
     create_profile {
         let caller = caller_with_balance::<T>();
         let origin = RawOrigin::Signed(caller.clone());

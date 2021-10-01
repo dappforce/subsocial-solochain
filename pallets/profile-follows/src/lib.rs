@@ -1,8 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod benchmarking;
-pub mod weights;
-
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::DispatchResult,
@@ -15,6 +12,10 @@ use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_utils::remove_from_vec;
 
 pub mod rpc;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
 
 pub trait WeightInfo {
     fn follow_account() -> Weight;
@@ -70,7 +71,7 @@ decl_error! {
         AccountCannotFollowItself,
         /// Account can not unfollow itself.
         AccountCannotUnfollowItself,
-        
+
         /// Account (Alice) is already a follower of another account (Bob).
         AlreadyAccountFollower,
         /// Account (Alice) is not a follower of another account (Bob).
@@ -87,7 +88,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = <T as Trait>::WeightInfo::follow_account()]
+    #[weight = <T as Config>::WeightInfo::follow_account()]
     pub fn follow_account(origin, account: T::AccountId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
@@ -114,7 +115,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = <T as Trait>::WeightInfo::unfollow_account()]
+    #[weight = <T as Config>::WeightInfo::unfollow_account()]
     pub fn unfollow_account(origin, account: T::AccountId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
