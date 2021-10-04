@@ -90,14 +90,14 @@ pub enum SpacePermission {
 pub type SpacePermissionSet = BTreeSet<SpacePermission>;
 
 /// These are a set of built-in roles which can be given different permissions within a given space.
-/// For example: everyone can comment (`CreateComments`), but only followers can post 
+/// For example: everyone can comment (`CreateComments`), but only followers can post
 /// (`CreatePosts`).
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SpacePermissions {
 
   /// None represents a set of permissions which is not capable of being performed by anyone.
-  /// For example, if you want to create a space similar to Twitter, you would set the permissions 
+  /// For example, if you want to create a space similar to Twitter, you would set the permissions
   /// for `UpdateOwnPosts`, `UpdateOwnComments`, and `Downvote` to `none`.
   pub none: Option<SpacePermissionSet>,
 
