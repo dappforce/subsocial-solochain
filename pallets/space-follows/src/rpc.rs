@@ -2,9 +2,9 @@ use sp_std::prelude::*;
 
 use pallet_utils::SpaceId;
 
-use crate::{Module, Config};
+use crate::pallet::{Pallet, Config};
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn get_space_ids_followed_by_account(account: T::AccountId) -> Vec<SpaceId> {
         Self::spaces_followed_by_account(account)
     }

@@ -18,7 +18,7 @@ use codec::{Decode, Encode};
 use serde::{Serialize, Deserialize};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, fail,
-    dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
+    dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo}, ensure, traits::Get,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -399,7 +399,7 @@ decl_module! {
     }
 
     #[weight = T::DbWeight::get().reads(1) + 50_000]
-    pub fn move_post(origin, post_id: PostId, new_space_id: Option<SpaceId>) -> DispatchResult {
+    pub fn move_post(origin, post_id: PostId, new_space_id: Option<SpaceId>) -> DispatchResultWithPostInfo {
       let who = ensure_signed(origin)?;
 
       let post = &mut Self::require_post(post_id)?;
@@ -429,7 +429,7 @@ decl_module! {
       T::AfterPostUpdated::after_post_updated(who.clone(), &post, historical_data);
 
       Self::deposit_event(RawEvent::PostMoved(who, post_id));
-      Ok(())
+      Ok(Default::default())
     }
   }
 }

@@ -1,4 +1,4 @@
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
 
 use pallet_utils::{SpaceId, remove_from_vec};
 
@@ -465,7 +465,7 @@ impl<T: Config> Module<T> {
         }
     }
 
-    pub fn delete_post_from_space(post_id: PostId) -> DispatchResult {
+    pub fn delete_post_from_space(post_id: PostId) -> DispatchResultWithPostInfo {
         let mut post = Self::require_post(post_id)?;
 
         if let PostExtension::Comment(comment_ext) = post.extension {
@@ -514,7 +514,7 @@ impl<T: Config> Module<T> {
 
         PostById::<T>::insert(post.id, post);
 
-        Ok(())
+        Ok(Default::default())
     }
 
     /// Rewrite ancestor counters when Post hidden status changes

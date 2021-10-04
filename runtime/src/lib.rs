@@ -369,7 +369,7 @@ impl pallet_roles::Config for Runtime {
 	type Event = Event;
 	type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
 	type Spaces = Spaces;
-	type SpaceFollows = SpaceFollows;
+	type SpaceFollows = SpaceFollowsModule;
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
 }
@@ -426,8 +426,8 @@ impl pallet_spaces::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type Roles = Roles;
-	type SpaceFollows = SpaceFollows;
-	type BeforeSpaceCreated = SpaceFollows;
+	type SpaceFollows = SpaceFollowsModule;
+	type BeforeSpaceCreated = SpaceFollowsModule;
 	type AfterSpaceUpdated = SpaceHistory;
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
@@ -556,7 +556,7 @@ construct_runtime!(
 		Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},
 		Roles: pallet_roles::{Module, Call, Storage, Event<T>},
 		Scores: pallet_scores::{Module, Call, Storage, Event<T>},
-		SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
+		SpaceFollowsModule: pallet_space_follows::{Module, Call, Storage, Event<T>},
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
@@ -782,11 +782,11 @@ impl_runtime_apis! {
 	impl space_follows_runtime_api::SpaceFollowsApi<Block, AccountId> for Runtime
     {
     	fn get_space_ids_followed_by_account(account: AccountId) -> Vec<SpaceId> {
-    		SpaceFollows::get_space_ids_followed_by_account(account)
+    		SpaceFollowsModule::get_space_ids_followed_by_account(account)
     	}
 
     	fn filter_followed_space_ids(account: AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId> {
-    		SpaceFollows::filter_followed_space_ids(account, space_ids)
+    		SpaceFollowsModule::filter_followed_space_ids(account, space_ids)
     	}
     }
 

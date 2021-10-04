@@ -23,7 +23,7 @@ use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 use frame_support::{
     decl_module, decl_storage, decl_event, decl_error, ensure,
-    dispatch::DispatchResult,
+    dispatch::{DispatchResult, DispatchResultWithPostInfo},
     traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
@@ -263,7 +263,7 @@ decl_module! {
             scope: SpaceId, // TODO make scope as Option, but either scope or report_id_opt should be Some
             status: Option<EntityStatus>,
             report_id_opt: Option<ReportId>
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
             if let Some(report_id) = report_id_opt {
@@ -304,7 +304,7 @@ decl_module! {
             SuggestedStatusesByEntityInSpace::<T>::insert(entity.clone(), scope, suggestions);
 
             Self::deposit_event(RawEvent::EntityStatusSuggested(who, scope, entity, status));
-            Ok(())
+            Ok(Default::default())
         }
 
         /// Allows a space owner/admin to update the final moderation status of a reported entity.
@@ -314,7 +314,7 @@ decl_module! {
             entity: EntityId<T::AccountId>,
             scope: SpaceId,
             status_opt: Option<EntityStatus>
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
             // TODO: add `forbid_content` parameter and track entity Content blocking via OCW
@@ -336,7 +336,7 @@ decl_module! {
             }
 
             Self::deposit_event(RawEvent::EntityStatusUpdated(who, scope, entity, status_opt));
-            Ok(())
+            Ok(Default::default())
         }
 
         /// Allows a space owner/admin to delete a current status of a reported entity.

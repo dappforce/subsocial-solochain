@@ -24,7 +24,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
-    dispatch::{DispatchError, DispatchResult},
+    dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
     traits::{Get, Currency, ExistenceRequirement, ReservableCurrency},
 };
 use sp_runtime::RuntimeDebug;
@@ -204,7 +204,7 @@ decl_module! {
       handle_opt: Option<Vec<u8>>,
       content: Content,
       permissions_opt: Option<SpacePermissions>
-    ) -> DispatchResult {
+    ) -> DispatchResultWithPostInfo {
       let owner = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -242,7 +242,7 @@ decl_module! {
       NextSpaceId::mutate(|n| { *n += 1; });
 
       Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
-      Ok(())
+      Ok(Default::default())
     }
 
     #[weight = 500_000 + T::DbWeight::get().reads_writes(2, 3)]
@@ -486,12 +486,12 @@ impl<T: Config> Module<T> {
         )
     }
 
-    pub fn try_move_space_to_root(space_id: SpaceId) -> DispatchResult {
+    pub fn try_move_space_to_root(space_id: SpaceId) -> DispatchResultWithPostInfo {
         let mut space = Self::require_space(space_id)?;
         space.parent_id = None;
 
         SpaceById::<T>::insert(space_id, space);
-        Ok(())
+        Ok(Default::default())
     }
 
     pub fn mutate_space_by_id<F: FnOnce(&mut Space<T>)> (
@@ -618,12 +618,12 @@ impl<T: Config> SpaceForRolesProvider for Module<T> {
 }
 
 pub trait BeforeSpaceCreated<T: Config> {
-    fn before_space_created(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
+    fn before_space_created(follower: T::AccountId, space: &mut Space<T>) -> DispatchResultWithPostInfo;
 }
 
 impl<T: Config> BeforeSpaceCreated<T> for () {
-    fn before_space_created(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
-        Ok(())
+    fn before_space_created(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResultWithPostInfo {
+        Ok(Default::default())
     }
 }
 
