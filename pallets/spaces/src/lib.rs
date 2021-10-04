@@ -39,6 +39,9 @@ use df_traits::{
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
 
+#[cfg(test)]
+mod mock;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 pub mod weights;

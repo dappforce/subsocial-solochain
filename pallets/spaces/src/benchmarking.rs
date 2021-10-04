@@ -54,3 +54,18 @@ benchmarks! {
         assert_eq!(space.hidden, true);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::mock::{Test, ExtBuilder};
+    use frame_support::assert_ok;
+
+    #[test]
+    fn test_benchmarks() {
+        ExtBuilder::build().execute_with(|| {
+            assert_ok!(test_benchmark_create_space::<Test>());
+            assert_ok!(test_benchmark_update_space::<Test>());
+        });
+    }
+}
