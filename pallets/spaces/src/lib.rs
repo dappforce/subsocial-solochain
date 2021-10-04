@@ -26,7 +26,6 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
     traits::{Get, Currency, ExistenceRequirement, ReservableCurrency},
-    weights::Weight,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -38,6 +37,7 @@ use df_traits::{
 };
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
+use crate::weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -103,11 +103,6 @@ pub struct SpaceUpdate {
 
 type BalanceOf<T> =
   <<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
-
-pub trait WeightInfo {
-    fn create_space() -> Weight;
-    fn update_space() -> Weight;
-}
 
 /// The pallet's configuration trait.
 pub trait Config: system::Config

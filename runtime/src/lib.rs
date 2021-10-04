@@ -437,7 +437,7 @@ impl pallet_spaces::Config for Runtime {
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
 	type HandleDeposit = HandleDeposit;
-	type WeightInfo = pallet_spaces::weights::WeightInfo;
+	type WeightInfo = pallet_spaces::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
