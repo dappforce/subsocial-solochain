@@ -3817,6 +3817,7 @@ dependencies = [
 name = "pallet-faucets"
 version = "0.7.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
@@ -4145,10 +4146,14 @@ dependencies = [
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
+ "pallet-balances",
  "pallet-permissions",
+ "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
  "serde",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
