@@ -3913,12 +3913,16 @@ dependencies = [
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
+ "pallet-balances",
  "pallet-permissions",
+ "pallet-profiles",
  "pallet-space-follows",
  "pallet-spaces",
+ "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
  "serde",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]
@@ -4153,7 +4157,6 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -4276,6 +4279,7 @@ dependencies = [
 name = "pallet-utils"
 version = "0.7.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "jsonrpc-core",
