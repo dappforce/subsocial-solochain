@@ -35,6 +35,9 @@ use pallet_utils::{
 
 pub mod functions;
 
+#[cfg(test)]
+mod mock;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 pub mod weights;
@@ -277,6 +280,8 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
+    // TODO: split into 3 different extrinsics: `create_post`, `create_comment` and `share_post`.
+    //  - This will allow to better calculate weights and simplify the code.
     #[weight = <T as Config>::WeightInfo::create_post()]
     pub fn create_post(
       origin,

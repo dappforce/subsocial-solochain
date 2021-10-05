@@ -51,3 +51,12 @@ frame-support = { default-features = false, version = '3.0.0' }
 frame-system = { default-features = false, version = '3.0.0' }
 sp-runtime = { default-features = false, version = '3.0.0' }
 sp-std = { default-features = false, version = '3.0.0' }
+
+[dev-dependencies]
+# Local dependencies
+pallet-profiles = { default-features = false, path = '../profiles' }
+
+# Substrate dependencies
+pallet-balances = { default-features = false, version = '3.0.0' }
+pallet-timestamp = { default-features = false, version = '3.0.0' }
+sp-core = { default-features = false, version = '3.0.0' }
