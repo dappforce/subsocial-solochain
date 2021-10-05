@@ -32,7 +32,14 @@ pub type SpaceId = u64;
 pub type PostId = u64;
 
 pub const DEFAULT_MIN_HANDLE_LEN: u32 = 5;
+// TODO: maybe change this length to the value of 32 bytes per a handle?
 pub const DEFAULT_MAX_HANDLE_LEN: u32 = 50;
+
+/// The standard IPFS CID v0 length is 46 bytes.
+pub const IPFS_CID_V0_LENGTH: usize = 46;
+
+/// The standard IPFS CID v1 length is 59 bytes.
+pub const IPFS_CID_V1_LENGTH: usize = 59;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct WhoAndWhen<T: Config> {
@@ -236,9 +243,7 @@ impl<T: Config> Module<T> {
             Content::Raw(_) => Err(Error::<T>::RawContentTypeNotSupported.into()),
             Content::IPFS(ipfs_cid) => {
                 let len = ipfs_cid.len();
-                // IPFS CID v0 is 46 bytes.
-                // IPFS CID v1 is 59 bytes.df-integration-tests/src/lib.rs:272:5
-                ensure!(len == 46 || len == 59, Error::<T>::InvalidIpfsCid);
+                ensure!(len == IPFS_CID_V0_LENGTH || len == IPFS_CID_V1_LENGTH, Error::<T>::InvalidIpfsCid);
                 Ok(())
             },
             Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())
