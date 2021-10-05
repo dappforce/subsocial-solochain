@@ -1,6 +1,5 @@
 use frame_benchmarking::frame_support::dispatch::{DispatchError, DispatchResult};
 use sp_core::H256;
-use sp_io::TestExternalities;
 use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
@@ -137,18 +136,3 @@ impl spaces::Config for Test {
 
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
-
-pub struct ExtBuilder;
-
-impl ExtBuilder {
-    pub(crate) fn build() -> TestExternalities {
-        let storage = &mut system::GenesisConfig::default()
-            .build_storage::<Test>()
-            .unwrap();
-
-        let mut ext = TestExternalities::from(storage.clone());
-        ext.execute_with(|| System::set_block_number(1));
-
-        ext
-    }
-}

@@ -58,12 +58,13 @@ benchmarks! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::mock::{Test, ExtBuilder};
+    use crate::mock::Test;
     use frame_support::assert_ok;
+    use pallet_utils::mock_functions::DefaultExtBuilder;
 
     #[test]
     fn test_benchmarks() {
-        ExtBuilder::build().execute_with(|| {
+        DefaultExtBuilder::<Test>::build().execute_with(|| {
             assert_ok!(test_benchmark_create_space::<Test>());
             assert_ok!(test_benchmark_update_space::<Test>());
         });
