@@ -2,6 +2,7 @@ use super::*;
 use sp_io::TestExternalities;
 use sp_runtime::traits::{Bounded, One};
 use sp_std::marker::PhantomData;
+use frame_benchmarking::whitelisted_caller;
 
 pub struct DefaultExtBuilder<TestRuntime: system::Config>(PhantomData<TestRuntime>);
 
@@ -16,6 +17,13 @@ impl<TestRuntime: system::Config> DefaultExtBuilder<TestRuntime> {
 
         ext
     }
+}
+
+pub fn caller_with_balance<T: Config>() -> T::AccountId {
+    let caller: T::AccountId = whitelisted_caller();
+    T::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+
+    caller
 }
 
 pub fn valid_content_ipfs() -> Content {
