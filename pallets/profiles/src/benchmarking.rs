@@ -5,10 +5,8 @@
 use super::*;
 use sp_std::{vec};
 use frame_system::{RawOrigin};
-use frame_benchmarking::{benchmarks, whitelisted_caller};
-use sp_runtime::traits::Bounded;
-use pallet_utils::{Config as UtilsConfig, BalanceOf};
-use frame_support::traits::Currency;
+use frame_benchmarking::benchmarks;
+use pallet_utils::mock_functions::caller_with_balance;
 
 fn profile_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
@@ -16,13 +14,6 @@ fn profile_content_ipfs() -> Content {
 
 fn updated_profile_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiajthdyeW2CuagwxkA5".to_vec())
-}
-
-fn caller_with_balance<T: Config>() -> T::AccountId {
-    let caller: T::AccountId = whitelisted_caller();
-    <T as UtilsConfig>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-    caller
 }
 
 benchmarks! {
