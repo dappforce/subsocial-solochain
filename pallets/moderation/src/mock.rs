@@ -302,7 +302,11 @@ pub(crate) fn default_role_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
 
-pub(crate) fn create_space_and_post() {
+pub(crate) fn default_reason() -> Reason {
+    Reason::NSFW
+}
+
+pub(crate) fn create_space() {
     assert_ok!(Spaces::create_space(
         Origin::signed(ACCOUNT_SCOPE_OWNER),
         None,
@@ -310,6 +314,10 @@ pub(crate) fn create_space_and_post() {
         Content::None,
         None
     ));
+}
+
+pub(crate) fn create_space_and_post() {
+    create_space();
 
     assert_ok!(Posts::create_post(
         Origin::signed(ACCOUNT_SCOPE_OWNER),
@@ -320,20 +328,22 @@ pub(crate) fn create_space_and_post() {
 }
 
 pub(crate) fn _report_default_post() -> DispatchResult {
-    _report_entity(None, None, None, None)
+    _report_entity(None, None, None, None, None)
 }
 
 pub(crate) fn _report_entity(
     origin: Option<Origin>,
     entity: Option<EntityId<AccountId>>,
     scope: Option<SpaceId>,
-    reason: Option<Content>,
+    reason: Option<Reason>,
+    details: Option<Content>,
 ) -> DispatchResult {
     Moderation::report_entity(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
-        reason.unwrap_or_else(valid_content_ipfs),
+        reason.unwrap_or_else(default_reason),
+        details.unwrap_or_else(valid_content_ipfs)
     )
 }
 
@@ -358,21 +368,45 @@ pub(crate) fn _suggest_entity_status(
     )
 }
 
-pub(crate) fn _update_post_status_to_allowed() -> DispatchResult {
+pub(crate) fn _update_post1_status_to_allowed() -> DispatchResult {
     _update_entity_status(None, None, None, None)
+}
+
+pub(crate) fn _update_post1_status_to_blocked() -> DispatchResult {
+    _update_entity_status(None, None, None, Some(EntityStatus::Blocked))
 }
 
 pub(crate) fn _update_entity_status(
     origin: Option<Origin>,
     entity: Option<EntityId<AccountId>>,
     scope: Option<SpaceId>,
-    status_opt: Option<Option<EntityStatus>>,
+    status_opt: Option<EntityStatus>,
 ) -> DispatchResult {
     Moderation::update_entity_status(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
-        status_opt.unwrap_or(Some(EntityStatus::Allowed)),
+        status_opt.unwrap_or(EntityStatus::Allowed),
+    )
+}
+
+pub(crate) fn _block_and_kick_post1_from_space1() -> DispatchResult {
+    _block_and_kick_entity_from_scope(None, None, None)
+}
+
+pub(crate) fn _block_and_kick_post1_from_space2() -> DispatchResult {
+    _block_and_kick_entity_from_scope(None, None, Some(SPACE2))
+}
+
+pub(crate) fn _block_and_kick_entity_from_scope(
+    origin: Option<Origin>,
+    entity: Option<EntityId<AccountId>>,
+    scope: Option<SpaceId>,
+) -> DispatchResult {
+    Moderation::block_and_kick_entity_from_scope(
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
+        entity.unwrap_or(EntityId::Post(POST1)),
+        scope.unwrap_or(SPACE1),
     )
 }
 

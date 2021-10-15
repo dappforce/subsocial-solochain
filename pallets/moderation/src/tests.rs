@@ -19,15 +19,18 @@ fn report_entity_should_work() {
         assert_eq!(report.created.account, ACCOUNT_SCOPE_OWNER);
         assert_eq!(report.reported_entity, EntityId::Post(POST1));
         assert_eq!(report.reported_within, SPACE1);
-        assert_eq!(report.reason, valid_content_ipfs());
+        assert_eq!(report.reason, default_reason());
     });
 }
 
-#[test]
+// FIXME: remove this test if unneeded
+// #[test]
+#[allow(dead_code)]
 fn report_entity_should_fail_when_no_reason_provided() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_noop!(
             _report_entity(
+                None,
                 None,
                 None,
                 None,
@@ -42,6 +45,7 @@ fn report_entity_should_fail_when_reason_is_invalid_ipfs_cid() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_noop!(
             _report_entity(
+                None,
                 None,
                 None,
                 None,
@@ -118,7 +122,7 @@ fn suggest_entity_status_should_fail_when_report_in_another_scope() {
 fn suggest_entity_status_should_fail_when_same_entity_status_already_suggested() {
     ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_ok!(_suggest_blocked_status_for_post());
-        assert_ok!(_update_post_status_to_allowed());
+        assert_ok!(_update_post1_status_to_allowed());
         assert_noop!(
             _suggest_entity_status(
                 None,
@@ -188,9 +192,8 @@ fn suggest_entity_status_should_autoblock_and_kick_entity_when_threshold_reached
 
 #[test]
 fn update_entity_status_should_work_for_status_allowed() {
-    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
-        assert_ok!(_suggest_blocked_status_for_post());
-        assert_ok!(_update_post_status_to_allowed());
+    ExtBuilder::build_with_space_and_post().execute_with(|| {
+        assert_ok!(_update_post1_status_to_allowed());
 
         let status = Moderation::status_by_entity_in_space(EntityId::Post(POST1), SPACE1).unwrap();
         assert_eq!(status, EntityStatus::Allowed);
@@ -199,28 +202,43 @@ fn update_entity_status_should_work_for_status_allowed() {
 
 #[test]
 fn update_entity_status_should_work_for_status_blocked() {
-    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
-        assert_ok!(_suggest_blocked_status_for_post());
-        assert_ok!(
-            _update_entity_status(
-                None,
-                None,
-                None,
-                Some(Some(EntityStatus::Blocked))
-            )
-        );
+    ExtBuilder::build_with_space_and_post().execute_with(|| {
+        assert_ok!(_update_post1_status_to_blocked());
+
+        let status = Moderation::status_by_entity_in_space(EntityId::Post(POST1), SPACE1).unwrap();
+        assert_eq!(status, EntityStatus::Blocked);
+    });
+}
+
+#[test]
+fn block_and_kick_entity_from_scope_should_work() {
+    ExtBuilder::build_with_space_and_post().execute_with(|| {
+        assert_ok!(_block_and_kick_post1_from_space1());
 
         // Check that post was removed from its space,
         // because when removing a post, we set its space to None
         let post = PostById::<Test>::get(POST1).unwrap();
         assert!(post.space_id.is_none());
+        assert!(Posts::post_ids_by_space_id(SPACE1).is_empty());
+    });
+}
+
+#[test]
+fn block_and_kick_entity_from_scope_should_fail_when_entity_is_not_in_scope() {
+    ExtBuilder::build_with_space_and_post().execute_with(|| {
+        create_space(); // SpaceId 2
+
+        assert_noop!(
+            _block_and_kick_post1_from_space2(),
+            Error::<Test>::EntityNotInScope
+        );
     });
 }
 
 #[test]
 fn update_entity_status_should_fail_when_invalid_scope_provided() {
     ExtBuilder::build_with_report_then_remove_scope().execute_with(|| {
-        assert_noop!(_update_post_status_to_allowed(), Error::<Test>::ScopeNotFound);
+        assert_noop!(_update_post1_status_to_allowed(), Error::<Test>::ScopeNotFound);
     });
 }
 
@@ -245,7 +263,7 @@ fn update_entity_status_should_fail_when_origin_has_no_permission() {
 fn delete_entity_status_should_work() {
     ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_ok!(_suggest_blocked_status_for_post());
-        assert_ok!(_update_post_status_to_allowed());
+        assert_ok!(_update_post1_status_to_allowed());
         assert_ok!(_delete_post_status());
 
         let status = Moderation::status_by_entity_in_space(EntityId::Post(POST1), SPACE1);
@@ -264,7 +282,7 @@ fn delete_entity_status_should_fail_when_entity_has_no_status_in_scope() {
 fn delete_entity_status_should_fail_when_scope_not_found() {
     ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_ok!(_suggest_blocked_status_for_post());
-        assert_ok!(_update_post_status_to_allowed());
+        assert_ok!(_update_post1_status_to_allowed());
         SpaceById::<Test>::remove(SPACE1);
         assert_noop!(_delete_post_status(), Error::<Test>::ScopeNotFound);
     });
@@ -274,7 +292,7 @@ fn delete_entity_status_should_fail_when_scope_not_found() {
 fn delete_entity_status_should_fail_when_origin_has_no_permission() {
     ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_ok!(_suggest_blocked_status_for_post());
-        assert_ok!(_update_post_status_to_allowed());
+        assert_ok!(_update_post1_status_to_allowed());
         assert_noop!(
             _delete_entity_status(
                 Some(Origin::signed(ACCOUNT_NOT_MODERATOR)),
@@ -297,8 +315,6 @@ fn update_moderation_settings_should_work() {
         assert_eq!(settings.autoblock_threshold, Some(AUTOBLOCK_THRESHOLD));
     });
 }
-
-// TODO test that autoblock works
 
 #[test]
 fn update_moderation_settings_should_fail_when_no_updates_provided() {

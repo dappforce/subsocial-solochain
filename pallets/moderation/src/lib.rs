@@ -31,11 +31,11 @@ use frame_system::{self as system, ensure_signed};
 use pallet_utils::{Content, WhoAndWhen, SpaceId, Module as Utils, PostId};
 use pallet_spaces::Module as Spaces;
 
-// #[cfg(test)]
-// mod mock;
+#[cfg(test)]
+mod mock;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 pub mod functions;
 
