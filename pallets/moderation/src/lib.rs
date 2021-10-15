@@ -175,6 +175,8 @@ decl_event!(
         EntityStatusSuggested(AccountId, SpaceId, EntityId, Option<EntityStatus>),
         EntityStatusUpdated(AccountId, SpaceId, EntityId, EntityStatus),
         EntityStatusDeleted(AccountId, SpaceId, EntityId),
+        /// Kick the entity from its current scope.
+        EntityKickedFromScope(AccountId, SpaceId, EntityId),
         ModerationSettingsUpdated(AccountId, SpaceId),
     }
 );
@@ -293,6 +295,11 @@ decl_module! {
             ensure!(!is_already_suggested, Error::<T>::AlreadySuggestedEntityStatus);
             suggestions.push(SuggestedStatus::new(who.clone(), status.clone(), report_id_opt));
 
+            SuggestedStatusesByEntityInSpace::<T>::insert(entity.clone(), scope, suggestions.clone());
+            Self::deposit_event(RawEvent::EntityStatusSuggested(who.clone(), scope, entity.clone(), status));
+
+            // Block entity if autoblock threshold reached
+
             let block_suggestions_total = suggestions.iter()
                 .filter(|suggestion| suggestion.status == Some(EntityStatus::Blocked))
                 .count();
@@ -303,13 +310,10 @@ decl_module! {
 
             if let Some(autoblock_threshold) = autoblock_threshold_opt {
                 if block_suggestions_total >= autoblock_threshold as usize {
-                    Self::block_entity_in_scope(&entity, scope)?;
+                    Self::kick_entity_from_scope(who, entity, scope)?;
                 }
             }
 
-            SuggestedStatusesByEntityInSpace::<T>::insert(entity.clone(), scope, suggestions);
-
-            Self::deposit_event(RawEvent::EntityStatusSuggested(who, scope, entity, status));
             Ok(())
         }
 
@@ -326,18 +330,26 @@ decl_module! {
             // TODO: add `forbid_content` parameter and track entity Content blocking via OCW
             //  - `forbid_content` - whether to block `Content` provided with entity.
 
-            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
-            Self::ensure_account_status_manager(who.clone(), &space)?;
+            Self::ensure_account_status_manager(who.clone(), scope)?;
 
-            let is_entity_in_scope = Self::ensure_entity_in_scope(&entity, scope).is_ok();
-            ensure!(is_entity_in_scope, Error::<T>::EntityNotInScope);
-
-            match status {
-                EntityStatus::Blocked => Self::block_entity_in_scope(&entity, scope)?,
-                EntityStatus::Allowed => StatusByEntityInSpace::<T>::insert(entity.clone(), scope, status.clone()),
-            }
-
+            StatusByEntityInSpace::<T>::insert(entity.clone(), scope, status.clone());
             Self::deposit_event(RawEvent::EntityStatusUpdated(who, scope, entity, status));
+
+            Ok(())
+        }
+
+        // TODO: rename extrinsic
+        #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
+        fn block_and_kick_entity_from_scope(
+            origin,
+            entity: EntityId<T::AccountId>,
+            scope: SpaceId,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            Self::ensure_account_status_manager(who.clone(), scope)?;
+            Self::kick_entity_from_scope(who, entity, scope)?;
+
             Ok(())
         }
 
@@ -353,12 +365,11 @@ decl_module! {
             let status = Self::status_by_entity_in_space(&entity, scope);
             ensure!(status.is_some(), Error::<T>::EntityHasNoStatusInScope);
 
-            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
-            Self::ensure_account_status_manager(who.clone(), &space)?;
+            Self::ensure_account_status_manager(who.clone(), scope)?;
 
             StatusByEntityInSpace::<T>::remove(&entity, scope);
-
             Self::deposit_event(RawEvent::EntityStatusDeleted(who, scope, entity));
+
             Ok(())
         }
 
