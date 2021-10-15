@@ -153,6 +153,36 @@ fn suggest_entity_status_should_fail_when_origin_has_no_permission() {
     });
 }
 
+#[test]
+fn suggest_entity_status_should_autoblock_and_kick_entity_when_threshold_reached() {
+    ExtBuilder::build_with_report_then_grant_role_to_suggest_entity_status().execute_with(|| {
+        let space_before_autoblock = Spaces::<Test>::space_by_id(SPACE1).unwrap();
+        let post_before_autoblock = Posts::post_by_id(POST1).unwrap();
+
+        assert!(space_before_autoblock.posts_count == 1);
+        assert!(post_before_autoblock.space_id == Some(SPACE1));
+        assert_eq!(Posts::post_ids_by_space_id(SPACE1), vec![POST1]);
+
+        // All accounts that have the corresponding role suggest entity status 'Blocked'.
+        let accs = moderators();
+        for (i, acc) in accs.into_iter().enumerate() {
+            let res = _suggest_entity_status(Some(Origin::signed(acc)), None, None, None, None);
+            if (i as u16) < DefaultAutoblockThreshold::get() {
+                assert_ok!(res);
+            } else {
+                assert_noop!(res, Error::<Test>::SuggestedSameEntityStatus);
+            }
+        }
+
+        let space_after_autoblock = Spaces::<Test>::space_by_id(SPACE1).unwrap();
+        let post_after_autoblock = Posts::post_by_id(POST1).unwrap();
+
+        assert!(space_after_autoblock.posts_count == 0);
+        assert!(post_after_autoblock.space_id.is_none());
+        assert!(Posts::post_ids_by_space_id(SPACE1).is_empty());
+    });
+}
+
 // Update entity status
 //----------------------------------------------------------------------------
 
@@ -180,7 +210,7 @@ fn update_entity_status_should_work_for_status_blocked() {
             )
         );
 
-        // Check that post was removed from its space, 
+        // Check that post was removed from its space,
         // because when removing a post, we set its space to None
         let post = PostById::<Test>::get(POST1).unwrap();
         assert!(post.space_id.is_none());

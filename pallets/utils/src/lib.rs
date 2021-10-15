@@ -230,6 +230,7 @@ pub fn bool_to_option(value: bool) -> Option<bool> {
 
 impl<T: Config> Module<T> {
 
+    // TODO Rename to `ensure_content_is_valid`
     pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
             Content::None => Ok(()),
