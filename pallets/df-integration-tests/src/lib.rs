@@ -3047,6 +3047,24 @@ mod tests {
     }
 
     #[test]
+    fn change_post_score_delete_should_fail_with_wrong_user() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(_create_post_reaction(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                Some(reaction_downvote())
+            ));
+            // ReactionId 1
+            assert_noop!(_delete_post_reaction(
+                Some(Origin::signed(ACCOUNT3)),
+                None,
+                REACTION1
+            ), ReactionsError::<TestRuntime>::ReactionByAccountNotFound);
+        });
+    }
+
+
+    #[test]
     fn change_post_score_should_work_for_change_upvote_with_downvote() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_post_reaction(
@@ -3089,6 +3107,26 @@ mod tests {
             assert_eq!(Profiles::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + UpvotePostActionWeight::get() as u32);
             assert!(Scores::post_score_by_account((ACCOUNT2, POST1, scoring_action_downvote_post())).is_none());
             assert_eq!(Scores::post_score_by_account((ACCOUNT2, POST1, scoring_action_upvote_post())), Some(UpvotePostActionWeight::get()));
+        });
+    }
+
+    #[test]
+    fn change_post_score_should_fail_for_change_with_wrong_user() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(_create_post_reaction(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                Some(reaction_downvote())
+            ));
+            // ReactionId 1
+
+            assert_noop!(_update_post_reaction(
+                Some(Origin::signed(ACCOUNT3)),
+                None,
+                REACTION1,
+                None
+            ), ReactionsError::<TestRuntime>::ReactionByAccountNotFound);
+
         });
     }
 
