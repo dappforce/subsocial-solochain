@@ -269,7 +269,7 @@ decl_module! {
             origin,
             entity: EntityId<T::AccountId>,
             scope: SpaceId, // TODO make scope as Option, but either scope or report_id_opt should be Some
-            status: Option<EntityStatus>,
+            new_status: Option<EntityStatus>,
             report_id_opt: Option<ReportId>
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -280,23 +280,17 @@ decl_module! {
             }
 
             let entity_status = StatusByEntityInSpace::<T>::get(&entity, scope);
-            ensure!(!(entity_status.is_some() && status == entity_status), Error::<T>::SuggestedSameEntityStatus);
+            ensure!(!(entity_status.is_some() && new_status == entity_status), Error::<T>::SuggestedSameEntityStatus);
 
-            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
-            Spaces::<T>::ensure_account_has_space_permission(
-                who.clone(),
-                &space,
-                pallet_permissions::SpacePermission::SuggestEntityStatus,
-                Error::<T>::NoPermissionToSuggestEntityStatus.into(),
-            )?;
+            Self::ensure_account_can_suggest_status(who.clone(), scope)?;
 
             let mut suggestions = SuggestedStatusesByEntityInSpace::<T>::get(&entity, scope);
             let is_already_suggested = suggestions.iter().any(|suggestion| suggestion.suggested.account == who);
             ensure!(!is_already_suggested, Error::<T>::AlreadySuggestedEntityStatus);
-            suggestions.push(SuggestedStatus::new(who.clone(), status.clone(), report_id_opt));
+            suggestions.push(SuggestedStatus::new(who.clone(), new_status.clone(), report_id_opt));
 
             SuggestedStatusesByEntityInSpace::<T>::insert(entity.clone(), scope, suggestions.clone());
-            Self::deposit_event(RawEvent::EntityStatusSuggested(who.clone(), scope, entity.clone(), status));
+            Self::deposit_event(RawEvent::EntityStatusSuggested(who.clone(), scope, entity.clone(), new_status));
 
             // Block entity if autoblock threshold reached
 
@@ -330,10 +324,12 @@ decl_module! {
             // TODO: add `forbid_content` parameter and track entity Content blocking via OCW
             //  - `forbid_content` - whether to block `Content` provided with entity.
 
-            Self::ensure_account_status_manager(who.clone(), scope)?;
+            Self::ensure_account_is_status_manager(who.clone(), scope)?;
 
             StatusByEntityInSpace::<T>::insert(entity.clone(), scope, status.clone());
-            Self::deposit_event(RawEvent::EntityStatusUpdated(who, scope, entity, status));
+            Self::deposit_event(RawEvent::EntityStatusUpdated(who, scope, entity.clone(), status));
+
+            Self::clear_suggested_statuses_by_entity(&entity, scope);
 
             Ok(())
         }
@@ -347,7 +343,7 @@ decl_module! {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            Self::ensure_account_status_manager(who.clone(), scope)?;
+            Self::ensure_account_is_status_manager(who.clone(), scope)?;
             Self::kick_entity_from_scope(who, entity, scope)?;
 
             Ok(())
@@ -365,7 +361,7 @@ decl_module! {
             let status = Self::status_by_entity_in_space(&entity, scope);
             ensure!(status.is_some(), Error::<T>::EntityHasNoStatusInScope);
 
-            Self::ensure_account_status_manager(who.clone(), scope)?;
+            Self::ensure_account_is_status_manager(who.clone(), scope)?;
 
             StatusByEntityInSpace::<T>::remove(&entity, scope);
             Self::deposit_event(RawEvent::EntityStatusDeleted(who, scope, entity));

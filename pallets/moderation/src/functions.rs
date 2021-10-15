@@ -56,12 +56,31 @@ impl<T: Config> Module<T> {
             EntityId::Space(space_id) => Spaces::<T>::try_move_space_to_root(*space_id)?,
             EntityId::Post(post_id) => Posts::<T>::delete_post_from_space(*post_id)?,
         }
+
         StatusByEntityInSpace::<T>::insert(&entity, scope, EntityStatus::Blocked);
-        Self::deposit_event(RawEvent::EntityKickedFromScope(who, scope, entity));
+        Self::deposit_event(RawEvent::EntityKickedFromScope(who, scope, entity.clone()));
+
+        Self::clear_suggested_statuses_by_entity(&entity, scope);
+
         Ok(())
     }
 
-    pub(crate) fn ensure_account_status_manager(who: T::AccountId, scope: SpaceId) -> DispatchResult {
+    pub(crate) fn clear_suggested_statuses_by_entity(entity: &EntityId<T::AccountId>, scope: SpaceId) {
+        SuggestedStatusesByEntityInSpace::<T>::remove(entity, scope);
+    }
+
+    pub(crate) fn ensure_account_can_suggest_status(who: T::AccountId, scope: SpaceId) -> DispatchResult {
+        let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
+
+        Spaces::<T>::ensure_account_has_space_permission(
+            who,
+            &space,
+            pallet_permissions::SpacePermission::SuggestEntityStatus,
+            Error::<T>::NoPermissionToSuggestEntityStatus.into(),
+        )
+    }
+
+    pub(crate) fn ensure_account_is_status_manager(who: T::AccountId, scope: SpaceId) -> DispatchResult {
         let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
 
         Spaces::<T>::ensure_account_has_space_permission(
