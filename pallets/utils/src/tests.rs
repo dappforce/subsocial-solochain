@@ -1,8 +1,11 @@
-use crate::{mock::*, remove_from_vec, log_2};
+use crate::{
+    mock::*, mock_functions::ext_builder::DefaultExtBuilder,
+    remove_from_vec, log_2,
+};
 
 #[test]
 fn log_2_should_work() {
-    ExtBuilder::build().execute_with(|| {
+    DefaultExtBuilder::<Test>::build().execute_with(|| {
         // None should be returned if zero (0) is provided
         assert!(log_2(0).is_none());
 
@@ -25,7 +28,7 @@ fn log_2_should_work() {
 
 #[test]
 fn remove_from_vec_should_work_with_zero_elements() {
-    ExtBuilder::build().execute_with(|| {
+    DefaultExtBuilder::<Test>::build().execute_with(|| {
         let element: u16 = 2;
         let vector: &mut Vec<u16> = &mut vec![];
 
@@ -36,7 +39,7 @@ fn remove_from_vec_should_work_with_zero_elements() {
 
 #[test]
 fn remove_from_vec_should_work_with_last_element() {
-    ExtBuilder::build().execute_with(|| {
+    DefaultExtBuilder::<Test>::build().execute_with(|| {
         let element: u16 = 2;
         let vector: &mut Vec<u16> = &mut vec![6, 2];
 
@@ -50,7 +53,7 @@ fn remove_from_vec_should_work_with_last_element() {
 
 #[test]
 fn remove_from_vec_should_work_with_two_elements() {
-    ExtBuilder::build().execute_with(|| {
+    DefaultExtBuilder::<Test>::build().execute_with(|| {
         let element: u16 = 2;
         let vector: &mut Vec<u16> = &mut vec![6, 2, 7];
 
@@ -64,7 +67,7 @@ fn remove_from_vec_should_work_with_two_elements() {
 
 #[test]
 fn convert_users_vec_to_btree_set_should_work() {
-    ExtBuilder::build().execute_with(|| {
+    DefaultExtBuilder::<Test>::build().execute_with(|| {
         // Empty vector should produce empty set
         assert_eq!(
             _convert_users_vec_to_btree_set(vec![]).ok().unwrap(),

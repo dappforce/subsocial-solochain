@@ -1,17 +1,19 @@
 use super::*;
 
-use sp_core::H256;
-use sp_std::collections::btree_set::BTreeSet;
-use sp_io::TestExternalities;
-
-use sp_runtime::{
-    traits::{BlakeTwo256, IdentityLookup}, testing::Header,
-};
-use frame_support::{parameter_types, dispatch::DispatchError};
+use frame_support::{dispatch::DispatchError, parameter_types};
 use frame_system as system;
 
-use crate as utils;
-use crate::{DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
+use sp_core::H256;
+use sp_runtime::{
+    testing::Header,
+    traits::{BlakeTwo256, IdentityLookup},
+};
+use sp_std::collections::btree_set::BTreeSet;
+
+use crate::{
+    self as utils,
+    DEFAULT_MAX_HANDLE_LEN, DEFAULT_MIN_HANDLE_LEN,
+};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -33,6 +35,7 @@ parameter_types! {
     pub BlockWeights: frame_system::limits::BlockWeights =
         frame_system::limits::BlockWeights::simple_max(1024);
 }
+
 impl system::Config for Test {
     type BaseCallFilter = ();
     type BlockWeights = ();
@@ -59,7 +62,7 @@ impl system::Config for Test {
 }
 
 parameter_types! {
-  pub const MinimumPeriod: u64 = 5;
+    pub const MinimumPeriod: u64 = 5;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -70,8 +73,9 @@ impl pallet_timestamp::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+    pub const ExistentialDeposit: u64 = 1;
 }
+
 impl pallet_balances::Config for Test {
     type MaxLocks = ();
     type Balance = u64;
@@ -85,7 +89,8 @@ impl pallet_balances::Config for Test {
 parameter_types! {
     pub const MinHandleLen: u32 = DEFAULT_MIN_HANDLE_LEN;
     pub const MaxHandleLen: u32 = DEFAULT_MAX_HANDLE_LEN;
-  }
+}
+
 impl Config for Test {
     type Event = Event;
     type Currency = Balances;
@@ -93,24 +98,8 @@ impl Config for Test {
     type MaxHandleLen = MaxHandleLen;
 }
 
-pub type AccountId = u64;
+pub(crate) type AccountId = u64;
 pub(crate) type UsersSet = BTreeSet<User<AccountId>>;
-
-pub struct ExtBuilder;
-
-impl ExtBuilder {
-    pub fn build() -> TestExternalities {
-        let storage = system::GenesisConfig::default()
-            .build_storage::<Test>()
-            .unwrap();
-
-        let mut ext = TestExternalities::from(storage);
-        ext.execute_with(|| System::set_block_number(1));
-
-        ext
-    }
-}
-
 
 pub(crate) const USER1: User<AccountId> = User::Account(1);
 pub(crate) const USER2: User<AccountId> = User::Account(2);

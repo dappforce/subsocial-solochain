@@ -6,7 +6,7 @@ use super::*;
 use sp_std::{vec};
 use frame_system::{RawOrigin};
 use frame_benchmarking::benchmarks;
-use pallet_utils::mock_functions::caller_with_balance;
+use pallet_utils::mock_functions::bench::caller_with_balance;
 
 fn profile_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
