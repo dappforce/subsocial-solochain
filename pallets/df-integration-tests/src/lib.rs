@@ -30,7 +30,7 @@ mod tests {
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError, SpacesSettings};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
-    use pallet_moderation::{EntityId, EntityStatus, ReportId};
+    use pallet_moderation::{EntityId, EntityStatus, Reason, ReportId};
     use pallet_utils::{
         mock_functions::*,
         DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN,
@@ -1031,20 +1031,22 @@ mod tests {
     const REPORT1: ReportId = 1;
 
     pub(crate) fn _report_default_post() -> DispatchResult {
-        _report_entity(None, None, None, None)
+        _report_entity(None, None, None, None, None)
     }
 
     pub(crate) fn _report_entity(
         origin: Option<Origin>,
         entity: Option<EntityId<AccountId>>,
         scope: Option<SpaceId>,
-        reason: Option<Content>,
+        reason: Option<Reason>,
+        details: Option<Content>,
     ) -> DispatchResult {
         Moderation::report_entity(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             entity.unwrap_or(EntityId::Post(POST1)),
             scope.unwrap_or(SPACE1),
-            reason.unwrap_or_else(valid_content_ipfs),
+            reason.unwrap_or(Reason::NSFW),
+            details.unwrap_or_else(valid_content_ipfs),
         )
     }
 
@@ -1068,13 +1070,13 @@ mod tests {
         origin: Option<Origin>,
         entity: Option<EntityId<AccountId>>,
         scope: Option<SpaceId>,
-        status_opt: Option<Option<EntityStatus>>,
+        status: Option<EntityStatus>,
     ) -> DispatchResult {
         Moderation::update_entity_status(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             entity.unwrap_or(EntityId::Post(POST1)),
             scope.unwrap_or(SPACE1),
-            status_opt.unwrap_or(Some(EntityStatus::Allowed)),
+            status.unwrap_or(EntityStatus::Allowed),
         )
     }
 
@@ -1099,7 +1101,7 @@ mod tests {
                 None,
                 Some(EntityId::Account(ACCOUNT1)),
                 Some(SPACE1),
-                Some(Some(EntityStatus::Blocked))
+                Some(EntityStatus::Blocked)
             )
         );
     }
@@ -1110,7 +1112,7 @@ mod tests {
                 None,
                 Some(EntityId::Content(valid_content_ipfs())),
                 Some(SPACE1),
-                Some(Some(EntityStatus::Blocked))
+                Some(EntityStatus::Blocked)
             )
         );
     }
