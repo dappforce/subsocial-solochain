@@ -244,7 +244,6 @@ decl_module! {
             Utils::<T>::is_valid_content(details.clone())?;
 
             ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::ScopeNotFound);
-            Self::ensure_entity_in_scope(&entity, scope)?;
 
             let not_reported_yet = Self::report_id_by_account((&entity, &who)).is_none();
             ensure!(not_reported_yet, Error::<T>::AlreadyReportedEntity);
