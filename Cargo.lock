@@ -3877,22 +3877,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-elections-phragmen"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3adf1233ea7b9129a40247ac04650bb6ccb3f8f6e714df75cb65ac65185fdd33"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "serde",
- "sp-npos-elections",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-dotsama-claims"
 version = "0.7.0"
 dependencies = [
@@ -3906,6 +3890,22 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-elections-phragmen"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3adf1233ea7b9129a40247ac04650bb6ccb3f8f6e714df75cb65ac65185fdd33"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-npos-elections",
  "sp-runtime",
  "sp-std",
 ]
@@ -8078,8 +8078,8 @@ dependencies = [
  "pallet-bounties",
  "pallet-collective",
  "pallet-democracy",
- "pallet-elections-phragmen",
  "pallet-dotsama-claims",
+ "pallet-elections-phragmen",
  "pallet-faucets",
  "pallet-grandpa",
  "pallet-im-online",
