@@ -24,6 +24,7 @@ static_assertions = '1.1.0'
 
 # Local dependencies
 pallet-faucets = { default-features = false, path = '../pallets/faucets' }
+#pallet-moderation = { default-features = false, path = '../pallets/moderation' }
 pallet-permissions = { default-features = false, path = '../pallets/permissions' }
 
 pallet-post-history = { default-features = false, path = '../pallets/post-history' }
@@ -191,6 +192,7 @@ std = [
     'sp-version/std',
     'subsocial-primitives/std',
     'pallet-faucets/std',
+#    'pallet-moderation/std',
     'pallet-permissions/std',
     'pallet-post-history/std',
     'pallet-posts/std',

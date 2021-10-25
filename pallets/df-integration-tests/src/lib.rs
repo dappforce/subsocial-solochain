@@ -29,6 +29,7 @@ mod tests {
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
+    use pallet_moderation::{EntityId, EntityStatus, ReportId};
     use pallet_utils::{
         mock_functions::*,
         DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN,
@@ -48,6 +49,7 @@ mod tests {
             System: system::{Module, Call, Config, Storage, Event<T>},
             Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
             Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+            Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
             Permissions: pallet_permissions::{Module, Call},
             Posts: pallet_posts::{Module, Call, Storage, Event<T>},
             PostHistory: pallet_post_history::{Module, Storage},
@@ -144,7 +146,7 @@ mod tests {
         type Event = Event;
         type MaxCommentDepth = MaxCommentDepth;
         type AfterPostUpdated = PostHistory;
-        type IsPostBlocked = ();
+        type IsPostBlocked = Moderation;
     }
 
     parameter_types! {}
@@ -185,8 +187,8 @@ mod tests {
         type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
         type Spaces = Spaces;
         type SpaceFollows = SpaceFollows;
-        type IsAccountBlocked = ();
-        type IsContentBlocked = ();
+        type IsAccountBlocked = Moderation;
+        type IsContentBlocked = Moderation;
     }
 
     parameter_types! {
@@ -226,14 +228,23 @@ mod tests {
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
         type AfterSpaceUpdated = SpaceHistory;
-        type IsAccountBlocked = ();
-        type IsContentBlocked = ();
+        type IsAccountBlocked = Moderation;
+        type IsContentBlocked = Moderation;
         type HandleDeposit = ();
     }
 
     parameter_types! {}
 
     impl pallet_space_history::Config for TestRuntime {}
+
+    parameter_types! {
+        pub const DefaultAutoblockThreshold: u16 = 20;
+    }
+
+    impl pallet_moderation::Config for TestRuntime {
+        type Event = Event;
+        type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
+    }
 
     type AccountId = u64;
     type BlockNumber = u64;
@@ -877,6 +888,232 @@ mod tests {
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             role_id.unwrap_or(ROLE1),
         )
+    }
+
+    /* ---------------------------------------------------------------------------------------------- */
+    // Moderation pallet mocks
+    // FIXME: remove when linter error is fixed
+    #[allow(dead_code)]
+    const REPORT1: ReportId = 1;
+
+    pub(crate) fn _report_default_post() -> DispatchResult {
+        _report_entity(None, None, None, None)
+    }
+
+    pub(crate) fn _report_entity(
+        origin: Option<Origin>,
+        entity: Option<EntityId<AccountId>>,
+        scope: Option<SpaceId>,
+        reason: Option<Content>,
+    ) -> DispatchResult {
+        Moderation::report_entity(
+            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+            entity.unwrap_or(EntityId::Post(POST1)),
+            scope.unwrap_or(SPACE1),
+            reason.unwrap_or_else(|| valid_content_ipfs()),
+        )
+    }
+
+    pub(crate) fn _suggest_entity_status(
+        origin: Option<Origin>,
+        entity: Option<EntityId<AccountId>>,
+        scope: Option<SpaceId>,
+        status: Option<Option<EntityStatus>>,
+        report_id_opt: Option<Option<ReportId>>,
+    ) -> DispatchResult {
+        Moderation::suggest_entity_status(
+            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+            entity.unwrap_or(EntityId::Post(POST1)),
+            scope.unwrap_or(SPACE1),
+            status.unwrap_or(Some(EntityStatus::Blocked)),
+            report_id_opt.unwrap_or(Some(REPORT1)),
+        )
+    }
+
+    pub(crate) fn _update_entity_status(
+        origin: Option<Origin>,
+        entity: Option<EntityId<AccountId>>,
+        scope: Option<SpaceId>,
+        status_opt: Option<Option<EntityStatus>>,
+    ) -> DispatchResult {
+        Moderation::update_entity_status(
+            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+            entity.unwrap_or(EntityId::Post(POST1)),
+            scope.unwrap_or(SPACE1),
+            status_opt.unwrap_or(Some(EntityStatus::Allowed)),
+        )
+    }
+
+    pub(crate) fn _delete_entity_status(
+        origin: Option<Origin>,
+        entity: Option<EntityId<AccountId>>,
+        scope: Option<SpaceId>,
+    ) -> DispatchResult {
+        Moderation::delete_entity_status(
+            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+            entity.unwrap_or(EntityId::Post(POST1)),
+            scope.unwrap_or(SPACE1),
+        )
+    }
+
+    /*------------------------------------------------------------------------------------------------*/
+    // Moderation tests
+
+    fn block_account_in_space_1() {
+        assert_ok!(
+            _update_entity_status(
+                None,
+                Some(EntityId::Account(ACCOUNT1)),
+                Some(SPACE1),
+                Some(Some(EntityStatus::Blocked))
+            )
+        );
+    }
+
+    fn block_content_in_space_1() {
+        assert_ok!(
+            _update_entity_status(
+                None,
+                Some(EntityId::Content(valid_content_ipfs())),
+                Some(SPACE1),
+                Some(Some(EntityStatus::Blocked))
+            )
+        );
+    }
+
+    #[test]
+    fn create_subspace_should_fail_when_content_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_content_in_space_1();
+            assert_noop!(
+                _create_subspace(
+                    None,
+                    Some(Some(SPACE1)),
+                    None,
+                    Some(valid_content_ipfs()),
+                    None,
+                ), UtilsError::<TestRuntime>::ContentIsBlocked
+            );
+        });
+    }
+
+    #[test]
+    fn create_subspace_should_fail_when_account_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_account_in_space_1();
+            assert_noop!(
+                _create_subspace(
+                    None,
+                    Some(Some(SPACE1)),
+                    Some(Some(space_handle_2())),
+                    None,
+                    None,
+                ), UtilsError::<TestRuntime>::AccountIsBlocked
+            );
+        });
+    }
+
+    #[test]
+    fn update_space_should_fail_when_account_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_account_in_space_1();
+            assert_noop!(
+                _update_space(
+                    None,
+                    None,
+                    Some(update_for_space_handle(Some(space_handle_2())))
+                ), UtilsError::<TestRuntime>::AccountIsBlocked
+            );
+        });
+    }
+
+    #[test]
+    fn update_space_should_fail_when_content_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_content_in_space_1();
+            assert_noop!(
+                _update_space(
+                    None,
+                    None,
+                    Some(space_update(
+                        None,
+                        Some(valid_content_ipfs()),
+                        None
+                    ))
+                ),
+                UtilsError::<TestRuntime>::ContentIsBlocked
+            );
+        });
+    }
+
+    #[test]
+    fn create_post_should_fail_when_content_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_content_in_space_1();
+            assert_noop!(
+                _create_post(
+                    None,
+                    None,
+                    None,
+                    Some(valid_content_ipfs()),
+                ), UtilsError::<TestRuntime>::ContentIsBlocked
+            );
+        });
+    }
+
+    #[test]
+    fn create_post_should_fail_when_account_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_account_in_space_1();
+            assert_noop!(
+                _create_post(
+                    None,
+                    None,
+                    None,
+                    Some(valid_content_ipfs()),
+                ), UtilsError::<TestRuntime>::AccountIsBlocked
+            );
+        });
+    }
+
+    #[test]
+    fn update_post_should_fail_when_content_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_content_in_space_1();
+            assert_noop!(
+                _update_post(
+                    None, // From ACCOUNT1 (has default permission to UpdateOwnPosts)
+                    None,
+                    Some(
+                        post_update(
+                            None,
+                            Some(valid_content_ipfs()),
+                            Some(true)
+                        )
+                    )
+                ), UtilsError::<TestRuntime>::ContentIsBlocked
+            );
+        });
+    }
+
+    #[test]
+    fn update_post_should_fail_when_account_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            block_account_in_space_1();
+            assert_noop!(
+                _update_post(
+                    None, // From ACCOUNT1 (has default permission to UpdateOwnPosts)
+                    None,
+                    Some(
+                        post_update(
+                            None,
+                            Some(valid_content_ipfs()),
+                            Some(true)
+                        )
+                    )
+                ), UtilsError::<TestRuntime>::AccountIsBlocked
+            );
+        });
     }
 
     // FIXME: uncomment when `update_post` will be able to move post from one space to another

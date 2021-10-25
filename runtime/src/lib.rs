@@ -1074,6 +1074,7 @@ construct_runtime!(
 		// New experimental pallets. Not recommended to use in production yet.
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
+		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 	}
 );
 

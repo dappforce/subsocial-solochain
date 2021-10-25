@@ -1,0 +1,63 @@
+[package]
+name = 'pallet-moderation'
+version = '0.7.0'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'Subsocial pallet for content moderation'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[features]
+default = ['std']
+std = [
+    'codec/std',
+    'sp-runtime/std',
+    'sp-std/std',
+    'frame-support/std',
+    'frame-system/std',
+    'df-traits/std',
+    'pallet-permissions/std',
+    'pallet-posts/std',
+    'pallet-roles/std',
+    'pallet-spaces/std',
+    'pallet-space-follows/std',
+    'pallet-utils/std',
+]
+
+[dependencies]
+codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
+
+# Local dependencies
+df-traits = { default-features = false, path = '../traits' }
+pallet-permissions = { default-features = false, path = '../permissions' }
+pallet-posts = { default-features = false, path = '../posts' }
+pallet-roles = { default-features = false, path = '../roles' }
+pallet-space-follows = { default-features = false, path = '../space-follows' }
+pallet-spaces = { default-features = false, path = '../spaces' }
+pallet-utils = { default-features = false, path = '../utils' }
+
+# Substrate dependencies
+frame-support = { default-features = false, version = '3.0.0' }
+frame-system = { default-features = false, version = '3.0.0' }
+
+sp-runtime = { default-features = false, version = '3.0.0' }
+sp-std = { default-features = false, version = '3.0.0' }
+
+[dev-dependencies]
+serde = { version = '1.0.119' }
+
+# Local dependencies
+pallet-profiles = { default-features = false, path = '../profiles' }
+
+# Substrate dependencies
+pallet-balances = { default-features = false, version = '3.0.0' }
+pallet-timestamp = { default-features = false, version = '3.0.0' }
+
+sp-core = { default-features = false, version = '3.0.0' }
+sp-io = { default-features = false, version = '3.0.0' }
