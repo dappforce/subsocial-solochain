@@ -20,8 +20,8 @@ use pallet_posts::PostExtension;
 use pallet_roles::RoleId;
 use pallet_spaces::{RESERVED_SPACE_COUNT, SpaceById};
 
-use pallet_utils::{Content, DEFAULT_MAX_HANDLE_LEN, DEFAULT_MIN_HANDLE_LEN, PostId, SpaceId, User};
 pub use pallet_utils::mock_functions::valid_content_ipfs;
+use pallet_utils::{Content, PostId, SpaceId, User};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -140,7 +140,6 @@ parameter_types! {
 impl pallet_posts::Config for Test {
     type Event = Event;
     type MaxCommentDepth = MaxCommentDepth;
-    type PostScores = ();
     type AfterPostUpdated = ();
     type IsPostBlocked = Moderation;
 }
