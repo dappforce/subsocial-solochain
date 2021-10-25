@@ -1,21 +1,27 @@
 use super::*;
 
-use sp_core::H256;
-use sp_io::TestExternalities;
-
-use sp_runtime::{
-    traits::{BlakeTwo256, IdentityLookup}, testing::Header,
-};
-use frame_support::{parameter_types, assert_ok, StorageMap, dispatch::DispatchResult};
-use frame_system as system;
-
 use crate as moderation;
 
+use frame_support::{assert_ok, dispatch::DispatchResult, parameter_types, StorageMap};
+use frame_system as system;
+
+use sp_core::H256;
+use sp_io::TestExternalities;
+use sp_runtime::{
+    testing::Header,
+    traits::{BlakeTwo256, IdentityLookup},
+};
+
+use pallet_permissions::{
+    SpacePermission as SP,
+    default_permissions::DefaultSpacePermissions,
+};
 use pallet_posts::PostExtension;
+use pallet_roles::RoleId;
 use pallet_spaces::{RESERVED_SPACE_COUNT, SpaceById};
 
+use pallet_utils::{Content, DEFAULT_MAX_HANDLE_LEN, DEFAULT_MIN_HANDLE_LEN, PostId, SpaceId, User};
 pub use pallet_utils::mock_functions::valid_content_ipfs;
-use pallet_utils::{Content, SpaceId, PostId};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -105,8 +111,6 @@ impl pallet_balances::Config for Test {
     type MaxLocks = ();
 }
 
-use pallet_permissions::default_permissions::DefaultSpacePermissions;
-
 impl pallet_permissions::Config for Test {
     type DefaultSpacePermissions = DefaultSpacePermissions;
 }
@@ -160,7 +164,7 @@ impl pallet_profiles::Config for Test {
 }
 
 parameter_types! {
-    pub const DefaultAutoblockThreshold: u16 = 20;
+    pub const DefaultAutoblockThreshold: u16 = 3;
 }
 
 impl Config for Test {
@@ -231,10 +235,36 @@ impl ExtBuilder {
 
         ext
     }
+
+    pub fn build_with_report_then_grant_role_to_suggest_entity_status() -> TestExternalities {
+        let mut ext = Self::build_with_space_and_post_then_report();
+
+        ext.execute_with(|| {
+            // Create a new role for moderators:
+            assert_ok!(Roles::create_role(
+                Origin::signed(ACCOUNT_SCOPE_OWNER),
+                SPACE1,
+                None,
+                default_role_content_ipfs(),
+                vec![SP::SuggestEntityStatus],
+            ));
+
+            // Allow the moderator accounts to suggest entity statuses:
+            let mods = moderators().into_iter().map(User::Account).collect();
+            assert_ok!(Roles::grant_role(
+                Origin::signed(ACCOUNT_SCOPE_OWNER),
+                MODERATOR_ROLE_ID,
+                mods
+            ));
+        });
+
+        ext
+    }
 }
 
 pub(crate) const ACCOUNT_SCOPE_OWNER: AccountId = 1;
 pub(crate) const ACCOUNT_NOT_MODERATOR: AccountId = 2;
+pub(crate) const FIRST_MODERATOR_ID: AccountId = 100;
 
 pub(crate) const SPACE1: SpaceId = RESERVED_SPACE_COUNT + 1;
 pub(crate) const SPACE2: SpaceId = SPACE1 + 1;
@@ -243,6 +273,8 @@ pub(crate) const POST1: PostId = 1;
 
 pub(crate) const REPORT1: ReportId = 1;
 pub(crate) const REPORT2: ReportId = 2;
+
+pub(crate) const MODERATOR_ROLE_ID: RoleId = 1;
 
 pub(crate) const AUTOBLOCK_THRESHOLD: u16 = 5;
 
@@ -256,6 +288,18 @@ pub(crate) const fn empty_moderation_settings_update() -> SpaceModerationSetting
     SpaceModerationSettingsUpdate {
         autoblock_threshold: None
     }
+}
+
+pub(crate) fn moderators() -> Vec<AccountId> {
+    let first_mod_id = FIRST_MODERATOR_ID;
+    let last_mod_id = first_mod_id + DefaultAutoblockThreshold::get() as u64 + 2;
+    (first_mod_id..last_mod_id).collect()
+}
+
+// TODO: replace with common function when benchmarks PR is merged
+// TODO: replace with common function when benchmarks PR is merged
+pub(crate) fn default_role_content_ipfs() -> Content {
+    Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
 
 pub(crate) fn create_space_and_post() {
@@ -297,6 +341,7 @@ pub(crate) fn _suggest_blocked_status_for_post() -> DispatchResult {
     _suggest_entity_status(None, None, None, None, None)
 }
 
+/// By default (when all options are `None`) makes ACCOUNT1 to suggest 'Blocked' status to the POST1
 pub(crate) fn _suggest_entity_status(
     origin: Option<Origin>,
     entity: Option<EntityId<AccountId>>,
@@ -362,5 +407,3 @@ pub(crate) fn _update_moderation_settings(
         settings_update.unwrap_or_else(|| new_autoblock_threshold()),
     )
 }
-
-

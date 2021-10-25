@@ -111,7 +111,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 12,
+	spec_version: 14,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -995,6 +995,18 @@ impl pallet_spaces::Config for Runtime {
 	type HandleDeposit = HandleDeposit;
 }
 
+parameter_types! {
+    pub InitialClaimAmount: Balance = 10 * DOLLARS;
+    pub AccountsSetLimit: u32 = 30_000;
+}
+
+impl pallet_dotsama_claims::Config for Runtime {
+    type Event = Event;
+    type InitialClaimAmount = InitialClaimAmount;
+    type AccountsSetLimit = AccountsSetLimit;
+    type WeightInfo = pallet_dotsama_claims::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {}
 
 impl pallet_space_history::Config for Runtime {}
@@ -1074,6 +1086,7 @@ construct_runtime!(
 		// New experimental pallets. Not recommended to use in production yet.
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
+		DotsamaClaims: pallet_dotsama_claims::{Module, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 	}
 );
@@ -1101,6 +1114,7 @@ pub type SignedExtra = (
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    pallet_dotsama_claims::EnsureAllowedToClaimTokens<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
@@ -1349,6 +1363,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_treasury, Treasury);
 			add_benchmark!(params, batches, pallet_utility, Utility);
 			add_benchmark!(params, batches, pallet_vesting, Vesting);
+			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

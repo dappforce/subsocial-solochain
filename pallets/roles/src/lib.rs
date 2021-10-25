@@ -2,7 +2,7 @@
 //!
 //! This module allow you to create dynalic roles with an associated set of permissions
 //! and grant them to users (accounts or space ids) within a given space.
-//! 
+//!
 //! For example if you want to create a space that enables editors in a similar way to Medium,
 //! you would create a role "Editor" with permissions such as `CreatePosts`, `UpdateAnyPost`,
 //! and `HideAnyComment`. Then you would grant this role to the specific accounts you would like
@@ -37,7 +37,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type RoleId = u64;
+pub type RoleId = u64;
 
 /// Information about a role's permissions, its' containing space, and its' content.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -61,7 +61,7 @@ pub struct Role<T: Config> {
     /// with a given role will have no affect.
     pub expires_at: Option<T::BlockNumber>,
 
-    /// Content can optionally contain additional information associated with a role, 
+    /// Content can optionally contain additional information associated with a role,
     /// such as a name, description, and image for a role. This may be useful for end users.
     pub content: Content,
 
@@ -85,7 +85,7 @@ pub trait Config: system::Config
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
-    /// When deleting a role via `delete_role()` dispatch, this parameter is checked. 
+    /// When deleting a role via `delete_role()` dispatch, this parameter is checked.
     /// If the number of users that own a given role is greater or equal to this number,
     /// then `TooManyUsersToDeleteRole` error will be returned and the dispatch will fail.
     type MaxUsersToProcessPerDeleteRole: Get<u16>;
@@ -189,7 +189,7 @@ decl_module! {
 
     /// Create a new role, with a list of permissions, within a given space.
     ///
-    /// `content` can optionally contain additional information associated with a role, 
+    /// `content` can optionally contain additional information associated with a role,
     /// such as a name, description, and image for a role. This may be useful for end users.
     ///
     /// Only the space owner or a user with `ManageRoles` permission can call this dispatch.
@@ -209,7 +209,7 @@ decl_module! {
       ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
 
       Self::ensure_role_manager(who.clone(), space_id)?;
-      
+
       let permissions_set = permissions.into_iter().collect();
       let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, content, permissions_set)?;
 

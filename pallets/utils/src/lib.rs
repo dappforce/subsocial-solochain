@@ -118,7 +118,7 @@ impl Content {
     }
 }
 
-type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
 
 pub trait Config: system::Config + pallet_timestamp::Config
 {
@@ -209,6 +209,7 @@ pub fn bool_to_option(value: bool) -> Option<bool> {
 
 impl<T: Config> Module<T> {
 
+    // TODO Rename to `ensure_content_is_valid`
     pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
             Content::None => Ok(()),
