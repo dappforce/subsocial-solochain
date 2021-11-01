@@ -319,6 +319,11 @@ impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
+impl pallet_lottery::Trait for Runtime {
+	type Currency = Balances;
+	type Event = Event;
+}
+
 parameter_types! {
   pub const MaxCommentDepth: u32 = 10;
 }
