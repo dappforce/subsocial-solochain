@@ -14,9 +14,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	decl_module, decl_storage, decl_event, decl_error, ensure, Parameter, IsSubType,
+	decl_module, decl_storage, decl_event, decl_error, ensure, Parameter,
 	weights::{Pays, GetDispatchInfo, DispatchClass},
-	traits::{Filter, Get},
+	traits::{Filter, Get, IsSubType},
 };
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::{
@@ -75,14 +75,14 @@ impl<BlockNumber> ConsumerStats<BlockNumber> {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
+pub trait Config: system::Config {
 	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
 	/// The call type from the runtime which has all the calls available in your runtime.
 	type Call: Parameter + GetDispatchInfo + Dispatchable<Origin = Self::Origin>;
 
-	type CallFilter: Filter<<Self as Trait>::Call>;
+	type CallFilter: Filter<<Self as Config>::Call>;
 
 	// TODO Rename to RateLimitingWindows or SlidingWindows?
 	type RateConfigs: Get<Vec<RateConfig<Self::BlockNumber>>>;
@@ -93,18 +93,18 @@ pub trait Trait: system::Trait {
 decl_event!(
 	pub enum Event<T>
 	where
-		AccountId = <T as frame_system::Trait>::AccountId,
+		AccountId = <T as frame_system::Config>::AccountId,
 	{
 		FreeCallResult(AccountId, DispatchResult),
 	}
 );
 
 decl_error! {
-	pub enum Error for Module<T: Trait> {}
+	pub enum Error for Module<T: Config> {}
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as RateLimiterModule {
+	trait Store for Module<T: Config> as RateLimiterModule {
 
 		// TODO rename to 'UsageByAccount' or 'UsageTrackers'?
 		pub StatsByAccount get(fn stats_by_account):
@@ -116,7 +116,7 @@ decl_storage! {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
 		// Sorted vector of rate-limiting rate limiting windows.
 		const RateConfigs: Vec<RateConfig<T::BlockNumber>> = {
@@ -151,7 +151,7 @@ decl_module! {
 				Pays::No,
 			)
 		}]
-		fn try_free_call(origin, call: Box<<T as Trait>::Call>) -> DispatchResult {
+		fn try_free_call(origin, call: Box<<T as Config>::Call>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
 
 			if Self::can_account_make_free_call_and_update_stats(&sender) {
@@ -173,7 +173,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn update_account_stats(
 		who: &T::AccountId,
 		window_type: WindowType,
@@ -239,13 +239,13 @@ impl<T: Trait> Module<T> {
 /// Validate `try_free_call` calls prior to execution. Needed to avoid a DoS attack since they are
 /// otherwise free to place on chain.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
-pub struct PrevalidateFreeCall<T: Trait + Send + Sync>(sp_std::marker::PhantomData<T>)
+pub struct PrevalidateFreeCall<T: Config + Send + Sync>(sp_std::marker::PhantomData<T>)
 where
-	<T as frame_system::Trait>::Call: IsSubType<Call<T>>;
+	<T as frame_system::Config>::Call: IsSubType<Call<T>>;
 
-impl<T: Trait + Send + Sync> Debug for PrevalidateFreeCall<T>
+impl<T: Config + Send + Sync> Debug for PrevalidateFreeCall<T>
 where
-	<T as frame_system::Trait>::Call: IsSubType<Call<T>>,
+	<T as frame_system::Config>::Call: IsSubType<Call<T>>,
 {
 	#[cfg(feature = "std")]
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
@@ -258,9 +258,9 @@ where
 	}
 }
 
-impl<T: Trait + Send + Sync> PrevalidateFreeCall<T>
+impl<T: Config + Send + Sync> PrevalidateFreeCall<T>
 where
-	<T as frame_system::Trait>::Call: IsSubType<Call<T>>,
+	<T as frame_system::Config>::Call: IsSubType<Call<T>>,
 {
 	/// Create new `SignedExtension` to check runtime version.
 	pub fn new() -> Self {
@@ -280,13 +280,13 @@ impl From<ValidityError> for u8 {
 	}
 }
 
-impl<T: Trait + Send + Sync> SignedExtension for PrevalidateFreeCall<T>
+impl<T: Config + Send + Sync> SignedExtension for PrevalidateFreeCall<T>
 where
-	<T as frame_system::Trait>::Call: IsSubType<Call<T>>,
+	<T as frame_system::Config>::Call: IsSubType<Call<T>>,
 {
 	const IDENTIFIER: &'static str = "PrevalidateFreeCall";
 	type AccountId = T::AccountId;
-	type Call = <T as frame_system::Trait>::Call;
+	type Call = <T as frame_system::Config>::Call;
 	type AdditionalSigned = ();
 	type Pre = ();
 
@@ -320,7 +320,7 @@ where
 	}
 }
 
-impl<T: Trait> OnFreeTransaction<T::AccountId> for Module<T> {
+impl<T: Config> OnFreeTransaction<T::AccountId> for Module<T> {
 	fn can_account_make_free_call(sender: &T::AccountId) -> bool {
 		Self::check_account_can_make_free_call(sender)
 	}

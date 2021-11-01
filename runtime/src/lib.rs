@@ -316,7 +316,7 @@ parameter_types! {
   pub RateConfigs: Vec<RateConfig<BlockNumber>> = RATE_CONFIGS.to_vec();
 }
 
-impl pallet_rate_limiter::Trait for Runtime {
+impl pallet_rate_limiter::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type CallFilter = RateLimiterCallsFilter;

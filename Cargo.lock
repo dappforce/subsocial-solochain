@@ -3976,6 +3976,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-rate-limiter"
+version = "0.6.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-reactions"
 version = "0.7.0"
 dependencies = [
@@ -4237,6 +4252,21 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-trust"
+version = "0.6.1"
+dependencies = [
+ "bitflags",
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -7706,6 +7736,7 @@ dependencies = [
  "pallet-profile-history",
  "pallet-profiles",
  "pallet-randomness-collective-flip",
+ "pallet-rate-limiter",
  "pallet-reactions",
  "pallet-roles",
  "pallet-scheduler",
@@ -7718,6 +7749,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-trust",
  "pallet-utility",
  "pallet-utils",
  "parity-scale-codec",
