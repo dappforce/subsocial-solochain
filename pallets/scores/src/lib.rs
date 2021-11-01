@@ -37,17 +37,17 @@ impl Default for ScoringAction {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_utils::Trait
-    + pallet_profiles::Trait
-    + pallet_profile_follows::Trait
-    + pallet_posts::Trait
-    + pallet_spaces::Trait
-    + pallet_space_follows::Trait
-    + pallet_reactions::Trait
+pub trait Config: system::Config
+    + pallet_utils::Config
+    + pallet_profiles::Config
+    + pallet_profile_follows::Config
+    + pallet_posts::Config
+    + pallet_spaces::Config
+    + pallet_space_follows::Config
+    + pallet_reactions::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     // Weights of the social actions
     type FollowSpaceActionWeight: Get<i16>;
@@ -64,7 +64,7 @@ pub trait Trait: system::Trait
 }
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Scored account reputation difference by account and action not found.
         ReputationDiffNotFound,
         /// Post extension is a comment.
@@ -76,7 +76,7 @@ decl_error! {
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as ScoresModule {
+    trait Store for Module<T: Config> as ScoresModule {
 
         // TODO shorten name? (refactor)
         pub AccountReputationDiffByAccount get(fn account_reputation_diff_by_account):
@@ -89,7 +89,7 @@ decl_storage! {
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId,
+        <T as system::Config>::AccountId,
     {
         AccountReputationChanged(AccountId, ScoringAction, u32),
     }
@@ -97,7 +97,7 @@ decl_event!(
 
 // The pallet's dispatchable functions.
 decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+    pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
         /// Weights of the related social account actions
         const FollowSpaceActionWeight: i16 = T::FollowSpaceActionWeight::get();
@@ -118,7 +118,7 @@ decl_module! {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 
     pub fn scoring_action_by_post_extension(
         extension: PostExtension,
@@ -346,7 +346,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> BeforeSpaceFollowed<T> for Module<T> {
+impl<T: Config> BeforeSpaceFollowed<T> for Module<T> {
     fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult {
         // Change a space score only if the follower is NOT a space owner.
         if !space.is_owner(&follower) {
@@ -361,7 +361,7 @@ impl<T: Trait> BeforeSpaceFollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> BeforeSpaceUnfollowed<T> for Module<T> {
+impl<T: Config> BeforeSpaceUnfollowed<T> for Module<T> {
     fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
         // Change a space score only if the follower is NOT a space owner.
         if !space.is_owner(&follower) {
@@ -380,7 +380,7 @@ impl<T: Trait> BeforeSpaceUnfollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> BeforeAccountFollowed<T> for Module<T> {
+impl<T: Config> BeforeAccountFollowed<T> for Module<T> {
     fn before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult {
         let action = ScoringAction::FollowAccount;
         let score_diff = Self::score_diff_for_action(follower_reputation, action);
@@ -388,7 +388,7 @@ impl<T: Trait> BeforeAccountFollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> BeforeAccountUnfollowed<T> for Module<T> {
+impl<T: Config> BeforeAccountUnfollowed<T> for Module<T> {
     fn before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult {
         let action = ScoringAction::FollowAccount;
 
@@ -400,7 +400,7 @@ impl<T: Trait> BeforeAccountUnfollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> PostScores<T> for Module<T> {
+impl<T: Config> PostScores<T> for Module<T> {
     fn score_post_on_new_share(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult {
         let action =
             if original_post.is_comment() { ScoringAction::ShareComment }
@@ -425,7 +425,7 @@ impl<T: Trait> PostScores<T> for Module<T> {
     }
 }
 
-impl<T: Trait> PostReactionScores<T> for Module<T> {
+impl<T: Config> PostReactionScores<T> for Module<T> {
     fn score_post_on_reaction(
         actor: T::AccountId,
         post: &mut Post<T>,

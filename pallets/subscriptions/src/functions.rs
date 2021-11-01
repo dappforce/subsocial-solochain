@@ -10,7 +10,7 @@ use frame_support::{
 use pallet_permissions::SpacePermission;
 use pallet_spaces::Space;
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn require_plan(plan_id: SubscriptionPlanId) -> Result<SubscriptionPlan<T>, DispatchError> {
         Ok(Self::plan_by_id(plan_id).ok_or(Error::<T>::SubscriptionPlanNotFound)?)
     }
@@ -89,7 +89,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> SubscriptionPlan<T> {
+impl<T: Config> SubscriptionPlan<T> {
     pub fn new(
         id: SubscriptionPlanId,
         created_by: T::AccountId,
@@ -121,7 +121,7 @@ impl<T: Trait> SubscriptionPlan<T> {
     }
 }
 
-impl<T: Trait> Subscription<T> {
+impl<T: Config> Subscription<T> {
     pub fn new(
         id: SubscriptionId,
         created_by: T::AccountId,

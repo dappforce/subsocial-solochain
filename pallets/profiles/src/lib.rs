@@ -15,7 +15,7 @@ use pallet_utils::{Module as Utils, WhoAndWhen, Content};
 pub mod rpc;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct SocialAccount<T: Trait> {
+pub struct SocialAccount<T: Config> {
     pub followers_count: u32,
     pub following_accounts_count: u16,
     pub following_spaces_count: u16,
@@ -24,7 +24,7 @@ pub struct SocialAccount<T: Trait> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Profile<T: Trait> {
+pub struct Profile<T: Config> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
     pub content: Content
@@ -36,18 +36,18 @@ pub struct ProfileUpdate {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_utils::Trait
+pub trait Config: system::Config
+    + pallet_utils::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     type AfterProfileUpdated: AfterProfileUpdated<Self>;
 }
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as ProfilesModule {
+    trait Store for Module<T: Config> as ProfilesModule {
         pub SocialAccountById get(fn social_account_by_id):
             map hasher(blake2_128_concat) T::AccountId => Option<SocialAccount<T>>;
     }
@@ -55,7 +55,7 @@ decl_storage! {
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId,
+        <T as system::Config>::AccountId,
     {
         ProfileCreated(AccountId),
         ProfileUpdated(AccountId),
@@ -63,7 +63,7 @@ decl_event!(
 );
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Social account was not found by id.
         SocialAccountNotFound,
         /// Profile is already created for this account.
@@ -76,7 +76,7 @@ decl_error! {
 }
 
 decl_module! {
-  pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+  pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
     // Initializing errors
     type Error = Error<T>;
@@ -142,7 +142,7 @@ decl_module! {
   }
 }
 
-impl <T: Trait> SocialAccount<T> {
+impl <T: Config> SocialAccount<T> {
     pub fn inc_followers(&mut self) {
         self.followers_count = self.followers_count.saturating_add(1);
     }
@@ -168,7 +168,7 @@ impl <T: Trait> SocialAccount<T> {
     }
 }
 
-impl<T: Trait> SocialAccount<T> {
+impl<T: Config> SocialAccount<T> {
     #[allow(clippy::comparison_chain)]
     pub fn change_reputation(&mut self, diff: i16) {
         if diff > 0 {
@@ -187,7 +187,7 @@ impl Default for ProfileUpdate {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn get_or_new_social_account(account: T::AccountId) -> SocialAccount<T> {
         Self::social_account_by_id(account).unwrap_or(
             SocialAccount {
@@ -202,6 +202,6 @@ impl<T: Trait> Module<T> {
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(10)]
-pub trait AfterProfileUpdated<T: Trait> {
+pub trait AfterProfileUpdated<T: Config> {
     fn after_profile_updated(account: T::AccountId, post: &Profile<T>, old_data: ProfileUpdate);
 }

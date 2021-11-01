@@ -7,7 +7,7 @@ use codec::{Decode, Encode};
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
-use crate::{Content, bool_to_option, Trait, WhoAndWhen};
+use crate::{Content, bool_to_option, Config, WhoAndWhen};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -28,7 +28,7 @@ pub struct FlatWhoAndWhen<AccountId, BlockNumber> {
     pub is_updated: Option<bool>,
 }
 
-impl<T: Trait> From<(WhoAndWhen<T>, Option<WhoAndWhen<T>>)> for FlatWhoAndWhen<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<(WhoAndWhen<T>, Option<WhoAndWhen<T>>)> for FlatWhoAndWhen<T::AccountId, T::BlockNumber> {
     fn from(created_and_updated: (WhoAndWhen<T>, Option<WhoAndWhen<T>>)) -> Self {
         let (created, updated) = created_and_updated;
         Self {
@@ -45,7 +45,7 @@ impl<T: Trait> From<(WhoAndWhen<T>, Option<WhoAndWhen<T>>)> for FlatWhoAndWhen<T
     }
 }
 
-impl<T: Trait> From<WhoAndWhen<T>> for FlatWhoAndWhen<T::AccountId, T::BlockNumber> {
+impl<T: Config> From<WhoAndWhen<T>> for FlatWhoAndWhen<T::AccountId, T::BlockNumber> {
     fn from(created: WhoAndWhen<T>) -> Self {
         Self {
             created_by: created.account,

@@ -14,12 +14,12 @@ use pallet_utils::remove_from_vec;
 pub mod rpc;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
-    + pallet_utils::Trait
-    + pallet_profiles::Trait
+pub trait Config: system::Config
+    + pallet_utils::Config
+    + pallet_profiles::Config
 {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
     type BeforeAccountFollowed: BeforeAccountFollowed<Self>;
 
@@ -28,7 +28,7 @@ pub trait Trait: system::Trait
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as ProfileFollowsModule {
+    trait Store for Module<T: Config> as ProfileFollowsModule {
         pub AccountFollowers get(fn account_followers):
             map hasher(blake2_128_concat) T::AccountId => Vec<T::AccountId>;
 
@@ -42,7 +42,7 @@ decl_storage! {
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId,
+        <T as system::Config>::AccountId,
     {
         AccountFollowed(/* follower */ AccountId, /* following */ AccountId),
         AccountUnfollowed(/* follower */ AccountId, /* unfollowing */ AccountId),
@@ -50,7 +50,7 @@ decl_event!(
 );
 
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Config> {
         /// Follower social account was not found by id.
         FollowerAccountNotFound,
         /// Social account that is being followed was not found by id.
@@ -69,7 +69,7 @@ decl_error! {
 }
 
 decl_module! {
-  pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+  pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
     // Initializing errors
     type Error = Error<T>;
@@ -132,22 +132,22 @@ decl_module! {
 }
 
 /// Handler that will be called right before the account is followed.
-pub trait BeforeAccountFollowed<T: Trait> {
+pub trait BeforeAccountFollowed<T: Config> {
     fn before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult;
 }
 
-impl<T: Trait> BeforeAccountFollowed<T> for () {
+impl<T: Config> BeforeAccountFollowed<T> for () {
     fn before_account_followed(_follower: T::AccountId, _follower_reputation: u32, _following: T::AccountId) -> DispatchResult {
         Ok(())
     }
 }
 
 /// Handler that will be called right before the account is unfollowed.
-pub trait BeforeAccountUnfollowed<T: Trait> {
+pub trait BeforeAccountUnfollowed<T: Config> {
     fn before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult;
 }
 
-impl<T: Trait> BeforeAccountUnfollowed<T> for () {
+impl<T: Config> BeforeAccountUnfollowed<T> for () {
     fn before_account_unfollowed(_follower: T::AccountId, _following: T::AccountId) -> DispatchResult {
         Ok(())
     }

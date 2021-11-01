@@ -55,7 +55,7 @@ pub enum SubscriptionPeriod<BlockNumber> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct SubscriptionPlan<T: Trait> {
+pub struct SubscriptionPlan<T: Config> {
 	pub id: SubscriptionPlanId,
 	pub created: WhoAndWhen<T>,
 	pub updated: Option<WhoAndWhen<T>>,
@@ -71,7 +71,7 @@ pub struct SubscriptionPlan<T: Trait> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Subscription<T: Trait> {
+pub struct Subscription<T: Config> {
 	pub id: SubscriptionId,
 	pub created: WhoAndWhen<T>,
 	pub updated: Option<WhoAndWhen<T>>,
@@ -82,19 +82,19 @@ pub struct Subscription<T: Trait> {
 	pub plan_id: SubscriptionPlanId,
 }
 
-type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as pallet_utils::Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
-pub trait Trait:
-	system::Trait
-	+ pallet_utils::Trait
-	+ pallet_spaces::Trait
-	+ pallet_sudo::Trait
+pub trait Config:
+	system::Config
+	+ pallet_utils::Config
+	+ pallet_spaces::Config
+	+ pallet_sudo::Config
 {
 	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
-	type Subscription: Dispatchable<Origin=<Self as system::Trait>::Origin> + From<Call<Self>>;
+	type Subscription: Dispatchable<Origin=<Self as system::Config>::Origin> + From<Call<Self>>;
 
 	type Scheduler: ScheduleNamed<Self::BlockNumber, Self::Subscription, Self::Origin>;
 
@@ -112,7 +112,7 @@ pub trait Trait:
 pub const FIRST_SUBSCRIPTION_PLAN_ID: u64 = 1;
 
 decl_storage! {
-	trait Store for Module<T: Trait> as SubscriptionsModule {
+	trait Store for Module<T: Config> as SubscriptionsModule {
 
 		// Plans:
 
@@ -153,7 +153,7 @@ decl_storage! {
 // The pallet's events
 decl_event!(
 	pub enum Event<T> where
-		AccountId = <T as system::Trait>::AccountId
+		AccountId = <T as system::Config>::AccountId
 	{
 		SubscriptionPlanCreated(AccountId, SubscriptionPlanId),
 		// todo: complete event list for this pallet once dispatches are implemented
@@ -161,7 +161,7 @@ decl_event!(
 );
 
 decl_error! {
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		AlreadySubscribed,
 		CannotScheduleReccurentPayment,
 		NoPermissionToUpdateSubscriptionPlan,
@@ -179,7 +179,7 @@ decl_error! {
 
 decl_module! {
 	/// The module declaration.
-	pub struct Module<T: Trait> for enum Call where origin: <T as system::Trait>::Origin {
+	pub struct Module<T: Config> for enum Call where origin: <T as system::Config>::Origin {
 
 		const DailyPeriodInBlocks: T::BlockNumber = T::DailyPeriodInBlocks::get();
 		const WeeklyPeriodInBlocks: T::BlockNumber = T::WeeklyPeriodInBlocks::get();
@@ -211,7 +211,7 @@ decl_module! {
 			Utils::<T>::is_valid_content(content.clone())?;
 
 			ensure!(
-				price >= <T as pallet_utils::Trait>::Currency::minimum_balance(),
+				price >= <T as pallet_utils::Config>::Currency::minimum_balance(),
 				Error::<T>::PriceLowerExistencialDeposit
 			);
 
@@ -344,7 +344,7 @@ decl_module! {
 			ensure!(recipient.is_some(), Error::<T>::RecipientNotFound);
 
 			// todo: maybe implement function `transfer_or_reserve`?
-			<T as pallet_utils::Trait>::Currency::transfer(
+			<T as pallet_utils::Config>::Currency::transfer(
 				&sender,
 				&recipient.unwrap(),
 				plan.price,
@@ -432,7 +432,7 @@ decl_module! {
 			let recipient = plan.try_get_recipient();
 			ensure!(recipient.is_some(), Error::<T>::RecipientNotFound);
 
-			subscription.is_active = <T as pallet_utils::Trait>::Currency::transfer(
+			subscription.is_active = <T as pallet_utils::Config>::Currency::transfer(
 				&subscription.created.account,
 				&recipient.unwrap(),
 				plan.price,

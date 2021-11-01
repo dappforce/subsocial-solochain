@@ -4,7 +4,7 @@ use pallet_utils::{SpaceId, remove_from_vec};
 
 use super::*;
 
-impl<T: Trait> Post<T> {
+impl<T: Config> Post<T> {
 
     pub fn new(
         id: PostId,
@@ -175,7 +175,7 @@ impl Default for PostUpdate {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 
     pub fn ensure_account_can_update_post(
         editor: &T::AccountId,

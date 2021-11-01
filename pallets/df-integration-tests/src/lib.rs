@@ -1,21 +1,21 @@
 #[cfg(test)]
 mod tests {
-    use frame_support::{
-        assert_ok, assert_noop,
-        impl_outer_origin, parameter_types,
-        weights::Weight,
-        dispatch::DispatchResult,
-        storage::StorageMap,
-    };
     use sp_core::H256;
     use sp_io::TestExternalities;
+
     use sp_runtime::{
         traits::{BlakeTwo256, IdentityLookup, Zero},
         testing::Header,
-        Perbill,
         Storage,
     };
-    use frame_system::{self as system};
+
+    use frame_support::{
+        assert_ok, assert_noop,
+        parameter_types,
+        dispatch::{DispatchResult, DispatchError},
+        storage::StorageMap,
+    };
+    use frame_system as system;
 
     use pallet_permissions::{
         SpacePermission,
@@ -27,63 +27,81 @@ mod tests {
     use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
     use pallet_scores::ScoringAction;
-    use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};
+    use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError, SpacesSettings};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
     use pallet_moderation::{EntityId, EntityStatus, ReportId};
     use pallet_utils::{
         mock_functions::*,
-        Error as UtilsError, Module as Utils,
+        DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN,
+        Error as UtilsError,
         SpaceId, PostId, User, Content,
     };
 
-    impl_outer_origin! {
-        pub enum Origin for TestRuntime {}
-    }
+    type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
+    type Block = frame_system::mocking::MockBlock<TestRuntime>;
 
-    #[derive(Clone, Eq, PartialEq)]
-    pub struct TestRuntime;
+    frame_support::construct_runtime!(
+        pub enum TestRuntime where
+            Block = Block,
+            NodeBlock = Block,
+            UncheckedExtrinsic = UncheckedExtrinsic,
+        {
+            System: system::{Module, Call, Config, Storage, Event<T>},
+            Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+            Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+            Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+            Permissions: pallet_permissions::{Module, Call},
+            Posts: pallet_posts::{Module, Call, Storage, Event<T>},
+            PostHistory: pallet_post_history::{Module, Storage},
+            ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
+            Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
+            ProfileHistory: pallet_profile_history::{Module, Storage},
+            Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},
+            Roles: pallet_roles::{Module, Call, Storage, Event<T>},
+            Scores: pallet_scores::{Module, Call, Storage, Event<T>},
+            SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
+            SpaceHistory: pallet_space_history::{Module, Storage},
+            SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
+            Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
+            Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+        }
+    );
 
     parameter_types! {
         pub const BlockHashCount: u64 = 250;
-        pub const MaximumBlockWeight: Weight = 1024;
-        pub const MaximumBlockLength: u32 = 2 * 1024;
-        pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
 
-    impl system::Trait for TestRuntime {
+    impl system::Config for TestRuntime {
         type BaseCallFilter = ();
+        type BlockWeights = ();
+        type BlockLength = ();
         type Origin = Origin;
-        type Call = ();
+        type Call = Call;
         type Index = u64;
-        type BlockNumber = u64;
+        type BlockNumber = BlockNumber;
         type Hash = H256;
         type Hashing = BlakeTwo256;
-        type AccountId = u64;
+        type AccountId = AccountId;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
-        type Event = ();
+        type Event = Event;
         type BlockHashCount = BlockHashCount;
-        type MaximumBlockWeight = MaximumBlockWeight;
         type DbWeight = ();
-        type BlockExecutionWeight = ();
-        type ExtrinsicBaseWeight = ();
-        type MaximumExtrinsicWeight = MaximumBlockWeight;
-        type MaximumBlockLength = MaximumBlockLength;
-        type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
-        type PalletInfo = ();
+        type PalletInfo = PalletInfo;
         type AccountData = pallet_balances::AccountData<u64>;
         type OnNewAccount = ();
         type OnKilledAccount = ();
         type SystemWeightInfo = ();
+        type SS58Prefix = ();
     }
 
     parameter_types! {
         pub const MinimumPeriod: u64 = 5;
     }
 
-    impl pallet_timestamp::Trait for TestRuntime {
+    impl pallet_timestamp::Config for TestRuntime {
         type Moment = u64;
         type OnTimestampSet = ();
         type MinimumPeriod = MinimumPeriod;
@@ -94,10 +112,10 @@ mod tests {
         pub const ExistentialDeposit: u64 = 1;
     }
 
-    impl pallet_balances::Trait for TestRuntime {
+    impl pallet_balances::Config for TestRuntime {
         type Balance = u64;
         type DustRemoval = ();
-        type Event = ();
+        type Event = Event;
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
         type WeightInfo = ();
@@ -105,12 +123,12 @@ mod tests {
     }
 
     parameter_types! {
-      pub const MinHandleLen: u32 = 5;
-      pub const MaxHandleLen: u32 = 50;
+      pub const MinHandleLen: u32 = DEFAULT_MIN_HANDLE_LEN;
+      pub const MaxHandleLen: u32 = DEFAULT_MAX_HANDLE_LEN;
     }
 
-    impl pallet_utils::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_utils::Config for TestRuntime {
+        type Event = Event;
         type Currency = Balances;
         type MinHandleLen = MinHandleLen;
         type MaxHandleLen = MaxHandleLen;
@@ -118,7 +136,7 @@ mod tests {
 
     use pallet_permissions::default_permissions::DefaultSpacePermissions;
 
-    impl pallet_permissions::Trait for TestRuntime {
+    impl pallet_permissions::Config for TestRuntime {
         type DefaultSpacePermissions = DefaultSpacePermissions;
     }
 
@@ -126,8 +144,8 @@ mod tests {
         pub const MaxCommentDepth: u32 = 10;
     }
 
-    impl pallet_posts::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_posts::Config for TestRuntime {
+        type Event = Event;
         type MaxCommentDepth = MaxCommentDepth;
         type PostScores = Scores;
         type AfterPostUpdated = PostHistory;
@@ -136,31 +154,31 @@ mod tests {
 
     parameter_types! {}
 
-    impl pallet_post_history::Trait for TestRuntime {}
+    impl pallet_post_history::Config for TestRuntime {}
 
     parameter_types! {}
 
-    impl pallet_profile_follows::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_profile_follows::Config for TestRuntime {
+        type Event = Event;
         type BeforeAccountFollowed = Scores;
         type BeforeAccountUnfollowed = Scores;
     }
 
     parameter_types! {}
 
-    impl pallet_profiles::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_profiles::Config for TestRuntime {
+        type Event = Event;
         type AfterProfileUpdated = ProfileHistory;
     }
 
     parameter_types! {}
 
-    impl pallet_profile_history::Trait for TestRuntime {}
+    impl pallet_profile_history::Config for TestRuntime {}
 
     parameter_types! {}
 
-    impl pallet_reactions::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_reactions::Config for TestRuntime {
+        type Event = Event;
         type PostReactionScores = Scores;
     }
 
@@ -168,8 +186,8 @@ mod tests {
         pub const MaxUsersToProcessPerDeleteRole: u16 = 40;
     }
 
-    impl pallet_roles::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_roles::Config for TestRuntime {
+        type Event = Event;
         type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
         type Spaces = Spaces;
         type SpaceFollows = SpaceFollows;
@@ -191,8 +209,8 @@ mod tests {
         pub const DownvoteCommentActionWeight: i16 = -2;
     }
 
-    impl pallet_scores::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_scores::Config for TestRuntime {
+        type Event = Event;
 
         type FollowSpaceActionWeight = FollowSpaceActionWeight;
         type FollowAccountActionWeight = FollowAccountActionWeight;
@@ -209,22 +227,26 @@ mod tests {
 
     parameter_types! {}
 
-    impl pallet_space_follows::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_space_follows::Config for TestRuntime {
+        type Event = Event;
         type BeforeSpaceFollowed = Scores;
         type BeforeSpaceUnfollowed = Scores;
     }
 
     parameter_types! {}
 
-    impl pallet_space_ownership::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_space_ownership::Config for TestRuntime {
+        type Event = Event;
     }
 
-    const HANDLE_DEPOSIT: u64 = 0;
+    const HANDLE_DEPOSIT: u64 = 15;
 
-    impl pallet_spaces::Trait for TestRuntime {
-        type Event = ();
+    parameter_types! {
+        pub const HandleDeposit: u64 = HANDLE_DEPOSIT;
+    }
+
+    impl pallet_spaces::Config for TestRuntime {
+        type Event = Event;
         type Currency = Balances;
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
@@ -232,40 +254,23 @@ mod tests {
         type AfterSpaceUpdated = SpaceHistory;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
-        type HandleDeposit = ();
+        type HandleDeposit = HandleDeposit;
     }
 
     parameter_types! {}
 
-    impl pallet_space_history::Trait for TestRuntime {}
+    impl pallet_space_history::Config for TestRuntime {}
 
     parameter_types! {
         pub const DefaultAutoblockThreshold: u16 = 20;
     }
 
-    impl pallet_moderation::Trait for TestRuntime {
-        type Event = ();
+    impl pallet_moderation::Config for TestRuntime {
+        type Event = Event;
         type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
     }
 
-    type System = system::Module<TestRuntime>;
-    type Balances = pallet_balances::Module<TestRuntime>;
-
-    type Posts = pallet_posts::Module<TestRuntime>;
-    type PostHistory = pallet_post_history::Module<TestRuntime>;
-    type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;
-    type Profiles = pallet_profiles::Module<TestRuntime>;
-    type ProfileHistory = pallet_profile_history::Module<TestRuntime>;
-    type Reactions = pallet_reactions::Module<TestRuntime>;
-    type Roles = pallet_roles::Module<TestRuntime>;
-    type Scores = pallet_scores::Module<TestRuntime>;
-    type SpaceFollows = pallet_space_follows::Module<TestRuntime>;
-    type SpaceHistory = pallet_space_history::Module<TestRuntime>;
-    type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
-    type Spaces = pallet_spaces::Module<TestRuntime>;
-    type Moderation = pallet_moderation::Module<TestRuntime>;
-
-    pub type AccountId = u64;
+    type AccountId = u64;
     type BlockNumber = u64;
 
 
@@ -300,6 +305,10 @@ mod tests {
 
         fn add_default_space() {
             assert_ok!(_create_default_space());
+        }
+
+        fn add_space_with_custom_permissions(permissions: SpacePermissions) {
+            assert_ok!(_create_space(None, None, None, Some(Some(permissions))));
         }
 
         fn add_space_with_no_handle() {
@@ -395,6 +404,13 @@ mod tests {
 
             ext
         }
+
+        /// Custom ext configuration with a space and override the space permissions
+        pub fn build_with_space_and_custom_permissions(permissions: SpacePermissions) -> TestExternalities {
+            let mut ext = Self::build();
+            ext.execute_with(|| Self::add_space_with_custom_permissions(permissions));
+            ext
+        }
     }
 
     /* Integration tests mocks */
@@ -415,7 +431,7 @@ mod tests {
 
     /// Lowercase a handle and then try to find a space id by it.
     fn find_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
-        let lc_handle = Utils::<TestRuntime>::lowercase_handle(handle);
+        let lc_handle = Utils::lowercase_handle(handle);
         Spaces::space_id_by_handle(lc_handle)
     }
 
@@ -433,6 +449,24 @@ mod tests {
 
     fn updated_space_content() -> Content {
         Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec())
+    }
+
+    fn permissions_where_everyone_can_create_post() -> SpacePermissions {
+        let mut default_permissions = DefaultSpacePermissions::get();
+        default_permissions.everyone = default_permissions.everyone
+          .map(|mut permissions| {
+              permissions.insert(SP::CreatePosts);
+              permissions
+          });
+
+        default_permissions
+    }
+
+    fn permissions_where_follower_can_create_post() -> SpacePermissions {
+        let mut default_permissions = DefaultSpacePermissions::get();
+        default_permissions.follower = Some(vec![SP::CreatePosts].into_iter().collect());
+
+        default_permissions
     }
 
     fn update_for_space_handle(
@@ -453,6 +487,14 @@ mod tests {
             hidden,
             permissions: None,
         }
+    }
+
+    fn space_settings_with_handles_disabled() -> SpacesSettings {
+        SpacesSettings { handles_enabled: false }
+    }
+
+    fn space_settings_with_handles_enabled() -> SpacesSettings {
+        SpacesSettings { handles_enabled: true }
     }
 
     fn post_content_ipfs() -> Content {
@@ -587,10 +629,10 @@ mod tests {
     ) -> DispatchResult {
         Spaces::create_space(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-            parent_id_opt.unwrap_or(None),
+            parent_id_opt.unwrap_or_default(),
             handle.unwrap_or_else(|| Some(space_handle())),
             content.unwrap_or_else(space_content_ipfs),
-            permissions.unwrap_or(None)
+            permissions.unwrap_or_default()
         )
     }
 
@@ -606,6 +648,23 @@ mod tests {
         )
     }
 
+    fn _update_space_settings_with_handles_enabled() -> DispatchResult {
+        _update_space_settings(None, Some(space_settings_with_handles_enabled()))
+    }
+
+    fn _update_space_settings_with_handles_disabled() -> DispatchResult {
+        _update_space_settings(None, Some(space_settings_with_handles_disabled()))
+    }
+
+    /// Default origin is a root.
+    fn _update_space_settings(origin: Option<Origin>, new_settings: Option<SpacesSettings>) -> DispatchResult {
+        Spaces::update_settings(
+            origin.unwrap_or_else(Origin::root),
+            new_settings.unwrap_or_else(space_settings_with_handles_disabled)
+        )
+    }
+
+    /// Account 2 follows Space 1
     fn _default_follow_space() -> DispatchResult {
         _follow_space(None, None)
     }
@@ -693,7 +752,7 @@ mod tests {
             origin,
             Some(None),
             Some(extension_comment(
-                parent_id.unwrap_or(None),
+                parent_id.unwrap_or_default(),
                 post_id.unwrap_or(POST1),
             )),
             Some(content.unwrap_or_else(comment_content_ipfs)),
@@ -1222,7 +1281,7 @@ mod tests {
     */
 
     /*---------------------------------------------------------------------------------------------------*/
-    // Space tests
+    // Spaces tests
 
     #[test]
     fn create_space_should_work() {
@@ -1253,6 +1312,42 @@ mod tests {
             // Check that the handle deposit has been reserved:
             let reserved_balance = Balances::reserved_balance(ACCOUNT1);
             assert_eq!(reserved_balance, HANDLE_DEPOSIT);
+        });
+    }
+
+    #[test]
+    fn create_space_should_work_with_permissions_override() {
+        let perms = permissions_where_everyone_can_create_post();
+        ExtBuilder::build_with_space_and_custom_permissions(perms.clone()).execute_with(|| {
+            let space = Spaces::space_by_id(SPACE1).unwrap();
+            assert_eq!(space.permissions, Some(perms));
+        });
+    }
+
+    #[test]
+    fn create_post_should_work_overridden_space_permission_for_everyone() {
+        ExtBuilder::build_with_space_and_custom_permissions(permissions_where_everyone_can_create_post()).execute_with(|| {
+            assert_ok!(_create_post(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                None,
+                None
+            ));
+        });
+    }
+
+    #[test]
+    fn create_post_should_work_overridden_space_permission_for_followers() {
+        ExtBuilder::build_with_space_and_custom_permissions(permissions_where_follower_can_create_post()).execute_with(|| {
+
+            assert_ok!(_default_follow_space());
+
+            assert_ok!(_create_post(
+                Some(Origin::signed(ACCOUNT2)),
+                None,
+                None,
+                None
+            ));
         });
     }
 
@@ -1363,6 +1458,18 @@ mod tests {
                 None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
+        });
+    }
+
+    #[test]
+    fn create_space_should_fail_when_handles_are_disabled() {
+        ExtBuilder::build().execute_with(|| {
+            assert_ok!(_update_space_settings_with_handles_disabled());
+
+            assert_noop!(
+                _create_default_space(),
+                SpacesError::<TestRuntime>::HandlesAreDisabled
+            );
         });
     }
 
@@ -1619,6 +1726,19 @@ mod tests {
     }
 
     #[test]
+    fn update_space_should_fail_when_handles_are_disabled() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(_update_space_settings_with_handles_disabled());
+            let space_update = update_for_space_handle(Some(space_handle_2()));
+
+            assert_noop!(
+                _update_space(None, None, Some(space_update)),
+                SpacesError::<TestRuntime>::HandlesAreDisabled
+            );
+        });
+    }
+
+    #[test]
     fn update_space_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_space().execute_with(|| {
 
@@ -1653,6 +1773,37 @@ mod tests {
                 Some(SPACE1),
                 Some(space_update)
             ), SpacesError::<TestRuntime>::NoPermissionToUpdateSpace);
+        });
+    }
+
+    #[test]
+    fn update_space_settings_should_work() {
+        ExtBuilder::build().execute_with(|| {
+            assert_ok!(_update_space_settings_with_handles_disabled());
+
+            let spaces_settings = Spaces::settings();
+            // Ensure that `handles_enabled` field is false
+            assert!(!spaces_settings.handles_enabled);
+        });
+    }
+
+    #[test]
+    fn update_space_settings_should_fail_when_account_is_not_root() {
+        ExtBuilder::build().execute_with(|| {
+            assert_noop!(
+                _update_space_settings(Some(Origin::signed(ACCOUNT1)), None),
+                DispatchError::BadOrigin
+            );
+        });
+    }
+
+    #[test]
+    fn update_space_settings_should_fail_when_same_settings_provided() {
+        ExtBuilder::build().execute_with(|| {
+            assert_noop!(
+                _update_space_settings_with_handles_enabled(),
+                SpacesError::<TestRuntime>::NoUpdatesForSpacesSettings
+            );
         });
     }
 
@@ -3679,15 +3830,22 @@ mod tests {
     #[test]
     fn accept_pending_ownership_should_work() {
         ExtBuilder::build_with_space().execute_with(|| {
+            // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2:
             assert_ok!(_transfer_default_space_ownership());
-            // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
-            assert_ok!(_accept_default_pending_ownership()); // Accepting a transfer from ACCOUNT2
-            // Check whether owner was changed
+
+            // Account 2 accepts the transfer of ownership:
+            assert_ok!(_accept_default_pending_ownership());
+
+            // Check that Account 2 is a new space owner:
             let space = Spaces::space_by_id(SPACE1).unwrap();
             assert_eq!(space.owner, ACCOUNT2);
 
-            // Check whether storage state is correct
+            // Check that pending storage is cleared:
             assert!(SpaceOwnership::pending_space_owner(SPACE1).is_none());
+
+            assert!(Balances::reserved_balance(ACCOUNT1).is_zero());
+
+            assert_eq!(Balances::reserved_balance(ACCOUNT2), HANDLE_DEPOSIT);
         });
     }
 
