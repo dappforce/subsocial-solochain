@@ -30,19 +30,20 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance;
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_posts::Trait {
+pub trait Config: system::Config + pallet_posts::Config {
 	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
+
 	type Currency: Currency<Self::AccountId>;
 }
 type PostVotesNumber = u64;
 
-pub type VoteKey<T: Trait> = (T::BlockNumber, T::AccountId, PostId, PostVotesNumber);
+pub type VoteKey<T: Config> = (T::BlockNumber, T::AccountId, PostId, PostVotesNumber);
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct LotteryResults<T: Trait> {
+pub struct LotteryResults<T: Config> {
 	winner_voter: Option<T::AccountId>,
 	winner_posts: Vec<(PostId, PostVotesNumber)>,
 	spent: bool,
@@ -50,17 +51,17 @@ pub struct LotteryResults<T: Trait> {
 
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub enum LotteryStatus<T: Trait> {
+pub enum LotteryStatus<T: Config> {
 	Done(LotteryResults<T>),
 	InProgress,
 }
 
-impl<T: Trait> Default for LotteryStatus<T> {
+impl<T: Config> Default for LotteryStatus<T> {
 	fn default() -> Self {
 		LotteryStatus::InProgress
 	}
 }
-impl<T: Trait> LotteryStatus<T> {
+impl<T: Config> LotteryStatus<T> {
 	pub fn is_done(&self) -> bool {
 		return match self {
 			LotteryStatus::Done(_) => true,
@@ -73,7 +74,7 @@ pub const NUMBER_OF_WINNING_POSTS: u64 = 3;
 
 // This pallet's storage items.
 decl_storage! {
-	trait Store for Module<T: Trait> as LotteryModule {
+	trait Store for Module<T: Config> as LotteryModule {
 	 /// An id for the next donation.
 
 	pub VoterPricePercentage get(fn voter_price_share): u64 = VOTER_SHARE;
@@ -97,7 +98,7 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T>
 	where
-		BlockNumber = <T as system::Trait>::BlockNumber,
+		BlockNumber = <T as system::Config>::BlockNumber,
 		VoteKey = VoteKey<T>,
 	{
 		/// Lottery ended event dispatched every X eras
@@ -113,7 +114,7 @@ decl_event!(
 
 // The pallet's errors
 decl_error! {
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 	/// Insufficient balance
 	 InsufficientBalance,
 	/// NoUpLottery
@@ -124,7 +125,7 @@ decl_error! {
 }
 decl_module! {
 	/// The module declaration.
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
 
 		// Initializing errors
@@ -157,17 +158,17 @@ decl_module! {
 			// Commit user vote to storage
 			Self::commit_vote(&user_vote_key , post_votes , current_lottery_id );
 			let balance_to_reduce:BalanceOf<T> = post_votes.try_into().map_err(|_| "failed to ")?;
-			let user_free_balance = <T as Trait >::Currency::free_balance(&voter);
-			<T as Trait >::Currency::make_free_balance_be( &voter , user_free_balance - balance_to_reduce);
+			let user_free_balance = <T as Config >::Currency::free_balance(&voter);
+			<T as Config >::Currency::make_free_balance_be( &voter , user_free_balance - balance_to_reduce);
 			// Increase post's number of votes
 			if post_votes_num == 0 {
 				PostVotesNumberOfLottery::<T>::insert(post_lottery_key , post_votes);
-				Self::deposit_event(Event::<T>::PostGotInLottery(current_lottery_id ,post_id));
+				Self::deposit_event(RawEvent::PostGotInLottery(current_lottery_id ,post_id));
 			} else {
 				 PostVotesNumberOfLottery::<T>::mutate(post_lottery_key , |votes| *votes += post_votes);
 			}
 
-			Self::deposit_event(Event::<T>::UserVotted( user_vote_key, post_votes));
+			Self::deposit_event(RawEvent::UserVotted( user_vote_key, post_votes));
 
 			Ok(())
 		}
@@ -183,7 +184,7 @@ decl_module! {
 
 	}
 }
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn lottery_exists(block_number: T::BlockNumber) -> (bool, T::BlockNumber) {
 		let mut lottery_id = block_number / T::BlockNumber::from(10 as u32);
 		if lottery_id == Zero::zero() {
@@ -293,8 +294,8 @@ impl<T: Trait> Module<T> {
 				total_price = total_price * 100 - total_price * voter_price_share;
 				total_price = total_price / 100;
 				let voter_pierce = Self::u64_to_balance(voter_pierce)?;
-				let current_balance_of_the_winner = <T as Trait>::Currency::free_balance(&winner);
-				<T as Trait>::Currency::make_free_balance_be(&winner, current_balance_of_the_winner + voter_pierce);
+				let current_balance_of_the_winner = <T as Config>::Currency::free_balance(&winner);
+				<T as Config>::Currency::make_free_balance_be(&winner, current_balance_of_the_winner + voter_pierce);
 			}
 		}
 		let post_price = total_price / number_of_winners;
@@ -306,8 +307,8 @@ impl<T: Trait> Module<T> {
 				None => {}
 				Some(post) => {
 					let author = post.owner;
-					let current_balance_of_the_winner = <T as Trait>::Currency::free_balance(&author);
-					<T as Trait>::Currency::make_free_balance_be(&author, current_balance_of_the_winner + post_price);
+					let current_balance_of_the_winner = <T as Config>::Currency::free_balance(&author);
+					<T as Config>::Currency::make_free_balance_be(&author, current_balance_of_the_winner + post_price);
 				}
 			}
 		});
@@ -338,7 +339,7 @@ impl<T: Trait> Module<T> {
 		// Each vote costs 1 Native Unit
 		let votes_cost: BalanceOf<T> = Self::u64_to_balance(number_of_votes)?;
 		// Todo check if the balance don't include `ExistentialDeposit`
-		let user_free_balance = <T as Trait>::Currency::free_balance(voter);
+		let user_free_balance = <T as Config>::Currency::free_balance(voter);
 		// Todo: include fees to the check
 		Ok(user_free_balance >= votes_cost)
 	}

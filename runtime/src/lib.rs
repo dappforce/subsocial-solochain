@@ -319,11 +319,11 @@ impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
-impl pallet_lottery::Trait for Runtime {
+
+impl pallet_lottery::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 }
-
 parameter_types! {
   pub const MaxCommentDepth: u32 = 10;
 }
@@ -553,6 +553,7 @@ construct_runtime!(
 		// Subsocial custom pallets:
 
 		Permissions: pallet_permissions::{Module, Call},
+		Lottery: pallet_lottery::{Module,Call ,  Storage,Event<T>},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
 		ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
@@ -566,7 +567,6 @@ construct_runtime!(
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
-
 		// New experimental pallets. Not recommended to use in production yet.
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
