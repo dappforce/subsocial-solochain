@@ -16,9 +16,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 */
-pub trait Trait: frame_system::Trait {
+pub trait Config: frame_system::Config {
 	/// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
 	/// Required origin to change someone's trust level.
 	type SetTrustLevel: EnsureOrigin<Self::Origin>;
@@ -42,7 +42,7 @@ impl TrustLevels {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as TrustModule {
+	trait Store for Module<T: Config> as TrustModule {
 		TrustLevelsByAccount get(fn trust_levels_by_account): map
 			hasher(blake2_128_concat) T::AccountId
 			=> TrustLevels;
@@ -50,12 +50,15 @@ decl_storage! {
 }
 
 decl_event!(
-	pub enum Event<T> where AccountId = <T as frame_system::Trait>::AccountId {
+	pub enum Event<T>
+	where
+		AccountId = <T as frame_system::Config>::AccountId,
+	{
 		TrustLevelChanged(AccountId, TrustLevels),
 	}
 );
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	fn account_trust_levels_contains(who: &T::AccountId, trust_level: TrustLevels) -> bool {
 		let trust_levels = Self::trust_levels_by_account(who);
 		trust_levels.contains(trust_level)
@@ -63,7 +66,7 @@ impl<T: Trait> Module<T> {
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
 		#[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
@@ -94,7 +97,7 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> TrustHandler<T::AccountId> for Module<T> {
+impl<T: Config> TrustHandler<T::AccountId> for Module<T> {
 	fn is_trusted_account(who: &T::AccountId) -> bool {
 		let trust_levels = Self::trust_levels_by_account(who);
 		!trust_levels.is_empty()

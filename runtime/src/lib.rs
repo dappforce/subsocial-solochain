@@ -324,7 +324,7 @@ impl pallet_rate_limiter::Trait for Runtime {
 	type TrustHandler = Trust;
 }
 
-impl pallet_trust::Trait for Runtime {
+impl pallet_trust::Config for Runtime {
 	type Event = Event;
 	type SetTrustLevel = EnsureRoot<AccountId>;
 }
