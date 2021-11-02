@@ -61,15 +61,19 @@ pub struct ConsumerStats<BlockNumber> {
 	/// A block number of the last call made by this account.
 	pub last_window: BlockNumber,
 
+	/// A number of permits consumed by a given user in the previous period.
+	pub previous_window_consumed_permits: PermitUnit,
+
 	/// A number of permits consumed by a given user in the current period.
-	pub consumed_permits: PermitUnit,
+	pub current_window_consumed_permits: PermitUnit,
 }
 
 impl<BlockNumber> ConsumerStats<BlockNumber> {
-	fn new(last_window: BlockNumber) -> Self {
+	fn new(last_window: BlockNumber, previous_window_consumed_permits: PermitUnit) -> Self {
 		ConsumerStats {
 			last_window,
-			consumed_permits: 0,
+			previous_window_consumed_permits,
+			current_window_consumed_permits: 0,
 		}
 	}
 }
@@ -179,7 +183,8 @@ impl<T: Config> Module<T> {
 		window_type: WindowType,
 		stats: &mut ConsumerStats<T::BlockNumber>,
 	) {
-		stats.consumed_permits = stats.consumed_permits.saturating_add(1);
+		stats.current_window_consumed_permits =
+			stats.current_window_consumed_permits.saturating_add(1);
 		StatsByAccount::<T>::insert(who, window_type, stats);
 	}
 
@@ -203,19 +208,35 @@ impl<T: Config> Module<T> {
 			// Calculate the current window
 			let current_window = current_block / window.period;
 
-			let reset_stats = || ConsumerStats::new(current_window);
+			// Calculate the number of blocks elapsed in the current window.
+			let current_window_elapsed = current_block - current_window * window.period;
+
+			let reset_stats = |previous_window_consumed_permits| {
+				ConsumerStats::new(current_window, previous_window_consumed_permits)
+			};
 
 			// Get stats for this type of window
 			let mut stats =
 				StatsByAccount::<T>::get(&sender, window_type).unwrap_or_else(reset_stats);
 
-			// If this is a new window for the user, reset their consumed permits.
-			if stats.last_window < current_window {
-				stats = reset_stats();
-			}
+			// If no free premits were used in the preceding window set both
+			// current_window_consumed_permits and previous_window_consumed_permits to 0, otherwise
+			// set current_window_consumed_permits to 0 and previous_window_consumed_permits to
+			// current_window_consumed_permits
+			let stats = if stats.last_window + 1 = current_window {
+				reset_stats(stats.current_window_consumed_permits)
+			} else if stats.last_window < current_window {
+				reset_stats(0)
+			};
+
+			// Calculate the number of permits consumed using sliding window rate limiting
+			// algorithm.
+			let permits_used = stats.previous_window_consumed_permits *
+				((window.period - current_window_elapsed) / window.period) +
+				stats.current_window_consumed_permits;
 
 			// Check that the user has an available free call
-			has_free_calls = stats.consumed_permits < window.max_permits;
+			has_free_calls = permits_used < window.max_permits;
 
 			if !has_free_calls {
 				break
