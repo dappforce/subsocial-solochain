@@ -318,11 +318,24 @@ use pallet_permissions::default_permissions::DefaultSpacePermissions;
 impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
 }
-
-impl tipping_lottery_pallet::Config for Runtime {
-	type Currency = Balances;
-	type Event = Event;
+parameter_types! {
+  pub const TreasuryShare: i16 = 10;
+  pub const PostAuthorsShare: i16 = 40;
+  pub const TippersShare: i16 = 50;
+  pub const NumberOfWinningTippers: u32 = 5;
+  pub const NumberOfWinningPostAuthors: u32 = 5;
+  pub const LotteryLength: BlockNumber = 86_400_000;
 }
+impl pallet_tipping_lottery::Config for Runtime {
+		type Currency = Balances;
+		type Event = Event;
+		type TreasuryShare = TreasuryShare;
+		type PostAuthorsShare = PostAuthorsShare;
+		type TippersShare = TippersShare;
+		type NumberOfWinningTippers = NumberOfWinningTippers;
+		type NumberOfWinningPostAuthors = NumberOfWinningPostAuthors;
+		type LotteryLength = LotteryLength;
+		}
 
 parameter_types! {
   pub const MaxCommentDepth: u32 = 10;

@@ -4193,6 +4193,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-tipping-lottery"
+version = "0.6.1"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "pallet-permissions",
+ "pallet-posts",
+ "pallet-profiles",
+ "pallet-roles",
+ "pallet-space-follows",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-transaction-payment"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7716,6 +7741,7 @@ dependencies = [
  "pallet-spaces",
  "pallet-sudo",
  "pallet-timestamp",
+ "pallet-tipping-lottery",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-utility",

@@ -61,7 +61,5 @@ fn creator_balance_increase() {
 
 		assert_eq!(creator_balance_before_post_win < creator_balance_after_post_win, true);
 		assert_eq!(voter_balance_before_before_win < voter_balance_before_voter_win, true);
-		dbg!(creator_balance_before_post_win);
-		dbg!(creator_balance_after_post_win);
 	})
 }

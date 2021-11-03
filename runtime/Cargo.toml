@@ -150,7 +150,7 @@ std = [
     'pallet-faucets/std',
 #    'pallet-moderation/std',
     'pallet-permissions/std',
-    'tipping-pallet-lottery/std',
+    'pallet-tipping-lottery/std',
     'pallet-post-history/std',
     'pallet-posts/std',
     'pallet-profile-follows/std',
