@@ -37,6 +37,8 @@ pallet-faucets = { default-features = false, path = '../pallets/faucets' }
 #pallet-moderation = { default-features = false, path = '../pallets/moderation' }
 pallet-permissions = { default-features = false, path = '../pallets/permissions' }
 
+pallet-tipping-lottery = { default-features = false, path = '../pallets/tipping-lottery' }
+
 pallet-post-history = { default-features = false, path = '../pallets/post-history' }
 pallet-posts = { default-features = false, path = '../pallets/posts' }
 
@@ -148,6 +150,7 @@ std = [
     'pallet-faucets/std',
 #    'pallet-moderation/std',
     'pallet-permissions/std',
+    'tipping-pallet-lottery/std',
     'pallet-post-history/std',
     'pallet-posts/std',
     'pallet-profile-follows/std',

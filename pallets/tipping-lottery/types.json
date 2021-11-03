@@ -1,0 +1,14 @@
+{
+  "PostVotesNumber": "u64",
+  "LotteryResults": {
+	"winner_voter": "winner_voter",
+	"winner_posts": "Vec<(postId,PostVotesNumber)>",
+	"spent": "bool"
+  },
+  "LotteryStatus": {
+	"_enum": {
+	  "Done": "LotteryResults",
+	  "InProgress": null
+	}
+  }
+}

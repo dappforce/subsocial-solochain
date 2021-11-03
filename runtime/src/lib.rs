@@ -319,6 +319,11 @@ impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
+impl tipping_lottery_pallet::Config for Runtime {
+	type Currency = Balances;
+	type Event = Event;
+}
+
 parameter_types! {
   pub const MaxCommentDepth: u32 = 10;
 }
@@ -564,6 +569,7 @@ construct_runtime!(
 
 		// New experimental pallets. Not recommended to use in production yet.
 
+		TippingLottery: pallet_tipping_lottery::{Module,Call ,  Storage,Event<T>},
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
 		DotsamaClaims: pallet_dotsama_claims::{Module, Call, Storage, Event<T>},
 		// SessionKeys: pallet_session_keys::{Module, Call, Storage, Event<T>},
