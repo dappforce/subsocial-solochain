@@ -217,26 +217,26 @@ impl<T: Config> Module<T> {
 
 			// Get stats for this type of window
 			let mut stats =
-				StatsByAccount::<T>::get(&sender, window_type).unwrap_or_else(reset_stats);
+				StatsByAccount::<T>::get(&sender, window_type).unwrap_or_else(|| reset_stats(0));
 
 			// If no free premits were used in the preceding window set both
 			// current_window_consumed_permits and previous_window_consumed_permits to 0, otherwise
 			// set current_window_consumed_permits to 0 and previous_window_consumed_permits to
 			// current_window_consumed_permits
-			let stats = if stats.last_window + 1 = current_window {
-				reset_stats(stats.current_window_consumed_permits)
+			if stats.last_window == current_window + 1u32.into() {
+				stats = reset_stats(stats.current_window_consumed_permits);
 			} else if stats.last_window < current_window {
-				reset_stats(0)
-			};
+				stats = reset_stats(0);
+			}
 
 			// Calculate the number of permits consumed using sliding window rate limiting
 			// algorithm.
-			let permits_used = stats.previous_window_consumed_permits *
-				((window.period - current_window_elapsed) / window.period) +
-				stats.current_window_consumed_permits;
+			let permits_used = ((window.period - current_window_elapsed) / window.period) *
+				stats.previous_window_consumed_permits.into() +
+				stats.current_window_consumed_permits.into();
 
 			// Check that the user has an available free call
-			has_free_calls = permits_used < window.max_permits;
+			has_free_calls = permits_used < window.max_permits.into();
 
 			if !has_free_calls {
 				break
