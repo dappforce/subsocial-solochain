@@ -54,6 +54,7 @@ sp-std = { default-features = false, version = '3.0.0' }
 
 pallet-balances = { default-features = false, version = '3.0.0' }
 pallet-transaction-payment = { default-features = false, version = '3.0.0' }
+pallet-timestamp = { default-features = false, version = '3.0.0' }
 
 log = "0.4.14"
 

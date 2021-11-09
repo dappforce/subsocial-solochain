@@ -46,15 +46,13 @@ pub struct When<T: Config> {
 impl<T: Config> Default for When<T> {
     fn default() -> Self {
         When {
-            block: <system::Module<T>>::block_number,
+            block: <system::Module<T>>::block_number(),
             time: <pallet_timestamp::Module<T>>::now(),
         }
     }
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(untagged))]
 pub enum LotteryDuration<T: Config> {
     Day1(T::BlockNumber),
     Days8(T::BlockNumber),
@@ -85,7 +83,7 @@ impl<T: Config> LotteryDuration<T> {
 
     fn is_present(&self, n: T::BlockNumber, threshold: Option<T::BlockNumber>) -> bool {
         let time_per_block: u8 = 6000;
-        let rang = match self {
+        let (starts_from ,ends_at) = match *self {
             LotteryDuration::Day1(starts_from) => {
                 let day_block_count: u8 = 86_400_000 / time_per_block;
                 (
@@ -98,20 +96,20 @@ impl<T: Config> LotteryDuration<T> {
                 (
                     starts_from,
                     starts_from + T::BlockNumber::from(day8_block_count),
-                );
+                )
             }
             LotteryDuration::Days28(starts_from) => {
                 let day28_block_count: u8 = 86_400_000 * 24 / time_per_block;
                 (
                     starts_from,
                     starts_from + T::BlockNumber::from(day28_block_count),
-                );
+                )
             }
             LotteryDuration::Range(starts_from, ends_at) => (starts_from, ends_at),
         };
         match threshold {
-            None => start_from <= n && n <= ends_at,
-            Some(threshold) => start_from - threshold <= n && n <= ends_at + threshold,
+            None => starts_from <= n && n <= ends_at,
+            Some(threshold) => starts_from - threshold <= n && n <= ends_at + threshold,
         }
     }
 }
@@ -176,12 +174,12 @@ impl<T: Config> Lottery<T> {
         }
     }
 
-    fn from_id(id: lotteryId) -> Option<Self> {
+    fn from_id(id: LotteryId) -> Option<Self> {
         LotteryById::<T>::get(id)
     }
 
     fn can_be_ended(&self, n: T::BlockNumber) -> bool {
-        !self.is_done && !self.duration.is_present(n)
+        !self.is_done && !self.duration.is_present(n,None)
     }
 
     fn is_open_for_voting(&self) -> bool {
@@ -190,7 +188,7 @@ impl<T: Config> Lottery<T> {
     }
 
     fn can_vote_at_block(&self, n: T::BlockNumber) -> bool {
-        let status = !self.is_canceled() && !self.is_done && !self.is_canceled;
+        let status = !self.is_canceled && !self.is_done && !self.is_canceled;
         status && self.duration.is_present(n, None)
     }
 
@@ -216,7 +214,7 @@ pub struct LotteryResults<T: Config> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum LotteryStatusOfSpace<T: Config> {
-    Done(LotterySpaceResults<T>),
+    Done(LotteryResults<T>),
     InProgress,
 }
 
@@ -250,7 +248,7 @@ decl_storage! {
         pub NextLotteryId get(fn next_lottery_id) : LotteryId = FIRST_POST_ID;
 
         // Store
-        pub SpacesWithNoDoneLotteries(fn spaces_with_not_done_lotteries) : Vec<SpaceId>
+        pub SpacesWithNoDoneLotteries get(fn spaces_with_not_done_lotteries) : Vec<SpaceId>;
 
         // Store lotteries by id
         pub LotteryById get(fn lottery_by_id):
@@ -258,25 +256,23 @@ decl_storage! {
 
         // Lotteries that are not done yet
         // This will contain lotteries  present with a threshold of 100 blocks before start
-        pub InProgressLottires get( in_progress_lottaries):
-        map hasher(blake2_128_concat)  SpaceId => Vec<LotteryId>
+        pub InProgressLottires get(fn in_progress_lottaries):
+        map hasher(blake2_128_concat)  SpaceId => Vec<LotteryId>;
 
         // Lotteries that are done and the rewards are spent
-        pub SpaceDoneLotteries get(space_done_lotteries) :
-        map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>
+        pub SpaceDoneLotteries get(fn space_done_lotteries) :
+        map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>;
 
         // Lotteries that are not yet near to be in progress
-        pub SpaceWaitingLotteries get(space_waiting_lotteries) :
-        map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>
+        pub SpaceWaitingLotteries get(fn space_waiting_lotteries) :
+        map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>;
 
         // Full list of lotteries for a given space
-        pub LotteryIdsOfSpace get(fn lottery_ids_of_space)
+        pub LotteryIdsOfSpace get(fn lottery_ids_of_space):
         map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>;
 
         pub SpaceLotteryStatus:
         map hasher(blake2_128_concat)  LotteryId => LotteryStatusOfSpace<T>;
-
-
 
         // Counters
         pub PostLotteryVotes:
@@ -318,6 +314,7 @@ decl_error! {
     LotteryAlreadyEnded,
     CantVoteOnUnfoundPost,
     CantVoteOnUnspacedPost,
+    PostNotFound,
 
     // lottery
     LotteryNotFound
@@ -342,11 +339,13 @@ decl_module! {
         ) -> DispatchResult {
             let maybe_space_owner = ensure_signed(origin)?;
             let space = <pallet_spaces::Module::<T>>::require_space(space_id)?;
-            space.ensure_space_owner(maybe_space_owner)?
+            space.ensure_space_owner(maybe_space_owner)?;
+			let current_block_number = <system::Module<T>>::block_number();
             let next_lottery_id = Self::next_lottery_id();
             let lottery = Lottery::<T>::new(next_lottery_id ,space_id , rewarding_config ,duration);
             LotteryById::<T>::insert(next_lottery_id,lottery);
-            Self::commit_lottery(lottery);
+            Self::commit_lottery(&lottery,current_block_number);
+            Ok(())
         }
 
         #[weight = 0]
@@ -361,10 +360,10 @@ decl_module! {
             // check if the user have enough balance for the votes
             let voter_can_vote = Self::voter_has_enough_balance(&tipper ,tip_count)?;
             ensure!( voter_can_vote, Error::<T>::InsufficientBalance);
-            let lottery:Lottery<T> = Lottery::<T>::from(lottery_id)
+            let lottery:Lottery<T> = Lottery::<T>::from_id(lottery_id)
             .ok_or(Error::<T>::LotteryNotFound)?;
 
-            ensure!( !lottery.done, Error::<T>::LotteryIsDone);
+            ensure!( !lottery.is_done, Error::<T>::LotteryIsDone);
             ensure!( lottery.can_vote_at_block(current_block_number), Error::<T>::LotteryNotInProgress);
 
             let tip: Tip<T> = Tip {
@@ -389,7 +388,7 @@ decl_module! {
 }
 impl<T: Config> Module<T> {
     fn inc_lottery_id() {
-        NextSpaceId::mutate(|n| {
+		<NextLotteryId>::mutate(|n| {
             *n += 1;
         });
     }
@@ -401,33 +400,33 @@ impl<T: Config> Module<T> {
             .is_present(n, Some(T::BlockNumber::from(100 as u32)));
         if is_near_from_starting {
             // Insert the lottery on the starting queue
-            if InProgressLottires::<T>::contains_key(lottery.space_id) {
-                InProgressLottires::<T>::mutate(lottery.space_id, |in_progress| {
+            if <InProgressLottires>::contains_key(lottery.space_id) {
+                <InProgressLottires>::mutate(lottery.space_id, |in_progress| {
                     in_progress.push(lottery.id)
                 });
             }
-            InProgressLottires::<T>::insert(lottery.space_id, Vec![lottery.id]);
+            <InProgressLottires>::insert(lottery.space_id, vec![lottery.id]);
         } else {
             // Insert the lottery on the waiting queue
-            if SpaceWaitingLotteries::<T>::contains_key(lottery.space_id) {
-                SpaceWaitingLotteries::<T>::mutate(lottery.space_id, |in_progress| {
+            if <SpaceWaitingLotteries>::contains_key(lottery.space_id) {
+                <SpaceWaitingLotteries>::mutate(lottery.space_id, |in_progress| {
                     in_progress.push(lottery.id)
                 });
             }
-            SpaceWaitingLotteries::<T>::insert(lottery.space_id, Vec![lottery.id]);
+            <SpaceWaitingLotteries>::insert(lottery.space_id, vec![lottery.id]);
         }
 
         // insert the lottery for the full list of lotteries
-        if LotteryIdsOfSpace::<T>::contains_key(lottery.space_id) {
-            LotteryIdsOfSpace::<T>::mutate(lottery.space_id, |in_progress| {
+        if <LotteryIdsOfSpace>::contains_key(lottery.space_id) {
+            <LotteryIdsOfSpace>::mutate(lottery.space_id, |in_progress| {
                 in_progress.push(lottery.id)
             });
         }
-        LotteryIdsOfSpace::<T>::insert(lottery.space_id, Vec![lottery.id]);
+        <LotteryIdsOfSpace>::insert(lottery.space_id, vec![lottery.id]);
         // ad the space id to the list of
-        SpacesWithNoDoneLotteries::<T>::mutate(|space_ids| space_ids.push(lottery.space_id));
+        <SpacesWithNoDoneLotteries>::mutate(|space_ids| space_ids.push(lottery.space_id));
         // increase lottery count
-        self::inc_lottery_id();
+        Self::inc_lottery_id();
         // insert the lottery
         LotteryById::<T>::insert(lottery.id, lottery);
     }
@@ -441,14 +440,10 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
-    fn init_lottery(lottery_id: LotteryId) {
-        LotterySpacesIds::<T>::insert(lottery_id, Vec::<SpaceId>::new())
-    }
-
-    fn incur_existence(post_id: PostId) -> Result<SpaceId, sp_runtime::DispatchError> {
+    fn incur_existence(post_id: PostId) -> DispatchResult {
         let post: Option<Post<T>> = pallet_posts::Module::<T>::post_by_id(post_id);
-        post.map(|p| p.space_id.ok_or(Error::<T>::CantVoteOnUnspacedPost.into()))
-            .ok_or(Error::<T>::CantVoteOnUnspacedPost.into())?
+        post.map(|p| p.space_id.map(|_| ()).ok_or(Error::<T>::PostNotFound.into()))
+            .ok_or::<Error<T>>(Error::<T>::CantVoteOnUnspacedPost.into())?
     }
 
     fn increase_counters(lottery_id: LotteryId, tip: &Tip<T>) -> DispatchResult {
@@ -457,31 +452,29 @@ impl<T: Config> Module<T> {
         let space_id = tip.space_id;
         let lottery_voter_key = (lottery_id, tip.tipper.clone());
         let votes_count: NumberOfTipping = tip.tip_count;
-
-        if PostLotteryVotes::<T>::contains_key(lottery_post_key) {
-            PostLotteryVotes::<T>::mutate(lottery_post_key, |current| {
+		// increase or set number of votes on a post in scope of the lottery
+        if <PostLotteryVotes>::contains_key(lottery_post_key) {
+            <PostLotteryVotes>::mutate(lottery_post_key, |current| {
                 *current = *current + votes_count
             });
         } else {
-            PostLotteryVotes::<T>::insert(lottery_post_key, votes_count);
+            <PostLotteryVotes>::insert(lottery_post_key, votes_count);
+        }
+		// increase or set number of votes on a space in scope of the lottery
+        if <SpaceLotteryVotes>::contains_key(lottery_space_key) {
+			<SpaceLotteryVotes>::mutate(lottery_space_key, |current| {
+                *current = *current + votes_count
+            });
+        } else {
+			<SpaceLotteryVotes>::insert(lottery_space_key, votes_count);
         }
 
-        if SpaceLotteryVotes::<T>::contains_key(lottery_space_key) {
-            PostLotteryVotes::<T>::mutate(lottery_space_key, |current| {
+        if <UserLotteryVotes<T>>::contains_key(lottery_voter_key.clone()) {
+			<UserLotteryVotes<T>>::mutate(lottery_voter_key, |current| {
                 *current = *current + votes_count
             });
         } else {
-            PostLotteryVotes::<T>::insert(lottery_space_key, votes_count);
-            // The in the DB since we do initialize the lottery and insert the Vector
-            LotterySpacesIds::<T>::mutate(lottery_id, |c| c.push(space_id))
-        }
-
-        if UserLotteryVotes::<T>::contains_key(lottery_voter_key.clone()) {
-            UserLotteryVotes::<T>::mutate(lottery_voter_key, |current| {
-                *current = *current + votes_count
-            });
-        } else {
-            UserLotteryVotes::<T>::insert(lottery_voter_key, votes_count);
+			<UserLotteryVotes<T>>::insert(lottery_voter_key, votes_count);
         }
         Ok(())
     }
@@ -498,25 +491,10 @@ impl<T: Config> Module<T> {
         Ok(user_free_balance >= votes_cost)
     }
 
-    fn lottery_exists(block_number: T::BlockNumber) -> (bool, T::BlockNumber) {
-        let mut lottery_id = block_number / T::LotteryLength::get();
-        if lottery_id == Zero::zero() {
-            lottery_id = One::one();
-        }
-        let exists = LotterySpacesIds::<T>::contains_key(lottery_id);
-        log::info!(
-            "Lottery init {:?} block number {:?} exists {:?}",
-            lottery_id,
-            block_number,
-            exists
-        );
-        (exists, lottery_id)
-    }
+
 
     fn end_lottery(lottery_id: LotteryId) {
-        let lottery_spaces_ids = <LotterySpacesIds<T>>::get(lottery_id);
-
-        lottery_spaces_ids.for_each(|space_id| Self::end_space_lottery(space_id, lottery_id))
+		unimplemented!()
     }
 
     fn get_lottery_winner_accounts(lottery_id: LotteryId) {
