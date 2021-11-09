@@ -37,7 +37,7 @@ type NumberOfTipping = u32;
 
 pub type LotteryId = u64;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub struct When<T: Config> {
     pub block: T::BlockNumber,
     pub time: T::Moment,
@@ -137,7 +137,7 @@ impl Default for LotteryRewardingConfig {
 
 pub const FIRST_POST_ID: LotteryId = 1;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub struct Lottery<T: Config> {
     pub id: LotteryId,
     pub space_id: SpaceId,

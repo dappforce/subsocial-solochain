@@ -582,7 +582,7 @@ construct_runtime!(
 
 		// New experimental pallets. Not recommended to use in production yet.
 
-		TippingLottery: pallet_tipping_lottery::{Module,Call ,  Storage,Event<T>},
+		TippingLottery: pallet_tipping_lottery::{Module, Call, Storage, Event<T>},
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
 		DotsamaClaims: pallet_dotsama_claims::{Module, Call, Storage, Event<T>},
 		// SessionKeys: pallet_session_keys::{Module, Call, Storage, Event<T>},
