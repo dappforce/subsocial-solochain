@@ -62,6 +62,7 @@ pub enum LotteryDuration<T: Config> {
 	Range(T::BlockNumber, T::BlockNumber),
 }
 
+
 impl<T: Config> Default for LotteryDuration<T> {
 	fn default() -> Self {
 		let current_block = <system::Module<T>>::block_number();
@@ -81,6 +82,36 @@ impl<T: Config> LotteryDuration<T> {
 	fn is_valid_range(from: T::BlockNumber, to: T::BlockNumber) -> bool {
 		// todo fix the threshold
 		return Self::current_block() <= from && from + T::BlockNumber::from(100 as u32) < to;
+	}
+
+
+	fn is_present(&self, n: T::BlockNumber, threshold: Option<T::BlockNumber>) -> bool {
+		let time_per_block: u8 = 6000;
+		let rang = match self {
+			LotteryDuration::Day1(starts_from) => {
+				let day_block_count: u8 = 86_400_000 / time_per_block;
+				(starts_from, starts_from + T::BlockNumber::from(day_block_count))
+			}
+			LotteryDuration::Days8(starts_from) => {
+				let day8_block_count: u8 = 86_400_000 * 8 / time_per_block;
+				(starts_from, starts_from + T::BlockNumber::from(day8_block_count));
+			}
+			LotteryDuration::Days28(starts_from) => {
+				let day28_block_count: u8 = 86_400_000 * 24 / time_per_block;
+				(starts_from, starts_from + T::BlockNumber::from(day28_block_count));
+			}
+			LotteryDuration::Range(starts_from, ends_at) => {
+				(starts_from, ends_at)
+			}
+		};
+		match threshold {
+			None => {
+				start_from <= n && n <= ends_at
+			}
+			Some(threshold) => {
+				start_from - threshold <= n && n <= ends_at + threshold
+			}
+		}
 	}
 }
 
@@ -144,6 +175,28 @@ impl<T: Config> Lottery<T> {
 			done: None,
 		}
 	}
+
+	fn from_id(id: lotteryId) -> Option<Self> {
+		LotteryById::<T>::get(id)
+	}
+
+	fn can_be_ended(&self, n: T::BlockNumber) -> bool {
+		!self.is_done && !self.duration.is_present(n)
+	}
+
+	fn is_open_for_voting(&self) -> bool {
+		let current_block = <system::Module::<T>>::block_number();
+		self.can_vote_at_block(current_block)
+	}
+
+	fn can_vote_at_block(&self, n: T::BlockNumber) -> bool {
+		let status = !self.is_canceled() && !self.is_done;
+		status && self.duration.is_present(n, None)
+	}
+
+	fn is_started(&self, n: T::BlockNumber) -> bool {
+		self.duration.is_present(n, None)
+	}
 }
 
 /// The pallet's configuration trait.
@@ -194,27 +247,37 @@ struct Tip<T: Config> {
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Config> as TippingLotteryModule {
+    	// counter for lottery ids
     	pub NextLotteryId get(fn next_lottery_id) : LotteryId = FIRST_POST_ID;
 
+		// Store
+		pub SpacesWithNoDoneLotteries(fn spaces_with_not_done_lotteries) : Vec<SpaceId>
 
+		// Store lotteries by id
 		pub LotteryById get(fn lottery_by_id):
 		map hasher(blake2_128_concat) LotteryId => Option<Lottery<T>>;
 
+		// Lotteries that are not done yet
+		// This will contain lotteries  present with a threshold of 100 blocks before start
 		pub InProgressLottires get( in_progress_lottaries):
-		map hasher(blake2_128_concat)  SpaceId => Vec<Lottery<T>>
+		map hasher(blake2_128_concat)  SpaceId => Vec<LotteryId>
 
-		pub SpaceCurrentLottery get(space_current_lottery) :
-		map hasher(blake2_128_concat) spaceId => LotteryId
+		// Lotteries that are done and the rewards are spent
+		pub SpaceDoneLotteries get(space_done_lotteries) :
+		map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>
 
+		// Lotteries that are not yet near to be in progress
+		pub SpaceWaitingLotteries get(space_waiting_lotteries) :
+		map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>
+
+		// Full list of lotteries for a given space
 		pub LotteryIdsOfSpace get(fn lottery_ids_of_space)
 		map hasher(blake2_128_concat) SpaceId => Vec<LotteryId>;
 
         pub SpaceLotteryStatus:
         map hasher(blake2_128_concat)  LotteryId => LotteryStatusOfSpace<T>;
 
-        // Storage spaces of lotteries
-        pub LotterySpacesIds:
-        map hasher(blake2_128_concat) LotteryId => Vec<SpaceId>;
+
 
         // Counters
         pub PostLotteryVotes:
@@ -289,6 +352,7 @@ decl_module! {
         origin,
         post_id:PostId,
         tip_count:NumberOfTipping,
+        lottery_id:LotteryId
         ) -> DispatchResult {
 			let tipper = ensure_signed(origin)?;
 			let current_block_number = <system::Module<T>>::block_number();
@@ -326,15 +390,36 @@ impl<T: Config> Module<T> {
 		NextSpaceId::mutate(|n| { *n += 1; });
 	}
 
-	fn commit_lottery(lottery: &Lottery<T>) {
-		<LotteryById::<T>>::insert(lottery.id, lottery.clone());
-		<SpaceCurrentLottery::<T>>::insert(lottery.space_id, lottery.id);
-		if <InProgressLottires::<T>>::has_key(lottery.space_id) {
-			<InProgressLottires::<T>>::mutate(lottery.space_id, |l| l.push(lottery.clone));
+	fn commit_lottery(lottery: &Lottery<T>, n: T::BlockNumber) {
+
+
+		// check if the lottery is started or near from string
+		let is_near_from_starting = lottery.duration.is_present(n, Some(T::BlockNumber::from(100 as u32)));
+		if is_near_from_starting {
+			// Insert the lottery on the starting queue
+			if InProgressLottires::<T>::contains_key(lottery.space_id) {
+				InProgressLottires::<T>::mutate(lottery.space_id, |in_progress| in_progress.push(lottery.id));
+			}
+			InProgressLottires::<T>::insert(lottery.space_id, Vec![lottery.id]);
 		} else {
-			<InProgressLottires::<T>>::insert(lottery.space_id, vec![lottery.clone()]);
+			// Insert the lottery on the waiting queue
+			if SpaceWaitingLotteries::<T>::contains_key(lottery.space_id) {
+				SpaceWaitingLotteries::<T>::mutate(lottery.space_id, |in_progress| in_progress.push(lottery.id));
+			}
+			SpaceWaitingLotteries::<T>::insert(lottery.space_id, Vec![lottery.id]);
 		}
+
+		// insert the lottery for the full list of lotteries
+		if LotteryIdsOfSpace::<T>::contains_key(lottery.space_id) {
+			LotteryIdsOfSpace::<T>::mutate(lottery.space_id, |in_progress| in_progress.push(lottery.id));
+		}
+		LotteryIdsOfSpace::<T>::insert(lottery.space_id, Vec![lottery.id]);
+		// ad the space id to the list of
+		SpacesWithNoDoneLotteries::<T>::mutate(|space_ids| space_ids.push(lottery.space_id));
+		// increase lottery count
 		self::inc_lottery_id();
+		// insert the lottery
+		LotteryById::<T>::insert(lottery.id, lottery);
 	}
 
 	fn commit_vote(
