@@ -53,7 +53,7 @@ impl SubstrateCli for Cli {
     }
 
     fn support_url() -> String {
-        "http://dappforce.io".into()
+        "https://github.com/dappforce/subsocial-node/issues/new".into()
     }
 
     fn copyright_start_year() -> i32 {
@@ -87,7 +87,7 @@ impl SubstrateCli for RelayChainCli {
     }
 
     fn support_url() -> String {
-        "http://dappforce.io".into()
+        "https://github.com/dappforce/subsocial-node/issues/new".into()
     }
 
     fn copyright_start_year() -> i32 {
