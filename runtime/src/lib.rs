@@ -327,6 +327,7 @@ impl pallet_rate_limiter::Config for Runtime {
 impl pallet_trust::Config for Runtime {
 	type Event = Event;
 	type SetTrustLevel = EnsureRoot<AccountId>;
+	type WeightInfo = pallet_trust::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -805,6 +806,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
+			add_benchmark!(params, batches, pallet_trust, Trust);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

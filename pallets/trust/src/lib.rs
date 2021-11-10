@@ -3,25 +3,31 @@
 use bitflags::bitflags;
 use codec::{Encode, Decode};
 use frame_support::{
-	decl_module, decl_storage, decl_event,
-	dispatch::DispatchResultWithPostInfo,
-	traits::{EnsureOrigin, Get},
-	weights::Pays,
+	decl_module, decl_storage, decl_event, dispatch::DispatchResultWithPostInfo,
+	traits::EnsureOrigin, weights::Pays,
 };
 use df_traits::TrustHandler;
-/*
+
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
-*/
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
+pub use weights::*;
+
 pub trait Config: frame_system::Config {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
 	/// Required origin to change someone's trust level.
 	type SetTrustLevel: EnsureOrigin<Self::Origin>;
+
+	/// Information on runtime weights.
+	type WeightInfo: WeightInfo;
 }
 
 bitflags! {
@@ -69,7 +75,7 @@ decl_module! {
 	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		#[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
+		#[weight = T::WeightInfo::set_email_verified()]
 		pub fn set_email_verified(origin, who: T::AccountId) -> DispatchResultWithPostInfo {
 			T::SetTrustLevel::ensure_origin(origin)?;
 
@@ -82,7 +88,7 @@ decl_module! {
 			Ok(Pays::No.into())
 		}
 
-		#[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
+		#[weight = T::WeightInfo::set_phone_number_verified()]
 		pub fn set_phone_number_verified(origin, who: T::AccountId) -> DispatchResultWithPostInfo {
 			T::SetTrustLevel::ensure_origin(origin)?;
 

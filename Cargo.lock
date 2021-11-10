@@ -4256,13 +4256,18 @@ dependencies = [
 
 [[package]]
 name = "pallet-trust"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "bitflags",
  "df-traits",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-balances",
+ "pallet-timestamp",
+ "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",

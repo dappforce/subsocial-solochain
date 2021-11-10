@@ -7,7 +7,13 @@ license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/dappforce-subsocial-node'
 description = 'Subsocial runtime'
-keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+keywords = [
+    'blockchain',
+    'cryptocurrency',
+    'social-network',
+    'news-feed',
+    'marketplace',
+]
 categories = ['cryptography::cryptocurrencies']
 
 [package.metadata.docs.rs]
@@ -114,6 +120,7 @@ runtime-benchmarks = [
     'pallet-timestamp/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks',
     'pallet-dotsama-claims/runtime-benchmarks',
+    'pallet-trust/runtime-benchmarks',
 ]
 std = [
     'codec/std',
@@ -145,10 +152,10 @@ std = [
     'sp-version/std',
     'sp-io/std',
     'subsocial-primitives/std',
-#    'pallet-donations/std',
+    #    'pallet-donations/std',
     'pallet-dotsama-claims/std',
     'pallet-faucets/std',
-#    'pallet-moderation/std',
+    #    'pallet-moderation/std',
     'pallet-permissions/std',
     'pallet-post-history/std',
     'pallet-posts/std',
@@ -164,8 +171,8 @@ std = [
     'pallet-space-history/std',
     'pallet-space-ownership/std',
     'pallet-spaces/std',
-#    'session-keys/std',
-#    'pallet-subscriptions/std',
+    #    'session-keys/std',
+    #    'pallet-subscriptions/std',
     'pallet-utils/std',
     'posts-runtime-api/std',
     'profile-follows-runtime-api/std',
