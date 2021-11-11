@@ -155,7 +155,8 @@ decl_module! {
 				Pays::No,
 			)
 		}]
-		fn try_free_call(origin, call: Box<<T as Config>::Call>) -> DispatchResult {
+		// TODO should this be public or private
+		pub fn try_free_call(origin, call: Box<<T as Config>::Call>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
 
 			if Self::can_account_make_free_call_and_update_stats(&sender) {
@@ -223,7 +224,7 @@ impl<T: Config> Module<T> {
 			// current_window_consumed_permits and previous_window_consumed_permits to 0, otherwise
 			// set current_window_consumed_permits to 0 and previous_window_consumed_permits to
 			// current_window_consumed_permits
-			if stats.last_window == current_window + 1u32.into() {
+			if stats.last_window == current_window - 1u32.into() {
 				stats = reset_stats(stats.current_window_consumed_permits);
 			} else if stats.last_window < current_window {
 				stats = reset_stats(0);
@@ -231,9 +232,9 @@ impl<T: Config> Module<T> {
 
 			// Calculate the number of permits consumed using sliding window rate limiting
 			// algorithm.
-			let permits_used = ((window.period - current_window_elapsed) / window.period) *
-				stats.previous_window_consumed_permits.into() +
-				stats.current_window_consumed_permits.into();
+			let permits_used = ((window.period - current_window_elapsed) *
+				stats.previous_window_consumed_permits.into() /
+				window.period) + stats.current_window_consumed_permits.into();
 
 			// Check that the user has an available free call
 			has_free_calls = permits_used < window.max_permits.into();

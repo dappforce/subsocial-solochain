@@ -1179,6 +1179,7 @@ dependencies = [
  "pallet-profile-follows",
  "pallet-profile-history",
  "pallet-profiles",
+ "pallet-rate-limiter",
  "pallet-reactions",
  "pallet-roles",
  "pallet-scores",
@@ -1187,6 +1188,7 @@ dependencies = [
  "pallet-space-ownership",
  "pallet-spaces",
  "pallet-timestamp",
+ "pallet-trust",
  "pallet-utils",
  "parity-scale-codec",
  "serde",
@@ -3977,7 +3979,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-rate-limiter"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "df-traits",
  "frame-support",

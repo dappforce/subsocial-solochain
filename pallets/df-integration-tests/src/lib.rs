@@ -10,11 +10,12 @@ mod tests {
     };
 
     use frame_support::{
-        assert_ok, assert_noop,
-        parameter_types,
-        dispatch::{DispatchResult, DispatchError},
-        storage::StorageMap,
-    };
+		assert_noop, assert_ok,
+		dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Dispatchable},
+		parameter_types,
+		storage::StorageMap,
+		traits::Filter,
+	};
     use frame_system as system;
 
     use pallet_permissions::{
@@ -27,10 +28,12 @@ mod tests {
     use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
     use pallet_scores::ScoringAction;
-    use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError, SpacesSettings};
+    use pallet_spaces::{Error as SpacesError, Space, SpaceById, SpaceUpdate, SpacesSettings};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
     use pallet_moderation::{EntityId, EntityStatus, ReportId};
+    use pallet_rate_limiter::{PermitUnit, RateConfig};
+    use pallet_trust::weights::SubstrateWeight;
     use pallet_utils::{
         mock_functions::*,
         DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN,
@@ -65,6 +68,8 @@ mod tests {
             SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
             Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
             Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+            RateLimiter: pallet_rate_limiter::{Module, Call, Storage, Event<T>},
+            Trust: pallet_trust::{Module, Call, Storage, Event<T>},
         }
     );
 
@@ -270,8 +275,76 @@ mod tests {
         type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
     }
 
+    parameter_types! {}
+
+    impl pallet_trust::Config for TestRuntime {
+        type Event = Event;
+        type SetTrustLevel = system::EnsureRoot<AccountId>;
+        type WeightInfo = SubstrateWeight<TestRuntime>;
+    }
+
+    pub struct RateLimiterCallsFilter;
+    impl Default for RateLimiterCallsFilter {
+        fn default() -> Self {
+            Self
+        }
+    }
+
+    impl Filter<Call> for RateLimiterCallsFilter {
+        fn filter(c: &Call) -> bool {
+            match *c {
+                Call::Spaces(..) => true,
+                Call::SpaceFollows(..) => true,
+                Call::ProfileFollows(..) => true,
+                Call::Posts(..) => true,
+                Call::Reactions(..) => true,
+                _ => false,
+            }
+        }
+    }
+
+    parameter_types! {
+        pub RateConfigs: Vec<RateConfig<BlockNumber>> = [
+        RateConfig {
+                period: WINDOW_SIZE,
+                max_permits: MAX_PERMITS,
+          },          
+        // RateConfig {
+        //         period: 5 * MINUTES,
+        //         max_permits: 10
+        //   },
+        //   RateConfig {
+        //       period: 1 * HOURS,
+        //       max_permits: 20
+        //   },
+        //   RateConfig {
+        //       period: 1 * DAYS,
+        //       max_permits: 40
+        //   }
+      ].to_vec();
+    }
+
+    impl pallet_rate_limiter::Config for TestRuntime {
+        type Event = Event;
+        type Call = Call;
+        type CallFilter = ();
+        type RateConfigs = RateConfigs;
+        type TrustHandler = Trust;
+    }
+
     type AccountId = u64;
     type BlockNumber = u64;
+
+    pub(crate) const MINUTES: BlockNumber = 60 as BlockNumber;
+	// pub(crate) const HOURS: BlockNumber = MINUTES * 60;
+	// pub(crate) const DAYS: BlockNumber = HOURS * 24;
+
+    // For testing purposes set initial block number to greater than or 
+    // equal to smallest window to calculate the current window correctly
+    // current_window = current_block / window.period;
+    pub(crate) const INITIAL_BLOCK_NUMBER: BlockNumber = MINUTES;
+    pub(crate) const WINDOW_SIZE: BlockNumber = MINUTES;
+    pub(crate) const MAX_PERMITS: PermitUnit = 100;
 
 
     pub struct ExtBuilder;
@@ -409,6 +482,30 @@ mod tests {
         pub fn build_with_space_and_custom_permissions(permissions: SpacePermissions) -> TestExternalities {
             let mut ext = Self::build();
             ext.execute_with(|| Self::add_space_with_custom_permissions(permissions));
+            ext
+        }
+
+        /// Custom ext configuration with SpaceId, Initial Block Number for free
+        /// calls and email verified for given account
+        pub fn build_with_space_and_set_email_verified_for(who: AccountId) -> TestExternalities {
+            let mut ext = Self::build();
+            ext.execute_with( || {
+                Self::add_default_space();
+                System::set_block_number(INITIAL_BLOCK_NUMBER);
+                assert_ok!(_set_email_verified(None, Some(who)));
+            });
+            ext
+        }  
+        
+        /// Custom ext configuration with SpaceId, Initial Block Number for free
+        /// calls and phone number verified for given account
+        pub fn build_with_space_and_set_phone_number_verified_for(who: AccountId) -> TestExternalities {
+            let mut ext = Self::build();
+            ext.execute_with( || {
+                Self::add_default_space();
+                System::set_block_number(INITIAL_BLOCK_NUMBER);
+                assert_ok!(_set_phone_number_verified(None, Some(who)));
+            });
             ext
         }
     }
@@ -627,13 +724,28 @@ mod tests {
         content: Option<Content>,
         permissions: Option<Option<SpacePermissions>>
     ) -> DispatchResult {
-        Spaces::create_space(
-            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        let call = _create_space_with_parent_id_call(
+            parent_id_opt,
+            handle,
+            content,
+            permissions
+        );
+        let result = call.dispatch(origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)));
+		result.map(|_| ()).map_err(|e| e.error)
+    }
+
+    fn _create_space_with_parent_id_call(
+        parent_id_opt: Option<Option<SpaceId>>,
+        handle: Option<Option<Vec<u8>>>,
+        content: Option<Content>,
+        permissions: Option<Option<SpacePermissions>>
+    ) -> Call {
+        Call::Spaces(pallet_spaces::Call::create_space(
             parent_id_opt.unwrap_or_default(),
             handle.unwrap_or_else(|| Some(space_handle())),
             content.unwrap_or_else(space_content_ipfs),
             permissions.unwrap_or_default()
-        )
+        ))
     }
 
     fn _update_space(
@@ -641,11 +753,22 @@ mod tests {
         space_id: Option<SpaceId>,
         update: Option<SpaceUpdate>,
     ) -> DispatchResult {
-        Spaces::update_space(
-            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        let call= _update_space_call(
+            space_id,
+            update,
+        );
+        let result = call.dispatch(origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)));
+		result.map(|_| ()).map_err(|e| e.error)
+    }
+
+    fn _update_space_call(
+        space_id: Option<SpaceId>,
+        update: Option<SpaceUpdate>,
+    ) -> Call {
+        Call::Spaces(pallet_spaces::Call::update_space(
             space_id.unwrap_or(SPACE1),
             update.unwrap_or_else(|| space_update(None, None, None)),
-        )
+        ))
     }
 
     fn _update_space_settings_with_handles_enabled() -> DispatchResult {
@@ -3944,4 +4067,167 @@ mod tests {
             ), SpaceOwnershipError::<TestRuntime>::NotAllowedToRejectOwnershipTransfer); // Rejecting a transfer from ACCOUNT2
         });
     }
+
+	// Trust pallet tests
+
+	pub(crate) fn _set_email_verified(
+		origin: Option<Origin>,
+		who: Option<AccountId>,
+	) -> DispatchResultWithPostInfo {
+		Trust::set_email_verified(origin.unwrap_or_else(|| Origin::root()), who.unwrap_or(ACCOUNT1))
+	}
+
+	pub(crate) fn _set_phone_number_verified(
+		origin: Option<Origin>,
+		who: Option<AccountId>,
+	) -> DispatchResultWithPostInfo {
+		Trust::set_phone_number_verified(
+			origin.unwrap_or_else(|| Origin::root()),
+			who.unwrap_or(ACCOUNT1),
+		)
+	}
+
+	// Rate Limiter tests
+
+	fn _update_space_handle_and_return_space(new_handle: Vec<u8>) -> Space<TestRuntime> {
+		// Create update_space dispatch.
+		let call = _update_space_call(None, Some(space_update(Some(Some(new_handle)), None, None)));
+		let boxed_call = Box::new(call);
+		assert_ok!(RateLimiter::try_free_call(Origin::signed(ACCOUNT1), boxed_call));
+
+		Spaces::space_by_id(SPACE1).unwrap()
+	}
+
+	#[test]
+	fn try_update_space_free_call_for_non_verified_account() {
+		ExtBuilder::build_with_space().execute_with(|| {
+			let new_handle = b"new_handle".to_vec();
+			let space = _update_space_handle_and_return_space(new_handle.clone());
+
+			// Space should not get updated
+			assert_ne!(space.handle, Some(new_handle.clone()));
+		})
+	}
+
+	#[test]
+	fn try_update_space_free_call_for_verified_email_account_in_single_window() {
+		ExtBuilder::build_with_space_and_set_email_verified_for(ACCOUNT1).execute_with(|| {
+			let mut new_handle: Vec<u8> = Vec::new();
+
+			// All free calls are made in the single block of the same window
+			for i in 0..MAX_PERMITS {
+				// NEW_HANDLE = handle_0, handle_1, handle_2 ...
+				new_handle = format!("{}{}", "handle_", i).as_bytes().to_vec();
+				let space = _update_space_handle_and_return_space(new_handle.clone());
+
+				// Check whether space updates correctly
+				assert_eq!(space.handle, Some(new_handle));
+			}
+
+			let stats = RateLimiter::stats_by_account(ACCOUNT1, 0).unwrap();
+			assert_eq!(stats.current_window_consumed_permits, MAX_PERMITS);
+
+			// An extra free call in the current block should update
+			// the space handle since all free permits have been used
+			let space = _update_space_handle_and_return_space(b"handle".to_vec());
+			assert_ne!(space.handle, Some(b"handle".to_vec()));
+		})
+	}
+
+	#[test]
+	fn try_update_space_free_call_for_verified_phone_number_account_in_single_window() {
+		ExtBuilder::build_with_space_and_set_phone_number_verified_for(ACCOUNT1).execute_with(
+			|| {
+				let mut new_handle: Vec<u8> = Vec::new();
+
+				// All free calls are made in the single block of the same window
+				for i in 0..MAX_PERMITS {
+					// NEW_HANDLE = handle_0, handle_1, handle_2 ...
+					new_handle = format!("{}{}", "handle_", i).as_bytes().to_vec();
+					let space = _update_space_handle_and_return_space(new_handle.clone());
+
+					// Check whether space updates correctly
+					assert_eq!(space.handle, Some(new_handle));
+				}
+
+				let stats = RateLimiter::stats_by_account(ACCOUNT1, 0).unwrap();
+				assert_eq!(stats.current_window_consumed_permits, MAX_PERMITS);
+
+				// An extra free call in the current block should update
+				// the space handle since all free permits have been used
+				let space = _update_space_handle_and_return_space(b"handle".to_vec());
+				assert_ne!(space.handle, Some(b"handle".to_vec()));
+			},
+		)
+	}
+
+	#[test]
+	fn try_update_space_free_call_for_verified_email_account_in_consecutive_windows() {
+		ExtBuilder::build_with_space_and_set_email_verified_for(ACCOUNT1).execute_with(|| {
+			let mut new_handle: Vec<u8> = Vec::new();
+
+			for i in 0..MAX_PERMITS {
+				// NEW_HANDLE = handle_0, handle_1, handle_2 ...
+				new_handle = format!("{}{}", "handle_", i).as_bytes().to_vec();
+				let space = _update_space_handle_and_return_space(new_handle.clone());
+
+				// Check whether space updates correctly
+				assert_eq!(space.handle, Some(new_handle.clone()));
+
+				// Make call in each block
+				System::set_block_number(System::block_number() + 1);
+			}
+
+			let stats = RateLimiter::stats_by_account(ACCOUNT1, 0).unwrap();
+
+			// Since one free call is made in each block, total free
+			// calls made in last window should be equal to window size
+			assert_eq!(stats.previous_window_consumed_permits as u64, WINDOW_SIZE);
+			assert_eq!(
+				stats.current_window_consumed_permits as u64,
+				MAX_PERMITS as u64 - WINDOW_SIZE
+			);
+
+			// Extra free call in the current block should update the space handle as
+			// free permits are still available based on sliding window rate limiting approximation
+			let space = _update_space_handle_and_return_space(b"handle".to_vec());
+			assert_eq!(space.handle, Some(b"handle".to_vec()));
+		})
+	}
+
+	#[test]
+	fn try_update_space_free_call_for_verified_phone_number_account_in_consecutive_windows() {
+		ExtBuilder::build_with_space_and_set_phone_number_verified_for(ACCOUNT1).execute_with(
+			|| {
+				let mut new_handle: Vec<u8> = Vec::new();
+
+				for i in 0..MAX_PERMITS {
+					// NEW_HANDLE = handle_0, handle_1, handle_2 ...
+					new_handle = format!("{}{}", "handle_", i).as_bytes().to_vec();
+					let space = _update_space_handle_and_return_space(new_handle.clone());
+
+					// Check whether space updates correctly
+					assert_eq!(space.handle, Some(new_handle.clone()));
+
+					// Make call in each block
+					System::set_block_number(System::block_number() + 1);
+				}
+
+				let stats = RateLimiter::stats_by_account(ACCOUNT1, 0).unwrap();
+
+				// Since one free call is made in each block, total free
+				// calls made in last window should be equal to window size
+				assert_eq!(stats.previous_window_consumed_permits as u64, WINDOW_SIZE);
+				assert_eq!(
+					stats.current_window_consumed_permits as u64,
+					MAX_PERMITS as u64 - WINDOW_SIZE
+				);
+
+				// Extra free call in the current block should update the space handle as
+				// free permits are still available based on sliding window rate limiting approximation
+				let space = _update_space_handle_and_return_space(b"handle".to_vec());
+				assert_eq!(space.handle, Some(b"handle".to_vec()));
+			},
+		)
+	}
 }
