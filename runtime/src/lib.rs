@@ -47,6 +47,7 @@ pub use frame_support::{
         Weight, IdentityFee, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
+	dispatch::GetDispatchInfo,
 };
 use frame_system::{
     EnsureRoot,
@@ -419,11 +420,12 @@ impl pallet_space_history::Config for Runtime {}
 pub struct BaseFilter;
 impl Contains<Call> for BaseFilter {
     fn contains(c: &Call) -> bool {
-        let is_set_balance = matches!(c, Call::Balances(pallet_balances::Call::set_balance(..)));
-        let is_force_transfer = matches!(c, Call::Balances(pallet_balances::Call::force_transfer(..)));
+		let dispatch_class = c.get_dispatch_info().class;
+
         match *c {
-            Call::Balances(..) => is_set_balance || is_force_transfer,
-            _ => true,
+			Call::Sudo(..) => true,
+            _ if dispatch_class == DispatchClass::Mandatory => true,
+			_ => false,
         }
     }
 }
