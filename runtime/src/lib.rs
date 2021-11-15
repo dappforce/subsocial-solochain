@@ -373,7 +373,7 @@ impl InstanceFilter<Call> for ProxyType {
             (ProxyType::Any, _) => true,
             (_, ProxyType::Any) => false,
             (ProxyType::NonTransfer, _) => true,
-            _ => false,
+            // _ => false,
         }
     }
 }
