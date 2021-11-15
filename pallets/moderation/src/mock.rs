@@ -297,7 +297,6 @@ pub(crate) fn moderators() -> Vec<AccountId> {
 }
 
 // TODO: replace with common function when benchmarks PR is merged
-// TODO: replace with common function when benchmarks PR is merged
 pub(crate) fn default_role_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
