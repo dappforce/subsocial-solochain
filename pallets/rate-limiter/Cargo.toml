@@ -7,13 +7,7 @@ license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/subsocial-node'
 description = 'Rate limiter for free transactions on Subsocial network'
-keywords = [
-    'blockchain',
-    'cryptocurrency',
-    'social-network',
-    'news-feed',
-    'marketplace',
-]
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 
 [package.metadata.docs.rs]

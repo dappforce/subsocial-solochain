@@ -14,17 +14,17 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	decl_module, decl_storage, decl_event, decl_error, ensure, Parameter,
-	weights::{Pays, GetDispatchInfo, DispatchClass},
-	traits::{Filter, Get, IsSubType},
+    decl_module, decl_storage, decl_event, decl_error, ensure, Parameter,
+    weights::{Pays, GetDispatchInfo, DispatchClass},
+    traits::{Filter, Get, IsSubType},
 };
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::{
-	RuntimeDebug, DispatchResult,
-	traits::{Dispatchable, DispatchInfoOf, SignedExtension},
-	transaction_validity::{
-		TransactionValidity, ValidTransaction, InvalidTransaction, TransactionValidityError,
-	},
+    RuntimeDebug, DispatchResult,
+    traits::{Dispatchable, DispatchInfoOf, SignedExtension},
+    transaction_validity::{
+        TransactionValidity, ValidTransaction, InvalidTransaction, TransactionValidityError,
+    },
 };
 use sp_std::{prelude::*, fmt::Debug};
 use df_traits::{OnFreeTransaction, TrustHandler};
@@ -47,215 +47,216 @@ pub type PermitUnit = u16;
 // TODO maybe rename to TimeWindow WindowConfig SlidingWindow or RateLimitingWindow
 #[derive(Encode, Decode, Clone, Eq, PartialEq, PartialOrd, RuntimeDebug)]
 pub struct RateConfig<BlockNumber> {
-	/// Duration of a period in the number of blocks.
-	pub period: BlockNumber,
+    /// Duration of a period in the number of blocks.
+    pub period: BlockNumber,
 
-	// TODO or 'max permits' or 'permits per second' or 'period_limit' or 'quota(s)'
-	/// The number of permissions available per account during one period.
-	pub max_permits: PermitUnit,
+    // TODO or 'max permits' or 'permits per second' or 'period_limit' or 'quota(s)'
+    /// The number of permissions available per account during one period.
+    pub max_permits: PermitUnit,
 }
 
 // TODO rename to UsageStats or UsageTracker or QuotaTracker or PermitTracker
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ConsumerStats<BlockNumber> {
-	/// A block number of the last call made by this account.
-	pub last_window: BlockNumber,
+    /// A block number of the last call made by this account.
+    pub last_window: BlockNumber,
 
-	/// A number of permits consumed by a given user in the previous period.
-	pub previous_window_consumed_permits: PermitUnit,
+    /// A number of permits consumed by a given user in the previous period.
+    pub previous_window_consumed_permits: PermitUnit,
 
-	/// A number of permits consumed by a given user in the current period.
-	pub current_window_consumed_permits: PermitUnit,
+    /// A number of permits consumed by a given user in the current period.
+    pub current_window_consumed_permits: PermitUnit,
 }
 
 impl<BlockNumber> ConsumerStats<BlockNumber> {
-	fn new(last_window: BlockNumber, previous_window_consumed_permits: PermitUnit) -> Self {
-		ConsumerStats {
-			last_window,
-			previous_window_consumed_permits,
-			current_window_consumed_permits: 0,
-		}
-	}
+    fn new(last_window: BlockNumber, previous_window_consumed_permits: PermitUnit) -> Self {
+        ConsumerStats {
+            last_window,
+            previous_window_consumed_permits,
+            current_window_consumed_permits: 0,
+        }
+    }
 }
 
 /// The pallet's configuration trait.
 pub trait Config: system::Config {
-	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
+    /// The overarching event type.
+    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
-	/// The call type from the runtime which has all the calls available in your runtime.
-	type Call: Parameter + GetDispatchInfo + Dispatchable<Origin = Self::Origin>;
+    /// The call type from the runtime which has all the calls available in your runtime.
+    type Call: Parameter + GetDispatchInfo + Dispatchable<Origin = Self::Origin>;
 
-	type CallFilter: Filter<<Self as Config>::Call>;
+    type CallFilter: Filter<<Self as Config>::Call>;
 
-	// TODO Rename to RateLimitingWindows or SlidingWindows?
-	type RateConfigs: Get<Vec<RateConfig<Self::BlockNumber>>>;
+    // TODO Rename to RateLimitingWindows or SlidingWindows?
+    type RateConfigs: Get<Vec<RateConfig<Self::BlockNumber>>>;
 
-	type TrustHandler: TrustHandler<Self::AccountId>;
+    type TrustHandler: TrustHandler<Self::AccountId>;
 }
 
 decl_event!(
-	pub enum Event<T>
-	where
-		AccountId = <T as frame_system::Config>::AccountId,
-	{
-		FreeCallResult(AccountId, DispatchResult),
-	}
+    pub enum Event<T>
+    where
+        AccountId = <T as frame_system::Config>::AccountId,
+    {
+        FreeCallResult(AccountId, DispatchResult),
+    }
 );
 
 decl_error! {
-	pub enum Error for Module<T: Config> {}
+    pub enum Error for Module<T: Config> {}
 }
 
 decl_storage! {
-	trait Store for Module<T: Config> as RateLimiterModule {
+    trait Store for Module<T: Config> as RateLimiterModule {
 
-		// TODO rename to 'UsageByAccount' or 'UsageTrackers'?
-		pub StatsByAccount get(fn stats_by_account):
-			double_map
-				hasher(blake2_128_concat) T::AccountId,
-				hasher(twox_64_concat) WindowType
-			=> Option<ConsumerStats<T::BlockNumber>>;
-	}
+        // TODO rename to 'UsageByAccount' or 'UsageTrackers'?
+        pub StatsByAccount get(fn stats_by_account):
+            double_map
+                hasher(blake2_128_concat) T::AccountId,
+                hasher(twox_64_concat) WindowType
+            => Option<ConsumerStats<T::BlockNumber>>;
+    }
 }
 
 decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+    pub struct Module<T: Config> for enum Call where origin: T::Origin {
 
-		// Sorted vector of rate-limiting rate limiting windows.
-		const RateConfigs: Vec<RateConfig<T::BlockNumber>> = {
-			let mut v = T::RateConfigs::get();
+        // Sorted vector of rate-limiting rate limiting windows.
+        const RateConfigs: Vec<RateConfig<T::BlockNumber>> = {
+            let mut v = T::RateConfigs::get();
 
-			// It is important to have the windows sorted by a period duration in ascending order.
-			// Because if a user has no free call in a smaller window,
-			// then it does not make sense to check the other larger windows.
-			v.sort_by_key(|x| x.period);
-			v
-		};
+            // It is important to have the windows sorted by a period duration in ascending order.
+            // Because if a user has no free call in a smaller window,
+            // then it does not make sense to check the other larger windows.
+            v.sort_by_key(|x| x.period);
+            v
+        };
 
-		// Initializing errors
-		type Error = Error<T>;
+        // Initializing errors
+        type Error = Error<T>;
 
-		// Initializing events
-		fn deposit_event() = default;
+        // Initializing events
+        fn deposit_event() = default;
 
-		// Extrinsics
+        // Extrinsics
 
-		// TODO implement drop of the whole double map of stats
-		// if a last window of the largest period is < the current window of this period.
-		// maybe this will be helpful?
-		// https://substrate.dev/rustdocs/v3.0.0/frame_support/storage/migration/fn.put_storage_value.html
+        // TODO implement drop of the whole double map of stats
+        // if a last window of the largest period is < the current window of this period.
+        // maybe this will be helpful?
+        // https://substrate.dev/rustdocs/v3.0.0/frame_support/storage/migration/fn.put_storage_value.html
 
-		#[weight = {
-			let dispatch_info = call.get_dispatch_info();
-			(
-				// TODO: use benchmarking for setting a weight
-				dispatch_info.weight.saturating_add(T::DbWeight::get().reads_writes(2, 1)),
-				DispatchClass::Normal,
-				Pays::No,
-			)
-		}]
-		// TODO should this be public or private
-		pub fn try_free_call(origin, call: Box<<T as Config>::Call>) -> DispatchResult {
-			let sender = ensure_signed(origin.clone())?;
+        #[weight = {
+            let dispatch_info = call.get_dispatch_info();
+            (
+                // TODO: use benchmarking for setting a weight
+                dispatch_info.weight.saturating_add(T::DbWeight::get().reads_writes(2, 1)),
+                DispatchClass::Normal,
+                Pays::No,
+            )
+        }]
+        // TODO should this be public or private
+        pub fn try_free_call(origin, call: Box<<T as Config>::Call>) -> DispatchResult {
+            let sender = ensure_signed(origin.clone())?;
 
-			if Self::can_account_make_free_call_and_update_stats(&sender) {
+            if Self::can_account_make_free_call_and_update_stats(&sender) {
 
-				// Dispatch the call
-				let result = call.dispatch(origin);
+                // Dispatch the call
+                let result = call.dispatch(origin);
 
-				// Deposit an event with the result
-				Self::deposit_event(
-					RawEvent::FreeCallResult(
-						sender,
-						result.map(|_| ()).map_err(|e| e.error),
-					)
-				);
-			}
+                // Deposit an event with the result
+                Self::deposit_event(
+                    RawEvent::FreeCallResult(
+                        sender,
+                        result.map(|_| ()).map_err(|e| e.error),
+                    )
+                );
+            }
 
-			Ok(())
-		}
-	}
+            Ok(())
+        }
+    }
 }
 
 impl<T: Config> Module<T> {
-	fn update_account_stats(
-		who: &T::AccountId,
-		window_type: WindowType,
-		stats: &mut ConsumerStats<T::BlockNumber>,
-	) {
-		stats.current_window_consumed_permits =
-			stats.current_window_consumed_permits.saturating_add(1);
-		StatsByAccount::<T>::insert(who, window_type, stats);
-	}
+    fn update_account_stats(
+        who: &T::AccountId,
+        window_type: WindowType,
+        stats: &mut ConsumerStats<T::BlockNumber>,
+    ) {
+        stats.current_window_consumed_permits =
+            stats.current_window_consumed_permits.saturating_add(1);
+        StatsByAccount::<T>::insert(who, window_type, stats);
+    }
 
-	/// This function can update stats of a corresponding window,
-	/// if account is eligible to have a free call withing a given window.
-	fn can_account_make_free_call<F>(sender: &T::AccountId, update_stats: F) -> bool
-	where
-		F: FnOnce(&T::AccountId, WindowType, &mut ConsumerStats<T::BlockNumber>) + Copy,
-	{
-		if !T::TrustHandler::is_trusted_account(sender) {
-			return false
-		}
+    /// This function can update stats of a corresponding window,
+    /// if account is eligible to have a free call withing a given window.
+    fn can_account_make_free_call<F>(sender: &T::AccountId, update_stats: F) -> bool
+    where
+        F: FnOnce(&T::AccountId, WindowType, &mut ConsumerStats<T::BlockNumber>) + Copy,
+    {
+        if !T::TrustHandler::is_trusted_account(sender) {
+            return false
+        }
 
-		let current_block = frame_system::Module::<T>::block_number();
-		let windows = T::RateConfigs::get();
-		let mut has_free_calls = false;
+        let current_block = frame_system::Module::<T>::block_number();
+        let windows = T::RateConfigs::get();
+        let mut has_free_calls = false;
 
-		for (i, window) in windows.into_iter().enumerate() {
-			let window_type = i as WindowType;
+        for (i, window) in windows.into_iter().enumerate() {
+            let window_type = i as WindowType;
 
-			// Calculate the current window
-			let current_window = current_block / window.period;
+            // Calculate the current window
+            let current_window = current_block / window.period;
 
-			// Calculate the number of blocks elapsed in the current window.
-			let current_window_elapsed = current_block - current_window * window.period;
+            // Calculate the number of blocks elapsed in the current window.
+            let current_window_elapsed = current_block - current_window * window.period;
 
-			let reset_stats = |previous_window_consumed_permits| {
-				ConsumerStats::new(current_window, previous_window_consumed_permits)
-			};
+            let reset_stats = |previous_window_consumed_permits| {
+                ConsumerStats::new(current_window, previous_window_consumed_permits)
+            };
 
-			// Get stats for this type of window
-			let mut stats =
-				StatsByAccount::<T>::get(&sender, window_type).unwrap_or_else(|| reset_stats(0));
+            // Get stats for this type of window
+            let mut stats =
+                StatsByAccount::<T>::get(&sender, window_type).unwrap_or_else(|| reset_stats(0));
 
-			// If no free premits were used in the preceding window set both
-			// current_window_consumed_permits and previous_window_consumed_permits to 0, otherwise
-			// set current_window_consumed_permits to 0 and previous_window_consumed_permits to
-			// current_window_consumed_permits
-			if stats.last_window == current_window - 1u32.into() {
-				stats = reset_stats(stats.current_window_consumed_permits);
-			} else if stats.last_window < current_window {
-				stats = reset_stats(0);
-			}
+            // If no free premits were used in the preceding window set both
+            // current_window_consumed_permits and previous_window_consumed_permits to 0, otherwise
+            // set current_window_consumed_permits to 0 and previous_window_consumed_permits to
+            // current_window_consumed_permits
+            if stats.last_window == current_window - 1u32.into() {
+                stats = reset_stats(stats.current_window_consumed_permits);
+            } else if stats.last_window < current_window {
+                stats = reset_stats(0);
+            }
 
-			// Calculate the number of permits consumed using sliding window rate limiting
-			// algorithm.
-			let permits_used = ((window.period - current_window_elapsed) *
-				stats.previous_window_consumed_permits.into() /
-				window.period) + stats.current_window_consumed_permits.into();
+            // Calculate the number of permits consumed using sliding window rate limiting
+            // algorithm.
+            let permits_used = ((window.period - current_window_elapsed) *
+                stats.previous_window_consumed_permits.into() /
+                window.period) +
+                stats.current_window_consumed_permits.into();
 
-			// Check that the user has an available free call
-			has_free_calls = permits_used < window.max_permits.into();
+            // Check that the user has an available free call
+            has_free_calls = permits_used < window.max_permits.into();
 
-			if !has_free_calls {
-				break
-			}
+            if !has_free_calls {
+                break
+            }
 
-			update_stats(&sender, window_type, &mut stats);
-		}
+            update_stats(&sender, window_type, &mut stats);
+        }
 
-		has_free_calls
-	}
+        has_free_calls
+    }
 
-	pub fn check_account_can_make_free_call(sender: &T::AccountId) -> bool {
-		Self::can_account_make_free_call(sender, |_, _, _| ())
-	}
+    pub fn check_account_can_make_free_call(sender: &T::AccountId) -> bool {
+        Self::can_account_make_free_call(sender, |_, _, _| ())
+    }
 
-	pub fn can_account_make_free_call_and_update_stats(sender: &T::AccountId) -> bool {
-		Self::can_account_make_free_call(sender, Self::update_account_stats)
-	}
+    pub fn can_account_make_free_call_and_update_stats(sender: &T::AccountId) -> bool {
+        Self::can_account_make_free_call(sender, Self::update_account_stats)
+    }
 }
 
 /// Validate `try_free_call` calls prior to execution. Needed to avoid a DoS attack since they are
@@ -263,87 +264,87 @@ impl<T: Config> Module<T> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
 pub struct PrevalidateFreeCall<T: Config + Send + Sync>(sp_std::marker::PhantomData<T>)
 where
-	<T as frame_system::Config>::Call: IsSubType<Call<T>>;
+    <T as frame_system::Config>::Call: IsSubType<Call<T>>;
 
 impl<T: Config + Send + Sync> Debug for PrevalidateFreeCall<T>
 where
-	<T as frame_system::Config>::Call: IsSubType<Call<T>>,
+    <T as frame_system::Config>::Call: IsSubType<Call<T>>,
 {
-	#[cfg(feature = "std")]
-	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-		write!(f, "PrevalidateFreeCall")
-	}
+    #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        write!(f, "PrevalidateFreeCall")
+    }
 
-	#[cfg(not(feature = "std"))]
-	fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-		Ok(())
-	}
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        Ok(())
+    }
 }
 
 impl<T: Config + Send + Sync> PrevalidateFreeCall<T>
 where
-	<T as frame_system::Config>::Call: IsSubType<Call<T>>,
+    <T as frame_system::Config>::Call: IsSubType<Call<T>>,
 {
-	/// Create new `SignedExtension` to check runtime version.
-	pub fn new() -> Self {
-		Self(sp_std::marker::PhantomData)
-	}
+    /// Create new `SignedExtension` to check runtime version.
+    pub fn new() -> Self {
+        Self(sp_std::marker::PhantomData)
+    }
 }
 
 #[repr(u8)]
 enum ValidityError {
-	DisallowedCall = 0,
-	UserNotPermitted = 1,
+    DisallowedCall = 0,
+    UserNotPermitted = 1,
 }
 
 impl From<ValidityError> for u8 {
-	fn from(err: ValidityError) -> Self {
-		err as u8
-	}
+    fn from(err: ValidityError) -> Self {
+        err as u8
+    }
 }
 
 impl<T: Config + Send + Sync> SignedExtension for PrevalidateFreeCall<T>
 where
-	<T as frame_system::Config>::Call: IsSubType<Call<T>>,
+    <T as frame_system::Config>::Call: IsSubType<Call<T>>,
 {
-	const IDENTIFIER: &'static str = "PrevalidateFreeCall";
-	type AccountId = T::AccountId;
-	type Call = <T as frame_system::Config>::Call;
-	type AdditionalSigned = ();
-	type Pre = ();
+    const IDENTIFIER: &'static str = "PrevalidateFreeCall";
+    type AccountId = T::AccountId;
+    type Call = <T as frame_system::Config>::Call;
+    type AdditionalSigned = ();
+    type Pre = ();
 
-	fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
-		Ok(())
-	}
+    fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+        Ok(())
+    }
 
-	/// <weight>
-	/// The weight of this logic is included in the `attest` dispatchable.
-	/// </weight>
-	fn validate(
-		&self,
-		who: &Self::AccountId,
-		call: &Self::Call,
-		_info: &DispatchInfoOf<Self::Call>,
-		_len: usize,
-	) -> TransactionValidity {
-		if let Some(local_call) = call.is_sub_type() {
-			if let Call::try_free_call(boxed_call) = local_call {
-				ensure!(
-					T::TrustHandler::is_trusted_account(who),
-					InvalidTransaction::Custom(ValidityError::UserNotPermitted.into())
-				);
-				ensure!(
-					T::CallFilter::filter(boxed_call),
-					InvalidTransaction::Custom(ValidityError::DisallowedCall.into())
-				);
-			}
-		}
-		Ok(ValidTransaction::default())
-	}
+    /// <weight>
+    /// The weight of this logic is included in the `attest` dispatchable.
+    /// </weight>
+    fn validate(
+        &self,
+        who: &Self::AccountId,
+        call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> TransactionValidity {
+        if let Some(local_call) = call.is_sub_type() {
+            if let Call::try_free_call(boxed_call) = local_call {
+                ensure!(
+                    T::TrustHandler::is_trusted_account(who),
+                    InvalidTransaction::Custom(ValidityError::UserNotPermitted.into())
+                );
+                ensure!(
+                    T::CallFilter::filter(boxed_call),
+                    InvalidTransaction::Custom(ValidityError::DisallowedCall.into())
+                );
+            }
+        }
+        Ok(ValidTransaction::default())
+    }
 }
 
 impl<T: Config> OnFreeTransaction<T::AccountId> for Module<T> {
-	fn can_account_make_free_call(sender: &T::AccountId) -> bool {
-		Self::check_account_can_make_free_call(sender)
-	}
+    fn can_account_make_free_call(sender: &T::AccountId) -> bool {
+        Self::check_account_can_make_free_call(sender)
+    }
 }

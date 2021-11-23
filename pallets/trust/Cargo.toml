@@ -7,13 +7,7 @@ license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/dappforce-subsocial-node'
 description = 'A pallet for storing verified or trusted accounts within Subsocial'
-keywords = [
-    'blockchain',
-    'cryptocurrency',
-    'social-network',
-    'news-feed',
-    'marketplace',
-]
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 
 [package.metadata.docs.rs]
@@ -21,9 +15,7 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 bitflags = "1.2"
-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = [
-    "derive",
-] }
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 
 df-traits = { default-features = false, path = '../traits' }
 
@@ -56,8 +48,4 @@ std = [
 
 ]
 
-runtime-benchmarks = [
-    "frame-benchmarking",
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-]
+runtime-benchmarks = ["frame-benchmarking", "frame-support/runtime-benchmarks", "frame-system/runtime-benchmarks"]

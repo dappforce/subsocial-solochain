@@ -7,13 +7,7 @@ license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/dappforce-subsocial-node'
 description = 'Integration tests'
-keywords = [
-    'blockchain',
-    'cryptocurrency',
-    'social-network',
-    'news-feed',
-    'marketplace',
-]
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 
 [features]
@@ -47,9 +41,7 @@ std = [
 ]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = [
-    'derive',
-] }
+codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
 
 frame-support = { default-features = false, version = '3.0.0' }
 frame-system = { default-features = false, version = '3.0.0' }

@@ -3,8 +3,8 @@
 use bitflags::bitflags;
 use codec::{Encode, Decode};
 use frame_support::{
-	decl_module, decl_storage, decl_event, dispatch::DispatchResultWithPostInfo,
-	traits::EnsureOrigin, weights::Pays,
+    decl_module, decl_storage, decl_event, dispatch::DispatchResultWithPostInfo,
+    traits::EnsureOrigin, weights::Pays,
 };
 use df_traits::TrustHandler;
 
@@ -20,100 +20,100 @@ pub mod weights;
 pub use weights::*;
 
 pub trait Config: frame_system::Config {
-	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+    /// The overarching event type.
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
-	/// Required origin to change someone's trust level.
-	type SetTrustLevel: EnsureOrigin<Self::Origin>;
+    /// Required origin to change someone's trust level.
+    type SetTrustLevel: EnsureOrigin<Self::Origin>;
 
-	/// Information on runtime weights.
-	type WeightInfo: WeightInfo;
+    /// Information on runtime weights.
+    type WeightInfo: WeightInfo;
 }
 
 bitflags! {
-	#[derive(Encode, Decode, Default)]
-	pub struct TrustLevels: i8 {
-		const EMAIL_VERIFIED = 0b00000001;
-		const PHONE_NUMBER_VERIFIED = 0b00000010;
-	}
+    #[derive(Encode, Decode, Default)]
+    pub struct TrustLevels: i8 {
+        const EMAIL_VERIFIED = 0b00000001;
+        const PHONE_NUMBER_VERIFIED = 0b00000010;
+    }
 }
 
 impl TrustLevels {
-	/// Choose all variants except for `one`.
-	pub fn except(one: TrustLevels) -> TrustLevels {
-		let mut mask = Self::all();
-		mask.toggle(one);
-		mask
-	}
+    /// Choose all variants except for `one`.
+    pub fn except(one: TrustLevels) -> TrustLevels {
+        let mut mask = Self::all();
+        mask.toggle(one);
+        mask
+    }
 }
 
 decl_storage! {
-	trait Store for Module<T: Config> as TrustModule {
-		TrustLevelsByAccount get(fn trust_levels_by_account): map
-			hasher(blake2_128_concat) T::AccountId
-			=> TrustLevels;
-	}
+    trait Store for Module<T: Config> as TrustModule {
+        TrustLevelsByAccount get(fn trust_levels_by_account): map
+            hasher(blake2_128_concat) T::AccountId
+            => TrustLevels;
+    }
 }
 
 decl_event!(
-	pub enum Event<T>
-	where
-		AccountId = <T as frame_system::Config>::AccountId,
-	{
-		TrustLevelChanged(AccountId, TrustLevels),
-	}
+    pub enum Event<T>
+    where
+        AccountId = <T as frame_system::Config>::AccountId,
+    {
+        TrustLevelChanged(AccountId, TrustLevels),
+    }
 );
 
 impl<T: Config> Module<T> {
-	fn account_trust_levels_contains(who: &T::AccountId, trust_level: TrustLevels) -> bool {
-		let trust_levels = Self::trust_levels_by_account(who);
-		trust_levels.contains(trust_level)
-	}
+    fn account_trust_levels_contains(who: &T::AccountId, trust_level: TrustLevels) -> bool {
+        let trust_levels = Self::trust_levels_by_account(who);
+        trust_levels.contains(trust_level)
+    }
 }
 
 decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		fn deposit_event() = default;
+    pub struct Module<T: Config> for enum Call where origin: T::Origin {
+        fn deposit_event() = default;
 
-		#[weight = T::WeightInfo::set_email_verified()]
-		pub fn set_email_verified(origin, who: T::AccountId) -> DispatchResultWithPostInfo {
-			T::SetTrustLevel::ensure_origin(origin)?;
+        #[weight = T::WeightInfo::set_email_verified()]
+        pub fn set_email_verified(origin, who: T::AccountId) -> DispatchResultWithPostInfo {
+            T::SetTrustLevel::ensure_origin(origin)?;
 
-			let mut trust_levels: TrustLevels = Self::trust_levels_by_account(&who);
-			trust_levels.insert(TrustLevels::EMAIL_VERIFIED);
+            let mut trust_levels: TrustLevels = Self::trust_levels_by_account(&who);
+            trust_levels.insert(TrustLevels::EMAIL_VERIFIED);
 
-			TrustLevelsByAccount::<T>::insert(&who, trust_levels.clone());
+            TrustLevelsByAccount::<T>::insert(&who, trust_levels.clone());
 
-			Self::deposit_event(RawEvent::TrustLevelChanged(who, trust_levels));
-			Ok(Pays::No.into())
-		}
+            Self::deposit_event(RawEvent::TrustLevelChanged(who, trust_levels));
+            Ok(Pays::No.into())
+        }
 
-		#[weight = T::WeightInfo::set_phone_number_verified()]
-		pub fn set_phone_number_verified(origin, who: T::AccountId) -> DispatchResultWithPostInfo {
-			T::SetTrustLevel::ensure_origin(origin)?;
+        #[weight = T::WeightInfo::set_phone_number_verified()]
+        pub fn set_phone_number_verified(origin, who: T::AccountId) -> DispatchResultWithPostInfo {
+            T::SetTrustLevel::ensure_origin(origin)?;
 
-			let mut trust_levels: TrustLevels = Self::trust_levels_by_account(&who);
-			trust_levels.insert(TrustLevels::PHONE_NUMBER_VERIFIED);
+            let mut trust_levels: TrustLevels = Self::trust_levels_by_account(&who);
+            trust_levels.insert(TrustLevels::PHONE_NUMBER_VERIFIED);
 
-			TrustLevelsByAccount::<T>::insert(&who, trust_levels.clone());
+            TrustLevelsByAccount::<T>::insert(&who, trust_levels.clone());
 
-			Self::deposit_event(RawEvent::TrustLevelChanged(who, trust_levels));
-			Ok(Pays::No.into())
-		}
-	}
+            Self::deposit_event(RawEvent::TrustLevelChanged(who, trust_levels));
+            Ok(Pays::No.into())
+        }
+    }
 }
 
 impl<T: Config> TrustHandler<T::AccountId> for Module<T> {
-	fn is_trusted_account(who: &T::AccountId) -> bool {
-		let trust_levels = Self::trust_levels_by_account(who);
-		!trust_levels.is_empty()
-	}
+    fn is_trusted_account(who: &T::AccountId) -> bool {
+        let trust_levels = Self::trust_levels_by_account(who);
+        !trust_levels.is_empty()
+    }
 
-	fn is_email_confirmed(who: &T::AccountId) -> bool {
-		Self::account_trust_levels_contains(who, TrustLevels::EMAIL_VERIFIED)
-	}
+    fn is_email_confirmed(who: &T::AccountId) -> bool {
+        Self::account_trust_levels_contains(who, TrustLevels::EMAIL_VERIFIED)
+    }
 
-	fn is_phone_number_confirmed(who: &T::AccountId) -> bool {
-		Self::account_trust_levels_contains(who, TrustLevels::PHONE_NUMBER_VERIFIED)
-	}
+    fn is_phone_number_confirmed(who: &T::AccountId) -> bool {
+        Self::account_trust_levels_contains(who, TrustLevels::PHONE_NUMBER_VERIFIED)
+    }
 }

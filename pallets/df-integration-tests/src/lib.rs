@@ -10,12 +10,12 @@ mod tests {
     };
 
     use frame_support::{
-		assert_noop, assert_ok,
-		dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Dispatchable},
-		parameter_types,
-		storage::StorageMap,
-		traits::Filter,
-	};
+        assert_ok, assert_noop,
+        parameter_types,
+        dispatch::{DispatchResult, DispatchError, DispatchResultWithPostInfo, Dispatchable},
+        storage::StorageMap,
+        traits::Filter,
+    };
     use frame_system as system;
 
     use pallet_permissions::{
@@ -28,12 +28,11 @@ mod tests {
     use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
     use pallet_scores::ScoringAction;
-    use pallet_spaces::{Error as SpacesError, Space, SpaceById, SpaceUpdate, SpacesSettings};
+    use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError, SpacesSettings, Space};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
     use pallet_moderation::{EntityId, EntityStatus, ReportId};
     use pallet_rate_limiter::{PermitUnit, RateConfig};
-    use pallet_trust::weights::SubstrateWeight;
     use pallet_utils::{
         mock_functions::*,
         DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN,
@@ -280,7 +279,7 @@ mod tests {
     impl pallet_trust::Config for TestRuntime {
         type Event = Event;
         type SetTrustLevel = system::EnsureRoot<AccountId>;
-        type WeightInfo = SubstrateWeight<TestRuntime>;
+        type WeightInfo = ();
     }
 
     pub struct RateLimiterCallsFilter;
@@ -309,10 +308,6 @@ mod tests {
                 period: WINDOW_SIZE,
                 max_permits: MAX_PERMITS,
           },          
-        // RateConfig {
-        //         period: 5 * MINUTES,
-        //         max_permits: 10
-        //   },
         //   RateConfig {
         //       period: 1 * HOURS,
         //       max_permits: 20
@@ -335,6 +330,7 @@ mod tests {
     type AccountId = u64;
     type BlockNumber = u64;
 
+    // TODO: reuse from runtime-common when implemented.
     pub(crate) const MINUTES: BlockNumber = 60 as BlockNumber;
 	// pub(crate) const HOURS: BlockNumber = MINUTES * 60;
 	// pub(crate) const DAYS: BlockNumber = HOURS * 24;
@@ -488,9 +484,8 @@ mod tests {
         /// Custom ext configuration with SpaceId, Initial Block Number for free
         /// calls and email verified for given account
         pub fn build_with_space_and_set_email_verified_for(who: AccountId) -> TestExternalities {
-            let mut ext = Self::build();
+            let mut ext = Self::build_with_space();
             ext.execute_with( || {
-                Self::add_default_space();
                 System::set_block_number(INITIAL_BLOCK_NUMBER);
                 assert_ok!(_set_email_verified(None, Some(who)));
             });
@@ -500,9 +495,8 @@ mod tests {
         /// Custom ext configuration with SpaceId, Initial Block Number for free
         /// calls and phone number verified for given account
         pub fn build_with_space_and_set_phone_number_verified_for(who: AccountId) -> TestExternalities {
-            let mut ext = Self::build();
+            let mut ext = Self::build_with_space();
             ext.execute_with( || {
-                Self::add_default_space();
                 System::set_block_number(INITIAL_BLOCK_NUMBER);
                 assert_ok!(_set_phone_number_verified(None, Some(who)));
             });

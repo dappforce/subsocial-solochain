@@ -8,7 +8,10 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use sp_std::{prelude::*, collections::btree_map::BTreeMap};
+use sp_std::{
+	prelude::*,
+	collections::btree_map::BTreeMap,
+};
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 pub use subsocial_primitives::{AccountId, Signature, Balance, Index};
 use subsocial_primitives::{BlockNumber, Hash, Moment};
@@ -16,7 +19,9 @@ use sp_runtime::{
 	ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys,
 	transaction_validity::{TransactionValidity, TransactionSource},
 };
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT, NumberFor, AccountIdLookup};
+use sp_runtime::traits::{
+    BlakeTwo256, Block as BlockT, NumberFor, AccountIdLookup
+};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
@@ -41,7 +46,7 @@ pub use frame_support::{
 };
 use frame_system::{
 	EnsureRoot,
-	limits::{BlockWeights, BlockLength},
+	limits::{BlockWeights, BlockLength}
 };
 use pallet_transaction_payment::CurrencyAdapter;
 use static_assertions::const_assert;
@@ -50,7 +55,11 @@ use pallet_permissions::SpacePermission;
 use pallet_posts::rpc::{FlatPost, FlatPostKind, RepliesByPostId};
 use pallet_profiles::rpc::FlatSocialAccount;
 use pallet_rate_limiter::RateConfig;
-use pallet_reactions::{ReactionId, ReactionKind, rpc::FlatReaction};
+use pallet_reactions::{
+	ReactionId,
+	ReactionKind,
+	rpc::FlatReaction,
+};
 use pallet_spaces::rpc::FlatSpace;
 use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
 
@@ -357,7 +366,7 @@ impl pallet_posts::Config for Runtime {
 	type MaxCommentDepth = MaxCommentDepth;
 	type PostScores = Scores;
 	type AfterPostUpdated = PostHistory;
-	type IsPostBlocked = ();
+	type IsPostBlocked = ()/*Moderation*/;
 }
 
 parameter_types! {}
@@ -399,8 +408,8 @@ impl pallet_roles::Config for Runtime {
 	type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
 	type Spaces = Spaces;
 	type SpaceFollows = SpaceFollows;
-	type IsAccountBlocked = ();
-	type IsContentBlocked = ();
+	type IsAccountBlocked = ()/*Moderation*/;
+	type IsContentBlocked = ()/*Moderation*/;
 }
 
 parameter_types! {
@@ -458,8 +467,8 @@ impl pallet_spaces::Config for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
-	type IsAccountBlocked = ();
-	type IsContentBlocked = ();
+	type IsAccountBlocked = ()/*Moderation*/;
+	type IsContentBlocked = ()/*Moderation*/;
 	type HandleDeposit = HandleDeposit;
 }
 
@@ -483,8 +492,7 @@ pub struct BaseFilter;
 impl Filter<Call> for BaseFilter {
 	fn filter(c: &Call) -> bool {
 		let is_set_balance = matches!(c, Call::Balances(pallet_balances::Call::set_balance(..)));
-		let is_force_transfer =
-			matches!(c, Call::Balances(pallet_balances::Call::force_transfer(..)));
+        let is_force_transfer = matches!(c, Call::Balances(pallet_balances::Call::force_transfer(..)));
 		match *c {
 			Call::Balances(..) => is_set_balance || is_force_transfer,
 			_ => true,
