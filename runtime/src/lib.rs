@@ -8,19 +8,24 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use codec::{Encode, Decode};
 use sp_std::{
     prelude::*,
     collections::btree_map::BTreeMap,
+    fmt::Debug,
 };
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 pub use subsocial_primitives::{AccountId, Signature, Balance, Index};
 use subsocial_primitives::{BlockNumber, Hash, Moment};
 use sp_runtime::{
     ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys,
-    transaction_validity::{TransactionValidity, TransactionSource},
+    transaction_validity::{
+        TransactionValidity, TransactionSource, InvalidTransaction,
+        TransactionValidityError, ValidTransaction,
+    },
 };
 use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, NumberFor, AccountIdLookup
+    BlakeTwo256, Block as BlockT, NumberFor, AccountIdLookup, DispatchInfoOf, SignedExtension,
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -41,12 +46,13 @@ pub use frame_support::{
     traits::{
         KeyOwnerProofSystem, Randomness, Currency,
         Imbalance, OnUnbalanced, Contains,
-        OnRuntimeUpgrade, StorageInfo,
+        OnRuntimeUpgrade, StorageInfo, IsSubType,
     },
     weights::{
         Weight, IdentityFee, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
+	dispatch::GetDispatchInfo,
 };
 use frame_system::{
     EnsureRoot,
@@ -419,11 +425,12 @@ impl pallet_space_history::Config for Runtime {}
 pub struct BaseFilter;
 impl Contains<Call> for BaseFilter {
     fn contains(c: &Call) -> bool {
-        let is_set_balance = matches!(c, Call::Balances(pallet_balances::Call::set_balance(..)));
-        let is_force_transfer = matches!(c, Call::Balances(pallet_balances::Call::force_transfer(..)));
+		let dispatch_class = c.get_dispatch_info().class;
+
         match *c {
-            Call::Balances(..) => is_set_balance || is_force_transfer,
-            _ => true,
+			Call::Sudo(..) => true,
+            _ if dispatch_class == DispatchClass::Mandatory => true,
+			_ => false,
         }
     }
 }
@@ -499,6 +506,7 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
+    FilterChainTransactions,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
     pallet_dotsama_claims::EnsureAllowedToClaimTokens<Runtime>,
 );
@@ -549,6 +557,67 @@ impl OnRuntimeUpgrade for MigratePalletVersionToStorageVersion {
         frame_support::migrations::migrate_from_pallet_version_to_storage_version::<AllPalletsWithSystem>(
             &RocksDbWeight::get()
         )
+    }
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct FilterChainTransactions;
+
+impl Debug for FilterChainTransactions {
+    #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        write!(f, "FilterChainTransactions")
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        Ok(())
+    }
+}
+
+impl FilterChainTransactions {
+    /// Create new `SignedExtension` to check runtime version.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[repr(u8)]
+enum ClaimsValidityError {
+    ChainIsPaused = 0,
+}
+
+impl From<ClaimsValidityError> for u8 {
+    fn from(err: ClaimsValidityError) -> Self {
+        err as u8
+    }
+}
+
+impl SignedExtension for FilterChainTransactions {
+    const IDENTIFIER: &'static str = "FilterChainTransactions";
+    type AccountId = AccountId;
+    type Call = Call;
+    type AdditionalSigned = ();
+
+    type Pre = ();
+
+    fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+        Ok(())
+    }
+
+    fn validate(
+        &self,
+        _who: &Self::AccountId,
+        call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> TransactionValidity {
+        let allowed_call = BaseFilter::contains(call);
+
+        match allowed_call {
+            true => Ok(ValidTransaction::default()),
+            false => InvalidTransaction::Custom(ClaimsValidityError::ChainIsPaused.into()).into()
+        }
     }
 }
 
