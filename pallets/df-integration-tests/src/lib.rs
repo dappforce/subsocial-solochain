@@ -14,6 +14,7 @@ mod tests {
         parameter_types,
         dispatch::{DispatchResult, DispatchError},
         storage::StorageMap,
+        traits::Everything,
     };
     use frame_system as system;
 
@@ -71,7 +72,7 @@ mod tests {
     }
 
     impl system::Config for TestRuntime {
-        type BaseCallFilter = ();
+        type BaseCallFilter = Everything;
         type BlockWeights = ();
         type BlockLength = ();
         type Origin = Origin;

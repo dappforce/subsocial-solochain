@@ -7,7 +7,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
-use frame_support::{parameter_types, dispatch::DispatchError};
+use frame_support::{parameter_types, dispatch::DispatchError, traits::Everything};
 use frame_system as system;
 
 use crate as utils;
@@ -34,7 +34,7 @@ parameter_types! {
         frame_system::limits::BlockWeights::simple_max(1024);
 }
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

@@ -1,8 +1,8 @@
 //! # Posts Module
 //!
-//! Posts are the second crucial component of Subsocial after Spaces. This module allows you to 
+//! Posts are the second crucial component of Subsocial after Spaces. This module allows you to
 //! create, update, move (between spaces), and hide posts as well as manage owner(s).
-//! 
+//!
 //! Posts can be compared to existing entities on web 2.0 platforms such as:
 //! - Posts on Facebook,
 //! - Tweets on Twitter,
@@ -14,6 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Serialize, Deserialize};
 use frame_support::{
@@ -37,7 +38,8 @@ pub mod functions;
 pub mod rpc;
 
 /// Information about a post's owner, its' related space, content, and visibility.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct Post<T: Config> {
 
     /// Unique sequential identifier of a post. Examples of post ids: `1`, `2`, `3`, and so on.
@@ -49,7 +51,7 @@ pub struct Post<T: Config> {
     /// The current owner of a given post.
     pub owner: T::AccountId,
 
-    /// Through post extension you can provide specific information necessary for different kinds 
+    /// Through post extension you can provide specific information necessary for different kinds
     /// of posts such as regular posts, comments, and shared posts.
     pub extension: PostExtension,
 
@@ -58,7 +60,7 @@ pub struct Post<T: Config> {
 
     pub content: Content,
 
-    /// Hidden field is used to recommend to end clients (web and mobile apps) that a particular 
+    /// Hidden field is used to recommend to end clients (web and mobile apps) that a particular
     /// posts and its' comments should not be shown.
     pub hidden: bool,
 
@@ -80,7 +82,7 @@ pub struct Post<T: Config> {
     pub score: i32,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PostUpdate {
     /// Deprecated: This field has no effect in `fn update_post()` extrinsic.
     /// See `fn move_post()` extrinsic if you want to move a post to another space.
@@ -90,9 +92,9 @@ pub struct PostUpdate {
     pub hidden: Option<bool>,
 }
 
-/// Post extension provides specific information necessary for different kinds 
+/// Post extension provides specific information necessary for different kinds
 /// of posts such as regular posts, comments, and shared posts.
-#[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(untagged))]
 pub enum PostExtension {
@@ -101,7 +103,7 @@ pub enum PostExtension {
     SharedPost(PostId),
 }
 
-#[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Comment {
     pub parent_id: Option<PostId>,

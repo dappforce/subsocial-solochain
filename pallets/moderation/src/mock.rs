@@ -2,7 +2,7 @@ use super::*;
 
 use crate as moderation;
 
-use frame_support::{assert_ok, dispatch::DispatchResult, parameter_types, StorageMap};
+use frame_support::{assert_ok, dispatch::DispatchResult, parameter_types, StorageMap, traits::Everything};
 use frame_system as system;
 
 use sp_core::H256;
@@ -50,7 +50,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

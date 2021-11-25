@@ -10,6 +10,7 @@ use frame_support::{
     parameter_types,
     assert_ok,
     dispatch::DispatchResultWithPostInfo,
+    traits::Everything,
 };
 use frame_system as system;
 
@@ -35,7 +36,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

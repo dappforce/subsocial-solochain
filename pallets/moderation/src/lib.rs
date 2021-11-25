@@ -19,6 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Encode, Decode};
+use scale_info::TypeInfo;
 use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 use frame_support::{
@@ -42,7 +43,7 @@ pub mod functions;
 
 pub type ReportId = u64;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum EntityId<AccountId> {
     Content(Content),
     Account(AccountId),
@@ -53,13 +54,14 @@ pub enum EntityId<AccountId> {
 /// Entity status is used in two cases: when moderators suggest a moderation status
 /// for a reported entity; or when a space owner makes a final decision to either block
 /// or allow this entity within the space.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum EntityStatus {
     Allowed,
     Blocked,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct Report<T: Config> {
     id: ReportId,
     created: WhoAndWhen<T>,
@@ -72,7 +74,8 @@ pub struct Report<T: Config> {
 }
 
 // TODO rename to SuggestedEntityStatus
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct SuggestedStatus<T: Config> {
     /// An account id of a moderator who suggested this status.
     suggested: WhoAndWhen<T>,
@@ -84,13 +87,13 @@ pub struct SuggestedStatus<T: Config> {
 }
 
 // TODO rename to ModerationSettings?
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct SpaceModerationSettings {
     autoblock_threshold: Option<u16>
 }
 
 // TODO rename to ModerationSettingsUpdate?
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct SpaceModerationSettingsUpdate {
     pub autoblock_threshold: Option<Option<u16>>
 }
@@ -232,7 +235,7 @@ decl_module! {
 
             // TODO check this func, if looks strange
             Utils::<T>::ensure_content_is_some(&reason).map_err(|_| Error::<T>::ReasonIsEmpty)?;
-            
+
             Utils::<T>::is_valid_content(reason.clone())?;
 
             ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::ScopeNotFound);

@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use frame_support::{decl_module, decl_storage};
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::Vec;
@@ -9,7 +10,8 @@ use frame_system::{self as system};
 use pallet_utils::WhoAndWhen;
 use pallet_profiles::{Profile, ProfileUpdate, AfterProfileUpdated};
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct ProfileHistoryRecord<T: Config> {
     pub edited: WhoAndWhen<T>,
     pub old_data: ProfileUpdate,

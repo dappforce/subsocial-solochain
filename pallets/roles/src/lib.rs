@@ -11,6 +11,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     ensure,
@@ -40,7 +41,8 @@ mod tests;
 pub type RoleId = u64;
 
 /// Information about a role's permissions, its' containing space, and its' content.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct Role<T: Config> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
@@ -70,7 +72,7 @@ pub struct Role<T: Config> {
     pub permissions: SpacePermissionSet,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct RoleUpdate {
     pub disabled: Option<bool>,
     pub content: Option<Content>,

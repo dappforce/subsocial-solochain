@@ -13,6 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
@@ -34,9 +35,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct Faucet<T: Config> {
-
     // Settings
     pub enabled: bool,
     pub period: T::BlockNumber,
@@ -48,7 +49,7 @@ pub struct Faucet<T: Config> {
     pub dripped_in_current_period: BalanceOf<T>,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct FaucetUpdate<BlockNumber, Balance> {
     pub enabled: Option<bool>,
     pub period: Option<BlockNumber>,

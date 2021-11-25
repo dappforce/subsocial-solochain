@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use frame_support::{
     decl_error, decl_module, decl_storage, decl_event,
     dispatch::{DispatchError, DispatchResult}, ensure,
@@ -34,7 +35,8 @@ pub type PostId = u64;
 pub const DEFAULT_MIN_HANDLE_LEN: u32 = 5;
 pub const DEFAULT_MAX_HANDLE_LEN: u32 = 50;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct WhoAndWhen<T: Config> {
     pub account: T::AccountId,
     pub block: T::BlockNumber,
@@ -51,7 +53,7 @@ impl<T: Config> WhoAndWhen<T> {
     }
 }
 
-#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum User<AccountId> {
     Account(AccountId),
     Space(SpaceId),
@@ -75,7 +77,7 @@ impl<AccountId> User<AccountId> {
     }
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Deserialize))]
 #[cfg_attr(feature = "std", serde(tag = "contentType", content = "contentId"))]
 pub enum Content {

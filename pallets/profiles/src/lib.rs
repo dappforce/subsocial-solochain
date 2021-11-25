@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::DispatchResult,
@@ -14,7 +15,8 @@ use pallet_utils::{Module as Utils, WhoAndWhen, Content};
 
 pub mod rpc;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct SocialAccount<T: Config> {
     pub followers_count: u32,
     pub following_accounts_count: u16,
@@ -23,14 +25,15 @@ pub struct SocialAccount<T: Config> {
     pub profile: Option<Profile<T>>,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct Profile<T: Config> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
     pub content: Content
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ProfileUpdate {
     pub content: Option<Content>,
 }

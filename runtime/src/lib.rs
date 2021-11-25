@@ -215,8 +215,13 @@ impl frame_system::Config for Runtime {
     type OnSetCode = ();
 }
 
+parameter_types! {
+    pub const MaxAuthorities: u32 = 32;
+}
+
 impl pallet_aura::Config for Runtime {
     type AuthorityId = AuraId;
+    type MaxAuthorities = MaxAuthorities;
     type DisabledValidators = ();
 }
 
@@ -237,6 +242,8 @@ impl pallet_grandpa::Config for Runtime {
     type HandleEquivocation = ();
 
     type WeightInfo = ();
+
+    type MaxAuthorities = MaxAuthorities;
 }
 
 parameter_types! {
@@ -273,11 +280,15 @@ impl pallet_balances::Config for Runtime {
 
 parameter_types! {
 	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
+    /// This value increases the priority of `Operational` transactions by adding
+    /// a "virtual tip" that's equal to the `OperationalFeeMultiplier * final_fee`.
+    pub OperationalFeeMultiplier: u8 = 5;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
     type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
     type TransactionByteFee = TransactionByteFee;
+    type OperationalFeeMultiplier = OperationalFeeMultiplier;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate = ();
 }
@@ -419,8 +430,8 @@ impl pallet_space_history::Config for Runtime {}
 pub struct BaseFilter;
 impl Contains<Call> for BaseFilter {
     fn contains(c: &Call) -> bool {
-        let is_set_balance = matches!(c, Call::Balances(pallet_balances::Call::set_balance(..)));
-        let is_force_transfer = matches!(c, Call::Balances(pallet_balances::Call::force_transfer(..)));
+        let is_set_balance = matches!(c, Call::Balances(pallet_balances::Call::set_balance { .. }));
+        let is_force_transfer = matches!(c, Call::Balances(pallet_balances::Call::force_transfer { .. }));
         match *c {
             Call::Balances(..) => is_set_balance || is_force_transfer,
             _ => true,
@@ -569,7 +580,7 @@ impl_runtime_apis! {
 
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
-			Runtime::metadata().into()
+			OpaqueMetadata::new(Runtime::metadata().into())
 		}
 	}
 
@@ -616,7 +627,7 @@ impl_runtime_apis! {
 		}
 
 		fn authorities() -> Vec<AuraId> {
-			Aura::authorities()
+			Aura::authorities().into_inner()
 		}
 	}
 
@@ -746,7 +757,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
 
-			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
 		}
 	}

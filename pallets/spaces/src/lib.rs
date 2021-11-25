@@ -22,6 +22,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
@@ -43,7 +44,8 @@ pub mod rpc;
 pub mod migrations;
 
 /// Information about a space's owner, its' content, visibility and custom permissions.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct Space<T: Config> {
 
     /// Unique sequential identifier of a space. Examples of space ids: `1`, `2`, `3`, and so on.
@@ -85,7 +87,7 @@ pub struct Space<T: Config> {
     pub permissions: Option<SpacePermissions>,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, Default, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo)]
 #[allow(clippy::option_option)]
 pub struct SpaceUpdate {
     pub parent_id: Option<Option<SpaceId>>,
@@ -95,7 +97,7 @@ pub struct SpaceUpdate {
     pub permissions: Option<Option<SpacePermissions>>,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct SpacesSettings {
     pub handles_enabled: bool
 }

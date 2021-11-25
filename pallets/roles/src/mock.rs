@@ -12,7 +12,8 @@ use sp_runtime::{
 };
 use frame_support::{
     parameter_types, assert_ok,
-    dispatch::{DispatchResult, DispatchError}
+    dispatch::{DispatchResult, DispatchError},
+    traits::Everything,
 };
 use frame_system as system;
 
@@ -48,7 +49,7 @@ parameter_types! {
         frame_system::limits::BlockWeights::simple_max(1024);
 }
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

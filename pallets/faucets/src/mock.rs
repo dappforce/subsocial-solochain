@@ -13,6 +13,7 @@ use frame_support::{
     parameter_types,
     assert_ok,
     dispatch::{DispatchResult, DispatchResultWithPostInfo},
+    traits::Everything,
 };
 use frame_system as system;
 use pallet_utils::{DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
@@ -39,7 +40,7 @@ parameter_types! {
         frame_system::limits::BlockWeights::simple_max(1024);
 }
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

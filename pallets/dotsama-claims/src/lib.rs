@@ -15,6 +15,7 @@ mod benchmarking;
 pub mod weights;
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use frame_support::traits::IsSubType;
 use sp_runtime::{
     traits::{DispatchInfoOf, SignedExtension, Saturating},
@@ -78,7 +79,6 @@ pub mod pallet {
     pub(super) type TotalTokensClaimed<T: Config> = StorageValue<_, BalanceOf<T>>;
 
     #[pallet::event]
-    #[pallet::metadata(T::AccountId = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         RewardsSenderSet(T::AccountId),
@@ -207,7 +207,8 @@ pub mod pallet {
 
 /// Validate `claim_tokens` calls prior to execution. Needed to avoid a DoS attack since they are
 /// otherwise free to place on chain.
-#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct EnsureAllowedToClaimTokens<T: Config + Send + Sync>(sp_std::marker::PhantomData<T>)
     where
         <T as frame_system::Config>::Call: IsSubType<Call<T>>;
@@ -273,7 +274,7 @@ impl<T: Config + Send + Sync> SignedExtension for EnsureAllowedToClaimTokens<T>
         _info: &DispatchInfoOf<Self::Call>,
         _len: usize,
     ) -> TransactionValidity {
-        if let Some(Call::claim_tokens()) = call.is_sub_type() {
+        if let Some(Call::claim_tokens {}) = call.is_sub_type() {
             let rewards_sender = Pallet::<T>::try_get_rewards_sender()
                 .map_err(|_| InvalidTransaction::Custom(ClaimsValidityError::ClaimsAreInactive.into()))?;
 

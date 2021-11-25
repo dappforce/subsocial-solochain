@@ -60,7 +60,7 @@ decl_error! {
         AccountCannotFollowItself,
         /// Account can not unfollow itself.
         AccountCannotUnfollowItself,
-        
+
         /// Account (Alice) is already a follower of another account (Bob).
         AlreadyAccountFollower,
         /// Account (Alice) is not a follower of another account (Bob).
