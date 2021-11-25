@@ -14,6 +14,7 @@ categories = ['cryptography::cryptocurrencies']
 default = ['std']
 std = [
     'codec/std',
+    'scale-info/std',
     'frame-support/std',
     'frame-system/std',
     'sp-std/std',
@@ -29,12 +30,14 @@ package = 'parity-scale-codec'
 version = '2.0.0'
 
 [dependencies]
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+
 # Local dependencies
 df-traits = { default-features = false, path = '../traits' }
 pallet-spaces = { default-features = false, path = '../spaces' }
 pallet-utils = { default-features = false, path = '../utils' }
 
 # Substrate dependencies
-frame-support = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-frame-system = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+frame-support = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+frame-system = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }

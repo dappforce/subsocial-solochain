@@ -12,11 +12,11 @@ categories = ['cryptography::cryptocurrencies']
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
-serde = { features = ['derive'], optional = true, version = '1.0.119' }
+serde = { features = ['derive'], optional = true, version = '1.0.126' }
 
-jsonrpc-core = '15.0.0'
-jsonrpc-core-client = '15.0.0'
-jsonrpc-derive = '15.0.0'
+jsonrpc-core = '18.0.0'
+jsonrpc-core-client = '18.0.0'
+jsonrpc-derive = '18.0.0'
 
 # Local dependencies
 pallet-posts = { default-features = false, path = '..' }
@@ -26,10 +26,10 @@ pallet-utils = { default-features = false, path = '../../utils' }
 posts-runtime-api = { default-features = false, path = 'runtime-api' }
 
 # Substrate dependencies
-sp-api = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-blockchain = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-rpc = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+sp-api = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-blockchain = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-rpc = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 
 [features]
 default = ['std']

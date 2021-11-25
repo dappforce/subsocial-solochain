@@ -22,9 +22,9 @@ package = 'parity-scale-codec'
 version = '2.0.0'
 
 [dependencies]
-jsonrpc-core = '15.0.0'
-jsonrpc-core-client = '15.0.0'
-jsonrpc-derive = '15.0.0'
+jsonrpc-core = '18.0.0'
+jsonrpc-core-client = '18.0.0'
+jsonrpc-derive = '18.0.0'
 
 # Local dependencies
 pallet-permissions = { default-features = false, path = '../../permissions' }
@@ -34,10 +34,10 @@ pallet-utils = { default-features = false, path = '../../utils' }
 roles-runtime-api = { default-features = false, path = 'runtime-api' }
 
 # Substrate dependencies
-sp-api = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-blockchain = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-rpc = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+sp-api = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-blockchain = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-rpc = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 
 [features]
 default = ['std']
