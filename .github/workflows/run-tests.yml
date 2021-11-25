@@ -7,7 +7,7 @@ on:
     paths: [ 'pallets/**' ]
 
 jobs:
-  check-build:
+  run-tests:
     runs-on: ubuntu-20.04
 
     steps:
@@ -32,6 +32,6 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Check Build
+      - name: Run tests
         run: |
-          SKIP_WASM_BUILD=1 ./scripts/test-all.sh
+          SKIP_WASM_BUILD=1 cargo test --release --all
