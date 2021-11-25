@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [ 'develop*', master ]
-    paths: [ 'node/**', 'pallets/**', 'runtime/**' ]
+    paths: [ 'node/**', 'pallets/**', 'runtime/**', 'primitives/**' ]
 
 jobs:
   check-build:
