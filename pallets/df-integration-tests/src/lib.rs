@@ -364,6 +364,15 @@ mod tests {
             ext.execute_with(|| Self::add_space_with_custom_permissions(permissions));
             ext
         }
+
+        /// Custom ext configuration with SpaceId 1, BlockNumber 1, and disable handles
+        pub fn build_with_space_then_disable_handles() -> TestExternalities {
+            let mut ext = Self::build_with_space();
+            ext.execute_with(|| {
+                assert_ok!(_update_space_settings_with_handles_disabled());
+            });
+            ext
+        }
     }
 
     /* Integration tests mocks */
@@ -426,6 +435,12 @@ mod tests {
         new_handle: Option<Vec<u8>>,
     ) -> SpaceUpdate {
         space_update(Some(new_handle), None, None)
+    }
+
+    fn update_for_space_content(
+        new_content: Content,
+    ) -> SpaceUpdate {
+        space_update(None, Some(new_content), None)
     }
 
     fn space_update(
@@ -1460,6 +1475,25 @@ mod tests {
             // Check that the handle deposit has been unreserved:
             let reserved_balance = Balances::reserved_balance(ACCOUNT1);
             assert!(reserved_balance.is_zero());
+        });
+    }
+
+    #[test]
+    fn update_space_should_work_when_handles_disabled() {
+        ExtBuilder::build_with_space_then_disable_handles().execute_with(|| {
+            let space_update = update_for_space_content(updated_space_content());
+            assert_ok!(_update_space(None, None, Some(space_update)));
+        });
+    }
+
+    #[test]
+    fn update_space_should_fail_when_handles_disabled() {
+        ExtBuilder::build_with_space_then_disable_handles().execute_with(|| {
+            let space_update = update_for_space_handle(Some(space_handle_2()));
+            assert_noop!(
+                _update_space(None, None, Some(space_update)),
+                SpacesError::<TestRuntime>::HandlesAreDisabled
+            );
         });
     }
 
