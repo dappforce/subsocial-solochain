@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-dotsama-claims'
-version = '0.7.1'
+version = '0.7.2'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'

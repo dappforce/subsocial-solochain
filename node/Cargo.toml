@@ -1,6 +1,6 @@
 [package]
 name = 'subsocial-node'
-version = '0.7.1'
+version = '0.7.2'
 build = 'build.rs'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
