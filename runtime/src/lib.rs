@@ -453,6 +453,15 @@ impl pallet_faucets::Config for Runtime {
 	type Currency = Balances;
 }
 
+parameter_types! {
+    pub const ReservationPeriodLimit: BlockNumber = 10 * (365 * DAYS);
+}
+
+impl pallet_domains::Config for Runtime {
+    type Event = Event;
+    type ReservationPeriodLimit = ReservationPeriodLimit;
+}
+
 construct_runtime!(
     pub enum Runtime where
         Block = Block,
@@ -489,6 +498,7 @@ construct_runtime!(
 		// New experimental pallets. Not recommended to use in production yet.
 
 		Faucets: pallet_faucets::{Pallet, Call, Storage, Event<T>},
+		Domains: pallet_domains::{Pallet, Call, Storage, Event<T>},
 		DotsamaClaims: pallet_dotsama_claims::{Pallet, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Pallet, Call, Storage, Event<T>},
     }

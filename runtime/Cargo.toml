@@ -24,6 +24,7 @@ static_assertions = "1.1.0"
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
 # Local dependencies
+pallet-domains = { default-features = false, path = '../pallets/domains' }
 pallet-dotsama-claims = { default-features = false, path = '../pallets/dotsama-claims' }
 
 pallet-faucets = { default-features = false, path = '../pallets/faucets' }
@@ -134,6 +135,7 @@ std = [
     'sp-version/std',
     'sp-io/std',
     'subsocial-primitives/std',
+    'pallet-domains/std',
     'pallet-dotsama-claims/std',
     'pallet-faucets/std',
 #    'pallet-moderation/std',

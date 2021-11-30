@@ -3795,6 +3795,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-domains"
+version = "0.7.2"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-utils",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-dotsama-claims"
 version = "0.7.2"
 dependencies = [
@@ -7438,6 +7453,7 @@ dependencies = [
  "hex-literal",
  "pallet-aura",
  "pallet-balances",
+ "pallet-domains",
  "pallet-dotsama-claims",
  "pallet-faucets",
  "pallet-grandpa",
