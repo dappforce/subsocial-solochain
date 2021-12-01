@@ -19,15 +19,16 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::{
-        dispatch::DispatchResult, fail, pallet_prelude::*,
+        dispatch::DispatchResult, pallet_prelude::*,
         traits::{Currency, ReservableCurrency},
     };
+    use frame_system::Pallet as System;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::StaticLookup;
-    use sp_std::vec::Vec;
     use scale_info::TypeInfo;
-    use df_traits::SpacesProvider;
+    use sp_runtime::traits::Saturating;
+    use sp_std::vec::Vec;
 
+    use df_traits::SpacesProvider;
     use pallet_utils::{Content, PostId, SpaceId, WhoAndWhen};
     use pallet_utils::Pallet as Utils;
 
@@ -42,7 +43,6 @@ pub mod pallet {
 
     #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
     pub enum EntityId<AccountId> {
-        Outer(Vec<u8>),
         Account(AccountId),
         Space(SpaceId),
         Post(PostId),
@@ -50,32 +50,34 @@ pub mod pallet {
 
     #[derive(Encode, Decode, TypeInfo)]
     #[scale_info(skip_type_params(T))]
-    // TODO: value: { created, updated, expired, owner, content, innerValue [OPTION](енам и показывать пока ток спейсы), outerValue [OPTION] }
     pub struct DomainMeta<T: Config> {
         created: WhoAndWhen<T>,
         updated: Option<WhoAndWhen<T>>,
 
-        expired_at: T::BlockNumber,
+        expires_at: T::BlockNumber,
         owner: T::AccountId,
 
         content: Content,
-        value: Option<EntityId<T::AccountId>>,
+        inner_value: Option<EntityId<T::AccountId>>,
+        outer_value: Option<Vec<u8>>,
     }
 
     impl<T: Config> DomainMeta<T> {
         fn new(
-            expired_at: T::BlockNumber,
+            expires_at: T::BlockNumber,
             owner: T::AccountId,
             content: Content,
-            value: Option<EntityId<T::AccountId>>,
+            inner_value: Option<EntityId<T::AccountId>>,
+            outer_value: Option<Vec<u8>>,
         ) -> Self {
             Self {
                 created: WhoAndWhen::new(owner.clone()),
                 updated: None,
-                expired_at,
+                expires_at,
                 owner,
                 content,
-                value,
+                inner_value,
+                outer_value,
             }
         }
     }
@@ -145,13 +147,15 @@ pub mod pallet {
         /// This account is not a trusted bridge account, and not allowed to store domains.
         AccountNotAllowedToStoreDomains,
         /// This domain cannot be purchased yet, because it is reserved.
+        // TODO
         DomainReserved,
         /// This domain is already held by another account.
         DomainAlreadyStored,
         /// Lower than Second level domains are not allowed.
+        // TODO
         LowerLevelDomainsNotAllowed,
         /// Outer value exceeds its length limit.
-        OuterLevelOffLengthLimit,
+        OuterValueOffLengthLimit,
         /// Cannot store a domain for that long period of time.
         TooBigReservationPeriod,
         /// The top level domain may contain only A-Z, 0-9 and hyphen characters.
@@ -171,21 +175,21 @@ pub mod pallet {
         #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(3, 1))]
         pub fn store(
             origin: OriginFor<T>,
-            target: <T::Lookup as StaticLookup>::Source,
+            owner: T::AccountId,
             tld: Vec<u8>,
             user_domain: Vec<u8>,
-            expired_at: T::BlockNumber,
+            expires_in: T::BlockNumber,
             content: Content,
-            value_opt: Option<EntityId<T::AccountId>>,
+            inner_value: Option<EntityId<T::AccountId>>,
+            outer_value: Option<Vec<u8>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let owner = T::Lookup::lookup(target)?;
 
             let trusted_account = Self::require_trusted_account()?;
             ensure!(trusted_account == who, Error::<T>::AccountNotAllowedToStoreDomains);
 
             ensure!(
-                expired_at <= T::ReservationPeriodLimit::get(),
+                expires_in <= T::ReservationPeriodLimit::get(),
                 Error::<T>::TooBigReservationPeriod,
             );
 
@@ -205,27 +209,16 @@ pub mod pallet {
                 Error::<T>::DomainAlreadyStored,
             );
 
-            // TODO: refactor or move out to a separate function
-            if let Some(value) = &value_opt {
-                match value {
-                    EntityId::Outer(outer) => {
-                        ensure!(
-                            outer.len() < T::OuterValueLimit::get().into(),
-                            Error::<T>::OuterLevelOffLengthLimit
-                        );
-                        <T as Config>::Currency::reserve(&owner, T::OuterValueDeposit::get())?;
-                    },
-                    EntityId::Space(space_id) => T::SpacesProvider::ensure_space_exists(*space_id)?,
-                    // TODO
-                    _ => fail!(Error::<T>::InnerValueNotSupported),
-                }
-            }
+            Self::ensure_valid_inner_value(&inner_value)?;
+            Self::ensure_valid_outer_value(&outer_value)?;
 
+            let expires_at = expires_in.saturating_add(System::<T>::block_number());
             let domain_meta = DomainMeta::new(
-                expired_at,
+                expires_at,
                 owner.clone(),
                 content,
-                value_opt,
+                inner_value,
+                outer_value,
             );
 
             PurchasedDomains::<T>::insert(&tld_lowered, &user_domain_lowered, domain_meta);
@@ -257,10 +250,9 @@ pub mod pallet {
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
         pub fn set_trusted_account(
             origin: OriginFor<T>,
-            target: <T::Lookup as StaticLookup>::Source,
+            target: T::AccountId,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            let target = T::Lookup::lookup(target)?;
 
             TrustedAccount::<T>::put(&target);
 
@@ -355,6 +347,28 @@ pub mod pallet {
         /// Fails if `TrustedAccount` is not set.
         pub fn require_trusted_account() -> Result<T::AccountId, DispatchError> {
             Ok(Self::trusted_account().ok_or(Error::<T>::TrustedAccountNotSet)?)
+        }
+
+        pub fn ensure_valid_inner_value(
+            inner_value: &Option<EntityId<T::AccountId>>
+        ) -> DispatchResult {
+            if inner_value.is_none() { return Ok(()) }
+
+            return match inner_value.clone().unwrap() {
+                EntityId::Space(space_id) => T::SpacesProvider::ensure_space_exists(space_id),
+                // TODO: support all inner values
+                _ => Err(Error::<T>::InnerValueNotSupported.into()),
+            }
+        }
+
+        pub fn ensure_valid_outer_value(outer_value: &Option<Vec<u8>>) -> DispatchResult {
+            if let Some(outer) = &outer_value {
+                ensure!(
+                    outer.len() < T::OuterValueLimit::get().into(),
+                    Error::<T>::OuterValueOffLengthLimit
+                );
+            }
+            Ok(())
         }
     }
 }
