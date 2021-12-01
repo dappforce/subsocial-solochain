@@ -23,6 +23,10 @@ pub trait SpaceForRolesProvider {
   fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError>;
 }
 
+pub trait SpacesProvider {
+  fn ensure_space_exists(space_id: SpaceId) -> DispatchResult;
+}
+
 pub trait SpaceFollowsProvider {
   type AccountId;
 

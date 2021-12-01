@@ -3798,6 +3798,7 @@ dependencies = [
 name = "pallet-domains"
 version = "0.7.2"
 dependencies = [
+ "df-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

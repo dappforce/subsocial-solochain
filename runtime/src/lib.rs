@@ -455,11 +455,18 @@ impl pallet_faucets::Config for Runtime {
 
 parameter_types! {
     pub const ReservationPeriodLimit: BlockNumber = 10 * (365 * DAYS);
+    pub const OuterValueLimit: u16 = 256;
+    // TODO: think on changing this value
+    pub const OuterValueDeposit: Balance = 1 * UNITS;
 }
 
 impl pallet_domains::Config for Runtime {
     type Event = Event;
+    type Currency = Balances;
+    type SpacesProvider = Spaces;
     type ReservationPeriodLimit = ReservationPeriodLimit;
+    type OuterValueLimit = OuterValueLimit;
+    type OuterValueDeposit = OuterValueDeposit;
 }
 
 construct_runtime!(

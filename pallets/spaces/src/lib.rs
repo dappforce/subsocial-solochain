@@ -34,7 +34,7 @@ use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed, ensure_root};
 
 use df_traits::{
-    SpaceForRoles, SpaceForRolesProvider, PermissionChecker, SpaceFollowsProvider,
+    SpaceForRoles, SpaceForRolesProvider, PermissionChecker, SpaceFollowsProvider, SpacesProvider,
     moderation::{IsAccountBlocked, IsContentBlocked},
 };
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions, SpacePermissionsContext};
@@ -696,4 +696,10 @@ impl<T: Config> BeforeSpaceCreated<T> for () {
 #[impl_trait_for_tuples::impl_for_tuples(10)]
 pub trait AfterSpaceUpdated<T: Config> {
     fn after_space_updated(sender: T::AccountId, space: &Space<T>, old_data: SpaceUpdate);
+}
+
+impl<T: Config> SpacesProvider for Module<T> {
+    fn ensure_space_exists(space_id: SpaceId) -> DispatchResult {
+        Self::require_space(space_id).map(|_| ())
+    }
 }

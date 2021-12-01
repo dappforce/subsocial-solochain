@@ -18,11 +18,15 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use frame_support::{dispatch::DispatchResult, fail, pallet_prelude::*};
+    use frame_support::{
+        dispatch::DispatchResult, fail, pallet_prelude::*,
+        traits::{Currency, ReservableCurrency},
+    };
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::StaticLookup;
     use sp_std::vec::Vec;
     use scale_info::TypeInfo;
+    use df_traits::SpacesProvider;
 
     use pallet_utils::{Content, PostId, SpaceId, WhoAndWhen};
     use pallet_utils::Pallet as Utils;
@@ -33,11 +37,15 @@ pub mod pallet {
     const MIN_DOMAIN_LENGTH: usize = 3;
     const MAX_DOMAIN_LENGTH: usize = 63;
 
+    type BalanceOf<T> =
+        <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
     #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
     pub enum EntityId<AccountId> {
+        Outer(Vec<u8>),
+        Account(AccountId),
         Space(SpaceId),
         Post(PostId),
-        Account(AccountId),
     }
 
     #[derive(Encode, Decode, TypeInfo)]
@@ -51,8 +59,7 @@ pub mod pallet {
         owner: T::AccountId,
 
         content: Content,
-        inner_value: Option<EntityId<T::AccountId>>,
-        outer_value: Content,
+        value: Option<EntityId<T::AccountId>>,
     }
 
     impl<T: Config> DomainMeta<T> {
@@ -60,8 +67,7 @@ pub mod pallet {
             expired_at: T::BlockNumber,
             owner: T::AccountId,
             content: Content,
-            inner_value: Option<EntityId<T::AccountId>>,
-            outer_value: Content,
+            value: Option<EntityId<T::AccountId>>,
         ) -> Self {
             Self {
                 created: WhoAndWhen::new(owner.clone()),
@@ -69,18 +75,33 @@ pub mod pallet {
                 expired_at,
                 owner,
                 content,
-                inner_value,
-                outer_value,
+                value,
             }
         }
     }
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_utils::Config {
+        /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+        /// The currency trait.
+        type Currency: ReservableCurrency<Self::AccountId>;
+
+        /// The loose coupled provider to get a space.
+        type SpacesProvider: SpacesProvider;
+
+        /// The maximum amount of time the domain may be held for.
         #[pallet::constant]
         type ReservationPeriodLimit: Get<Self::BlockNumber>;
+
+        /// The length limit for the domains meta outer value.
+        #[pallet::constant]
+        type OuterValueLimit: Get<u16>;
+
+        /// The tokens amount to deposit for the outer value.
+        #[pallet::constant]
+        type OuterValueDeposit: Get<BalanceOf<Self>>;
 
         // TODO: add price coefficients for different domains lengths
     }
@@ -115,6 +136,7 @@ pub mod pallet {
         DomainStored(T::AccountId, Vec<u8>, Vec<u8>),
         /// The list of top level domains was successfully added.
         TopLevelDomainsAdded,
+        /// The trusted bridge account was successfully set.
         TrustedAccountSet(T::AccountId),
     }
 
@@ -126,11 +148,10 @@ pub mod pallet {
         DomainReserved,
         /// This domain is already held by another account.
         DomainAlreadyStored,
-        /// Both inner and outer value cannot be passed as domain metadata.
-        // TODO: think on a shorter name
-        DomainShouldHaveEitherInnerOrOuterValue,
         /// Lower than Second level domains are not allowed.
         LowerLevelDomainsNotAllowed,
+        /// Outer value exceeds its length limit.
+        OuterLevelOffLengthLimit,
         /// Cannot store a domain for that long period of time.
         TooBigReservationPeriod,
         /// The top level domain may contain only A-Z, 0-9 and hyphen characters.
@@ -141,6 +162,8 @@ pub mod pallet {
         TopLevelDomainNotAllowed,
         /// Pallet is inactive due to trusted bridge account account is not set.
         TrustedAccountNotSet,
+        /// This inner value is not supported yet.
+        InnerValueNotSupported,
     }
 
     #[pallet::call]
@@ -148,20 +171,21 @@ pub mod pallet {
         #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(3, 1))]
         pub fn store(
             origin: OriginFor<T>,
+            target: <T::Lookup as StaticLookup>::Source,
             tld: Vec<u8>,
             user_domain: Vec<u8>,
             expired_at: T::BlockNumber,
             content: Content,
-            inner_value: Option<EntityId<T::AccountId>>,
-            outer_value: Content,
+            value_opt: Option<EntityId<T::AccountId>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            let owner = T::Lookup::lookup(target)?;
 
             let trusted_account = Self::require_trusted_account()?;
             ensure!(trusted_account == who, Error::<T>::AccountNotAllowedToStoreDomains);
 
             ensure!(
-                expired_at > T::ReservationPeriodLimit::get(),
+                expired_at <= T::ReservationPeriodLimit::get(),
                 Error::<T>::TooBigReservationPeriod,
             );
 
@@ -169,21 +193,6 @@ pub mod pallet {
 
             Self::ensure_tld_allowed(&tld)?;
             Self::ensure_valid_domain(&user_domain)?;
-
-            // TODO: refactor or move out to a separate function
-            if outer_value.is_some() && inner_value.is_none() {
-                Utils::<T>::is_valid_content(outer_value.clone())?;
-            } else if let Some(value) = &inner_value {
-                match value {
-                    // TODO: implement via loose coupling preferably
-                    EntityId::Space(_) => (),
-                    EntityId::Post(_) => (),
-                    // TODO: do we need some kind of lookup here?
-                    EntityId::Account(_) => (),
-                }
-            } else {
-                fail!(Error::<T>::DomainShouldHaveEitherInnerOrOuterValue);
-            }
 
             // Note that while upper and lower case letters are allowed in domain
             // names, no significance is attached to the case. That is, two names with
@@ -196,19 +205,34 @@ pub mod pallet {
                 Error::<T>::DomainAlreadyStored,
             );
 
+            // TODO: refactor or move out to a separate function
+            if let Some(value) = &value_opt {
+                match value {
+                    EntityId::Outer(outer) => {
+                        ensure!(
+                            outer.len() < T::OuterValueLimit::get().into(),
+                            Error::<T>::OuterLevelOffLengthLimit
+                        );
+                        <T as Config>::Currency::reserve(&owner, T::OuterValueDeposit::get())?;
+                    },
+                    EntityId::Space(space_id) => T::SpacesProvider::ensure_space_exists(*space_id)?,
+                    // TODO
+                    _ => fail!(Error::<T>::InnerValueNotSupported),
+                }
+            }
+
             let domain_meta = DomainMeta::new(
                 expired_at,
-                who.clone(),
+                owner.clone(),
                 content,
-                inner_value,
-                outer_value,
+                value_opt,
             );
 
             PurchasedDomains::<T>::insert(&tld_lowered, &user_domain_lowered, domain_meta);
 
             // TODO: calculate the payment amount and store it
 
-            Self::deposit_event(Event::DomainStored(who, tld, user_domain));
+            Self::deposit_event(Event::DomainStored(owner, tld, user_domain));
             Ok(Default::default())
         }
 

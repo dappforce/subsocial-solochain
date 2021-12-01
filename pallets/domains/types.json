@@ -1,0 +1,18 @@
+{
+  "EntityId": {
+    "_enum": {
+      "Outer": "Text",
+      "Account": "AccountId",
+      "Space": "SpaceId",
+      "Post": "PostId"
+    }
+  },
+  "DomainMeta": {
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "expired_at": "BlockNumber",
+    "owner": "AccountId",
+    "content": "Content",
+    "value": "Option<EntityId>"
+  }
+}
