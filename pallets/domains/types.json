@@ -6,6 +6,10 @@
       "Post": "PostId"
     }
   },
+  "Domain": {
+    "tld": "Text",
+    "nested": "Text"
+  },
   "DomainMeta": {
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",

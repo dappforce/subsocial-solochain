@@ -33,6 +33,8 @@ pub mod pallet {
     use pallet_utils::Pallet as Utils;
 
     type DomainsVec = Vec<Vec<u8>>;
+    type InnerValue<T> = Option<EntityId<<T as frame_system::Config>::AccountId>>;
+    type OuterValue = Option<Vec<u8>>;
 
     const MIN_TLD_LENGTH: usize = 2;
     const MIN_DOMAIN_LENGTH: usize = 3;
@@ -48,6 +50,12 @@ pub mod pallet {
         Post(PostId),
     }
 
+    #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+    pub struct Domain {
+        tld: Vec<u8>,
+        nested: Vec<u8>,
+    }
+
     #[derive(Encode, Decode, TypeInfo)]
     #[scale_info(skip_type_params(T))]
     pub struct DomainMeta<T: Config> {
@@ -58,8 +66,8 @@ pub mod pallet {
         owner: T::AccountId,
 
         content: Content,
-        inner_value: Option<EntityId<T::AccountId>>,
-        outer_value: Option<Vec<u8>>,
+        inner_value: InnerValue<T>,
+        outer_value: OuterValue,
     }
 
     impl<T: Config> DomainMeta<T> {
@@ -67,8 +75,8 @@ pub mod pallet {
             expires_at: T::BlockNumber,
             owner: T::AccountId,
             content: Content,
-            inner_value: Option<EntityId<T::AccountId>>,
-            outer_value: Option<Vec<u8>>,
+            inner_value: InnerValue<T>,
+            outer_value: OuterValue,
         ) -> Self {
             Self {
                 created: WhoAndWhen::new(owner.clone()),
@@ -126,36 +134,42 @@ pub mod pallet {
     pub(super) type PurchasedDomains<T: Config> =
         StorageDoubleMap<_, Blake2_128Concat, Vec<u8>, Blake2_128Concat, Vec<u8>, DomainMeta<T>>;
 
-    #[pallet::storage]
-    #[pallet::getter(fn trusted_account)]
-    pub(super) type TrustedAccount<T: Config> = StorageValue<_, T::AccountId>;
-
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         // TODO: add payment amount to the event
-        /// The domain name was successfully stored.
-        DomainStored(T::AccountId, Vec<u8>, Vec<u8>),
-        /// The list of top level domains was successfully added.
-        TopLevelDomainsAdded,
-        /// The trusted bridge account was successfully set.
-        TrustedAccountSet(T::AccountId),
+        /// The domain name was successfully purchased and stored.
+        DomainPurchased(T::AccountId, Vec<u8>, Vec<u8>),
+        /// The domain meta was successfully updated.
+        DomainUpdated(T::AccountId, Vec<u8>, Vec<u8>),
+        /// The domains list was successfully added to a reserved list.
+        DomainsReserved,
+        /// The list of top level domains was successfully added to an allow list.
+        TopLevelDomainsAllowed,
     }
 
     #[pallet::error]
     pub enum Error<T> {
-        /// This account is not a trusted bridge account, and not allowed to store domains.
-        AccountNotAllowedToStoreDomains,
+        /// The content stored in domain metadata was not changed.
+        // TODO
+        DomainMetaContentWasNotChanged,
+        /// Domain was not found by either custom domain name or top level domain.
+        DomainNotFound,
         /// This domain cannot be purchased yet, because it is reserved.
         // TODO
         DomainReserved,
         /// This domain is already held by another account.
         DomainAlreadyStored,
+        /// A new inner value is the same as the old one.
+        InnerValueNotChanged,
         /// Lower than Second level domains are not allowed.
-        // TODO
         LowerLevelDomainsNotAllowed,
+        /// This account is not allowed to update the domain metadata.
+        NotADomainOwner,
         /// Outer value exceeds its length limit.
         OuterValueOffLengthLimit,
+        /// A new outer value is the same as the old one.
+        OuterValueNotChanged,
         /// Cannot store a domain for that long period of time.
         TooBigReservationPeriod,
         /// The top level domain may contain only A-Z, 0-9 and hyphen characters.
@@ -164,8 +178,6 @@ pub mod pallet {
         TopLevelDomainIsOffLengthLimits,
         /// This top level domain is not allowed.
         TopLevelDomainNotAllowed,
-        /// Pallet is inactive due to trusted bridge account account is not set.
-        TrustedAccountNotSet,
         /// This inner value is not supported yet.
         InnerValueNotSupported,
     }
@@ -173,39 +185,38 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(3, 1))]
-        pub fn store(
+        pub fn purchase_domain(
             origin: OriginFor<T>,
             owner: T::AccountId,
-            tld: Vec<u8>,
-            user_domain: Vec<u8>,
+            domain: Domain,
             expires_in: T::BlockNumber,
             content: Content,
-            inner_value: Option<EntityId<T::AccountId>>,
-            outer_value: Option<Vec<u8>>,
+            inner_value: InnerValue<T>,
+            outer_value: OuterValue,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-
-            let trusted_account = Self::require_trusted_account()?;
-            ensure!(trusted_account == who, Error::<T>::AccountNotAllowedToStoreDomains);
+            ensure_root(origin)?;
 
             ensure!(
                 expires_in <= T::ReservationPeriodLimit::get(),
                 Error::<T>::TooBigReservationPeriod,
             );
 
+            // TODO: check domain is not reserved.
+
             Utils::<T>::is_valid_content(content.clone())?;
 
+            let Domain { tld, nested } = domain;
             Self::ensure_tld_allowed(&tld)?;
-            Self::ensure_valid_domain(&user_domain)?;
+            Self::ensure_valid_domain(&nested)?;
 
             // Note that while upper and lower case letters are allowed in domain
             // names, no significance is attached to the case. That is, two names with
             // the same spelling but different case are to be treated as if identical.
             let tld_lowered = tld.to_ascii_lowercase();
-            let user_domain_lowered = user_domain.to_ascii_lowercase();
+            let nested_domain_lowered = nested.to_ascii_lowercase();
 
             ensure!(
-                Self::purchased_domain(&tld_lowered, &user_domain_lowered).is_none(),
+                Self::purchased_domain(&tld_lowered, &nested_domain_lowered).is_none(),
                 Error::<T>::DomainAlreadyStored,
             );
 
@@ -221,43 +232,87 @@ pub mod pallet {
                 outer_value,
             );
 
-            PurchasedDomains::<T>::insert(&tld_lowered, &user_domain_lowered, domain_meta);
+            PurchasedDomains::<T>::insert(&tld_lowered, &nested_domain_lowered, domain_meta);
 
             // TODO: calculate the payment amount and store it
 
-            Self::deposit_event(Event::DomainStored(owner, tld, user_domain));
+            Self::deposit_event(Event::DomainPurchased(owner, tld, nested));
             Ok(Default::default())
+        }
+
+        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
+        pub fn set_inner_value(
+            origin: OriginFor<T>,
+            domain: Domain,
+            value: InnerValue<T>,
+        ) -> DispatchResult {
+            let owner = ensure_signed(origin)?;
+
+            let domain_lc = Self::lower_domain(&domain);
+            let mut domain_meta = Self::require_domain(&domain_lc)?;
+            Self::ensure_account_domain_owner(&owner, &domain_meta)?;
+
+            ensure!(domain_meta.inner_value != value, Error::<T>::InnerValueNotChanged);
+            Self::ensure_valid_inner_value(&value)?;
+
+            domain_meta.inner_value = value;
+            PurchasedDomains::<T>::insert(&domain_lc.tld, &domain_lc.nested, domain_meta);
+
+            Self::deposit_event(Event::DomainUpdated(owner, domain.tld, domain.nested));
+            Ok(Default::default())
+        }
+
+        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
+        pub fn set_outer_value(
+            origin: OriginFor<T>,
+            domain: Domain,
+            value: OuterValue,
+        ) -> DispatchResult {
+            let owner = ensure_signed(origin)?;
+
+            let domain_lc = Self::lower_domain(&domain);
+            let mut domain_meta = Self::require_domain(&domain_lc)?;
+            Self::ensure_account_domain_owner(&owner, &domain_meta)?;
+
+            ensure!(domain_meta.outer_value != value, Error::<T>::OuterValueNotChanged);
+            Self::ensure_valid_outer_value(&value)?;
+
+            domain_meta.outer_value = value;
+            PurchasedDomains::<T>::insert(&domain_lc.tld, &domain_lc.nested, domain_meta);
+
+            Self::deposit_event(Event::DomainUpdated(owner, domain.tld, domain.nested));
+            Ok(Default::default())
+        }
+
+        #[pallet::weight(10_000 + T::DbWeight::get().writes(domains.len() as u64))]
+        pub fn reserve(origin: OriginFor<T>, domains: DomainsVec) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            Self::insert_domains(
+                domains,
+                Self::ensure_valid_domain,
+                |domain| ReservedDomains::<T>::insert(domain, true),
+            )?;
+
+            Self::deposit_event(Event::DomainsReserved);
+            Ok(Pays::No.into())
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().writes(domains.len() as u64))]
         pub fn add_top_level_domains(
             origin: OriginFor<T>,
             domains: DomainsVec,
-        ) -> DispatchResult {
-            // TODO: refactor this
+        ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            for domain in &domains {
-                Self::ensure_valid_tld(domain)?;
-            }
+            Self::insert_domains(
+                domains,
+                Self::ensure_valid_tld,
+                |domain| AllowedTopLevelDomains::<T>::insert(domain, true),
+            )?;
 
-            domains.iter().for_each(|domain| AllowedTopLevelDomains::<T>::insert(domain, true));
-
-            Self::deposit_event(Event::TopLevelDomainsAdded);
-            Ok(Default::default())
-        }
-
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-        pub fn set_trusted_account(
-            origin: OriginFor<T>,
-            target: T::AccountId,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-
-            TrustedAccount::<T>::put(&target);
-
-            Self::deposit_event(Event::TrustedAccountSet(target));
-            Ok(Default::default())
+            Self::deposit_event(Event::TopLevelDomainsAllowed);
+            Ok(Pays::No.into())
         }
     }
 
@@ -306,6 +361,11 @@ pub mod pallet {
                 Error::<T>::TopLevelDomainIsOffLengthLimits,
             )?;
 
+            ensure!(
+                domain.iter().any(|c| *c == b'.'),
+                Error::<T>::LowerLevelDomainsNotAllowed,
+            );
+
             Self::ensure_domain_contains_valid_chars(
                 domain, Error::<T>::TopLevelDomainContainsInvalidChar
             )?;
@@ -344,11 +404,6 @@ pub mod pallet {
             Ok(Default::default())
         }
 
-        /// Fails if `TrustedAccount` is not set.
-        pub fn require_trusted_account() -> Result<T::AccountId, DispatchError> {
-            Ok(Self::trusted_account().ok_or(Error::<T>::TrustedAccountNotSet)?)
-        }
-
         pub fn ensure_valid_inner_value(
             inner_value: &Option<EntityId<T::AccountId>>
         ) -> DispatchResult {
@@ -369,6 +424,43 @@ pub mod pallet {
                 );
             }
             Ok(())
+        }
+
+        pub fn insert_domains<F, S>(
+            domains: DomainsVec,
+            check_fn: F,
+            insert_storage_fn: S,
+        ) -> DispatchResult
+            where
+                F: Fn(&[u8]) -> DispatchResult,
+                S: FnMut(&Vec<u8>),
+        {
+            for domain in &domains {
+                check_fn(domain)?;
+            }
+
+            domains.iter().for_each(insert_storage_fn);
+            Ok(())
+        }
+
+        /// Try to get domain meta by it's custom and top level domain names.
+        pub fn require_domain(domain: &Domain) -> Result<DomainMeta<T>, DispatchError> {
+            Ok(Self::purchased_domain(&domain.tld, &domain.nested).ok_or(Error::<T>::DomainNotFound)?)
+        }
+
+        pub fn ensure_account_domain_owner(
+            owner: &T::AccountId,
+            domain_meta: &DomainMeta<T>,
+        ) -> DispatchResult {
+            ensure!(domain_meta.owner == *owner, Error::<T>::NotADomainOwner);
+            Ok(Default::default())
+        }
+
+        pub fn lower_domain(domain: &Domain) -> Domain {
+            Domain {
+                tld: domain.tld.to_ascii_lowercase(),
+                nested: domain.nested.to_ascii_lowercase(),
+            }
         }
     }
 }
