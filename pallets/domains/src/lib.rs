@@ -62,8 +62,10 @@ pub mod pallet {
         created: WhoAndWhen<T>,
         updated: Option<WhoAndWhen<T>>,
 
-        expires_at: T::BlockNumber,
         owner: T::AccountId,
+
+        expires_at: T::BlockNumber,
+        sold_for: BalanceOf<T>,
 
         content: Content,
         inner_value: InnerValue<T>,
@@ -73,6 +75,7 @@ pub mod pallet {
     impl<T: Config> DomainMeta<T> {
         fn new(
             expires_at: T::BlockNumber,
+            sold_for: BalanceOf<T>,
             owner: T::AccountId,
             content: Content,
             inner_value: InnerValue<T>,
@@ -81,8 +84,9 @@ pub mod pallet {
             Self {
                 created: WhoAndWhen::new(owner.clone()),
                 updated: None,
-                expires_at,
                 owner,
+                expires_at,
+                sold_for,
                 content,
                 inner_value,
                 outer_value,
@@ -187,10 +191,11 @@ pub mod pallet {
             origin: OriginFor<T>,
             owner: T::AccountId,
             domain: Domain,
-            expires_in: T::BlockNumber,
             content: Content,
             inner_value: InnerValue<T>,
             outer_value: OuterValue,
+            expires_in: T::BlockNumber,
+            #[pallet::compact] sold_for: BalanceOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -221,10 +226,13 @@ pub mod pallet {
 
             Self::ensure_valid_inner_value(&inner_value)?;
             Self::ensure_valid_outer_value(&outer_value)?;
+            // TODO: reserve OuterValueDeposit
 
             let expires_at = expires_in.saturating_add(System::<T>::block_number());
+            // TODO: calculate the payment amount
             let domain_meta = DomainMeta::new(
                 expires_at,
+                sold_for,
                 owner.clone(),
                 content,
                 inner_value,
@@ -232,8 +240,6 @@ pub mod pallet {
             );
 
             PurchasedDomains::<T>::insert(&tld_lowered, &nested_domain_lowered, domain_meta);
-
-            // TODO: calculate the payment amount and store it
 
             Self::deposit_event(Event::DomainPurchased(owner, tld, nested));
             Ok(Default::default())
@@ -276,6 +282,8 @@ pub mod pallet {
             ensure!(outer_value != value, Error::<T>::OuterValueNotChanged);
 
             Self::ensure_valid_outer_value(&value)?;
+
+            // TODO: reserve/unreserve OuterValueDeposit
 
             Self::try_mutate_domain(&domain_lc, |meta| meta.outer_value = value)?;
 
@@ -383,7 +391,7 @@ pub mod pallet {
             )?;
 
             ensure!(
-                domain.iter().any(|c| *c == b'.'),
+                domain.iter().all(|c| *c != b'.'),
                 Error::<T>::LowerLevelDomainsNotAllowed,
             );
 

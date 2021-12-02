@@ -13,8 +13,9 @@
   "DomainMeta": {
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
-    "expires_at": "BlockNumber",
     "owner": "AccountId",
+    "expires_at": "BlockNumber",
+    "sold_for": "Balance",
     "content": "Content",
     "inner_value": "Option<EntityId>",
     "outer_value": "Option<Text>"
