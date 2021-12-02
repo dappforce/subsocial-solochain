@@ -151,12 +151,10 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         /// The content stored in domain metadata was not changed.
-        // TODO
-        DomainMetaContentWasNotChanged,
+        DomainContentWasNotChanged,
         /// Domain was not found by either custom domain name or top level domain.
         DomainNotFound,
         /// This domain cannot be purchased yet, because it is reserved.
-        // TODO
         DomainReserved,
         /// This domain is already held by another account.
         DomainAlreadyStored,
@@ -201,19 +199,20 @@ pub mod pallet {
                 Error::<T>::TooBigReservationPeriod,
             );
 
-            // TODO: check domain is not reserved.
-
-            Utils::<T>::is_valid_content(content.clone())?;
-
-            let Domain { tld, nested } = domain;
-            Self::ensure_tld_allowed(&tld)?;
-            Self::ensure_valid_domain(&nested)?;
-
             // Note that while upper and lower case letters are allowed in domain
             // names, no significance is attached to the case. That is, two names with
             // the same spelling but different case are to be treated as if identical.
+            let Domain { tld, nested } = domain;
+
             let tld_lowered = tld.to_ascii_lowercase();
             let nested_domain_lowered = nested.to_ascii_lowercase();
+
+            ensure!(!Self::reserved_domain(&tld_lowered), Error::<T>::DomainReserved);
+
+            Utils::<T>::is_valid_content(content.clone())?;
+
+            Self::ensure_tld_allowed(&tld)?;
+            Self::ensure_valid_domain(&nested)?;
 
             ensure!(
                 Self::purchased_domain(&tld_lowered, &nested_domain_lowered).is_none(),
@@ -246,19 +245,19 @@ pub mod pallet {
             domain: Domain,
             value: InnerValue<T>,
         ) -> DispatchResult {
-            let owner = ensure_signed(origin)?;
+            let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let mut domain_meta = Self::require_domain(&domain_lc)?;
-            Self::ensure_account_domain_owner(&owner, &domain_meta)?;
+            let DomainMeta{ owner, inner_value, .. } = Self::require_domain(&domain_lc)?;
 
-            ensure!(domain_meta.inner_value != value, Error::<T>::InnerValueNotChanged);
+            ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            ensure!(inner_value != value, Error::<T>::InnerValueNotChanged);
+
             Self::ensure_valid_inner_value(&value)?;
 
-            domain_meta.inner_value = value;
-            PurchasedDomains::<T>::insert(&domain_lc.tld, &domain_lc.nested, domain_meta);
+            Self::try_mutate_domain(&domain_lc, |meta| meta.inner_value = inner_value)?;
 
-            Self::deposit_event(Event::DomainUpdated(owner, domain.tld, domain.nested));
+            Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
             Ok(Default::default())
         }
 
@@ -268,19 +267,41 @@ pub mod pallet {
             domain: Domain,
             value: OuterValue,
         ) -> DispatchResult {
-            let owner = ensure_signed(origin)?;
+            let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let mut domain_meta = Self::require_domain(&domain_lc)?;
-            Self::ensure_account_domain_owner(&owner, &domain_meta)?;
+            let DomainMeta { owner, outer_value, .. } = Self::require_domain(&domain_lc)?;
 
-            ensure!(domain_meta.outer_value != value, Error::<T>::OuterValueNotChanged);
+            ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            ensure!(outer_value != value, Error::<T>::OuterValueNotChanged);
+
             Self::ensure_valid_outer_value(&value)?;
 
-            domain_meta.outer_value = value;
-            PurchasedDomains::<T>::insert(&domain_lc.tld, &domain_lc.nested, domain_meta);
+            Self::try_mutate_domain(&domain_lc, |meta| meta.outer_value = value)?;
 
-            Self::deposit_event(Event::DomainUpdated(owner, domain.tld, domain.nested));
+            Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
+            Ok(Default::default())
+        }
+
+        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
+        pub fn set_domain_content(
+            origin: OriginFor<T>,
+            domain: Domain,
+            new_content: Content,
+        ) -> DispatchResult {
+            let sender = ensure_signed(origin)?;
+
+            let domain_lc = Self::lower_domain(&domain);
+            let DomainMeta{ owner, content, .. } = Self::require_domain(&domain_lc)?;
+
+            ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            ensure!(content != new_content, Error::<T>::DomainContentWasNotChanged);
+
+            Utils::<T>::is_valid_content(content.clone())?;
+
+            Self::try_mutate_domain(&domain_lc, |meta| meta.content = content)?;
+
+            Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
             Ok(Default::default())
         }
 
@@ -448,19 +469,24 @@ pub mod pallet {
             Ok(Self::purchased_domain(&domain.tld, &domain.nested).ok_or(Error::<T>::DomainNotFound)?)
         }
 
-        pub fn ensure_account_domain_owner(
-            owner: &T::AccountId,
-            domain_meta: &DomainMeta<T>,
-        ) -> DispatchResult {
-            ensure!(domain_meta.owner == *owner, Error::<T>::NotADomainOwner);
-            Ok(Default::default())
-        }
-
         pub fn lower_domain(domain: &Domain) -> Domain {
             Domain {
                 tld: domain.tld.to_ascii_lowercase(),
                 nested: domain.nested.to_ascii_lowercase(),
             }
+        }
+
+        pub fn try_mutate_domain<F>(domain_lc: &Domain, change_fn: F) -> DispatchResult
+            where F: FnOnce(&mut DomainMeta<T>)
+        {
+            let Domain { tld, nested } = domain_lc;
+            PurchasedDomains::<T>::try_mutate(&tld, &nested, |meta_opt| -> DispatchResult {
+                return if let Some(meta) = meta_opt {
+                    Ok(change_fn(meta))
+                } else {
+                    Err(Error::<T>::DomainNotFound.into())
+                }
+            })
         }
     }
 }
