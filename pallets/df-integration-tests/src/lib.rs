@@ -1479,7 +1479,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_work_when_handles_disabled() {
+    fn should_update_space_content_when_handles_disabled() {
         ExtBuilder::build_with_space_then_disable_handles().execute_with(|| {
             let space_update = update_for_space_content(updated_space_content());
             assert_ok!(_update_space(None, None, Some(space_update)));
@@ -1487,7 +1487,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_when_handles_disabled() {
+    fn should_fail_to_update_space_handle_when_handles_disabled() {
         ExtBuilder::build_with_space_then_disable_handles().execute_with(|| {
             let space_update = update_for_space_handle(Some(space_handle_2()));
             assert_noop!(
