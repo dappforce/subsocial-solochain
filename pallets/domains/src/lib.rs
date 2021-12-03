@@ -138,6 +138,10 @@ pub mod pallet {
     pub(super) type PurchasedDomains<T: Config> =
         StorageDoubleMap<_, Blake2_128Concat, Vec<u8>, Blake2_128Concat, Vec<u8>, DomainMeta<T>>;
 
+    #[pallet::storage]
+    pub(super) type PurchasedDomainsByAccount<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Domain>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -207,12 +211,11 @@ pub mod pallet {
             // Note that while upper and lower case letters are allowed in domain
             // names, no significance is attached to the case. That is, two names with
             // the same spelling but different case are to be treated as if identical.
-            let Domain { tld, nested } = domain;
+            let Domain { tld, nested } = &domain;
+            let domain_lc = Self::lower_domain(&domain);
+            let Domain { tld: tld_lc, nested: nested_lc} = &domain_lc;
 
-            let tld_lowered = tld.to_ascii_lowercase();
-            let nested_domain_lowered = nested.to_ascii_lowercase();
-
-            ensure!(!Self::reserved_domain(&tld_lowered), Error::<T>::DomainReserved);
+            ensure!(!Self::reserved_domain(tld_lc), Error::<T>::DomainReserved);
 
             Utils::<T>::is_valid_content(content.clone())?;
 
@@ -220,7 +223,7 @@ pub mod pallet {
             Self::ensure_valid_domain(&nested)?;
 
             ensure!(
-                Self::purchased_domain(&tld_lowered, &nested_domain_lowered).is_none(),
+                Self::purchased_domain(tld_lc, nested_lc).is_none(),
                 Error::<T>::DomainAlreadyStored,
             );
 
@@ -239,9 +242,10 @@ pub mod pallet {
                 outer_value,
             );
 
-            PurchasedDomains::<T>::insert(&tld_lowered, &nested_domain_lowered, domain_meta);
+            PurchasedDomains::<T>::insert(tld_lc, nested_lc, domain_meta);
+            PurchasedDomainsByAccount::<T>::insert(&owner, domain_lc);
 
-            Self::deposit_event(Event::DomainPurchased(owner, tld, nested));
+            Self::deposit_event(Event::DomainPurchased(owner, tld.clone(), nested.clone()));
             Ok(Default::default())
         }
 
