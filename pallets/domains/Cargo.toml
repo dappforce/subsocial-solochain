@@ -27,7 +27,10 @@ df-traits = { path = '../traits', default-features = false }
 pallet-utils = { path = '../utils', default-features = false }
 
 [dev-dependencies]
+pallet-balances = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+pallet-timestamp = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 sp-io = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-core = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 
 #[dev-dependencies]
 

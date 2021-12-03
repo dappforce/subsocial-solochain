@@ -6,14 +6,14 @@
 
 pub use pallet::*;
 
-// #[cfg(test)]
-// mod mock;
+#[cfg(test)]
+mod mock;
 
 // #[cfg(test)]
 // mod tests;
 
-// #[cfg(feature = "runtime-benchmarks")]
-// mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 
 #[frame_support::pallet]
@@ -36,11 +36,12 @@ pub mod pallet {
     type InnerValue<T> = Option<EntityId<<T as frame_system::Config>::AccountId>>;
     type OuterValue = Option<Vec<u8>>;
 
-    const MIN_TLD_LENGTH: usize = 2;
-    const MIN_DOMAIN_LENGTH: usize = 3;
-    const MAX_DOMAIN_LENGTH: usize = 63;
+    // TODO: maybe move to runtime constants
+    pub const MIN_TLD_LENGTH: usize = 2;
+    pub const MIN_DOMAIN_LENGTH: usize = 3;
+    pub const MAX_DOMAIN_LENGTH: usize = 63;
 
-    type BalanceOf<T> =
+    pub(crate) type BalanceOf<T> =
         <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
     #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -52,8 +53,8 @@ pub mod pallet {
 
     #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
     pub struct Domain {
-        tld: Vec<u8>,
-        nested: Vec<u8>,
+        pub tld: Vec<u8>,
+        pub nested: Vec<u8>,
     }
 
     #[derive(Encode, Decode, TypeInfo)]
@@ -437,9 +438,7 @@ pub mod pallet {
             Ok(Default::default())
         }
 
-        pub fn ensure_valid_inner_value(
-            inner_value: &Option<EntityId<T::AccountId>>
-        ) -> DispatchResult {
+        pub fn ensure_valid_inner_value(inner_value: &InnerValue<T>) -> DispatchResult {
             if inner_value.is_none() { return Ok(()) }
 
             return match inner_value.clone().unwrap() {
@@ -449,10 +448,10 @@ pub mod pallet {
             }
         }
 
-        pub fn ensure_valid_outer_value(outer_value: &Option<Vec<u8>>) -> DispatchResult {
+        pub fn ensure_valid_outer_value(outer_value: &OuterValue) -> DispatchResult {
             if let Some(outer) = &outer_value {
                 ensure!(
-                    outer.len() < T::OuterValueLimit::get().into(),
+                    outer.len() <= T::OuterValueLimit::get().into(),
                     Error::<T>::OuterValueOffLengthLimit
                 );
             }
