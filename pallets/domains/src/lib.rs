@@ -141,7 +141,7 @@ pub mod pallet {
 
     #[pallet::storage]
     pub(super) type PurchasedDomainsByAccount<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, Domain>;
+        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Domain>, ValueQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -244,7 +244,7 @@ pub mod pallet {
             );
 
             PurchasedDomains::<T>::insert(tld_lc, nested_lc, domain_meta);
-            PurchasedDomainsByAccount::<T>::insert(&owner, domain_lc);
+            PurchasedDomainsByAccount::<T>::mutate(&owner, |domains| domains.push(domain_lc));
 
             Self::deposit_event(Event::DomainPurchased(owner, tld.clone(), nested.clone()));
             Ok(Default::default())
