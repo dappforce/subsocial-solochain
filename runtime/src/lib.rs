@@ -735,6 +735,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
 
+			list_benchmark!(list, extra, pallet_domains, Domains);
 			list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
 			// list_benchmark!(list, extra, pallet_faucets, Faucets);
 			// list_benchmark!(list, extra, pallet_posts, Posts);
@@ -748,6 +749,7 @@ impl_runtime_apis! {
 
 			// let storage_info = AllPalletsWithSystem::storage_info();
             let mut storage_info = DotsamaClaims::storage_info();
+            storage_info.append(&mut Domains::storage_info());
             storage_info.append(&mut Faucets::storage_info());
             storage_info.append(&mut Utils::storage_info());
             storage_info.append(&mut Spaces::storage_info());
@@ -802,6 +804,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
+
 			add_benchmark!(params, batches, pallet_domains, Domains);
 			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
 
