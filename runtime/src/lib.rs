@@ -701,7 +701,7 @@ impl_runtime_apis! {
 			Vec<frame_support::traits::StorageInfo>,
 		) {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
-			// use frame_support::traits::StorageInfoTrait;
+			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
@@ -709,6 +709,9 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+
+			list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
+			// list_benchmark!(list, extra, pallet_faucets, Faucets);
 			// list_benchmark!(list, extra, pallet_posts, Posts);
 			// list_benchmark!(list, extra, pallet_profile_follows, DotsamaClaims);
 			// list_benchmark!(list, extra, pallet_profiles, Profiles);
@@ -717,12 +720,34 @@ impl_runtime_apis! {
 			// list_benchmark!(list, extra, pallet_space_follows, SpaceFollows);
 			// list_benchmark!(list, extra, pallet_space_ownership, SpaceOwnership);
 			// list_benchmark!(list, extra, pallet_spaces, Spaces);
-			// list_benchmark!(list, extra, pallet_faucets, Faucets);
-			list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
 
 			// let storage_info = AllPalletsWithSystem::storage_info();
+            let mut storage_info = DotsamaClaims::storage_info();
+            storage_info.append(&mut Faucets::storage_info());
+            storage_info.append(&mut Utils::storage_info());
+            storage_info.append(&mut Spaces::storage_info());
+            storage_info.append(&mut SpaceOwnership::storage_info());
+            storage_info.append(&mut SpaceHistory::storage_info());
+            storage_info.append(&mut SpaceFollows::storage_info());
+            storage_info.append(&mut Roles::storage_info());
+            storage_info.append(&mut Reactions::storage_info());
+            storage_info.append(&mut ProfileHistory::storage_info());
+            storage_info.append(&mut Profiles::storage_info());
+            storage_info.append(&mut ProfileFollows::storage_info());
+            storage_info.append(&mut PostHistory::storage_info());
+            storage_info.append(&mut Posts::storage_info());
+            storage_info.append(&mut Utility::storage_info());
+            storage_info.append(&mut Scheduler::storage_info());
+            storage_info.append(&mut Sudo::storage_info());
+            storage_info.append(&mut TransactionPayment::storage_info());
+            storage_info.append(&mut Balances::storage_info());
+            storage_info.append(&mut Grandpa::storage_info());
+            storage_info.append(&mut Aura::storage_info());
+            storage_info.append(&mut Timestamp::storage_info());
+            storage_info.append(&mut RandomnessCollectiveFlip::storage_info());
+            storage_info.append(&mut System::storage_info());
 
-			return (list, vec![])
+			return (list, storage_info)
 		}
 
 		fn dispatch_benchmark(
