@@ -267,7 +267,7 @@ pub mod pallet {
 
             Self::ensure_valid_inner_value(&value)?;
 
-            Self::try_mutate_domain(&domain_lc, |meta| meta.inner_value = inner_value)?;
+            Self::try_mutate_domain(&domain_lc, |meta| meta.inner_value = value)?;
 
             Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
             Ok(())
