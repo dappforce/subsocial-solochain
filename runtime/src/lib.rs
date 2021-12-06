@@ -454,6 +454,10 @@ impl pallet_faucets::Config for Runtime {
 }
 
 parameter_types! {
+    pub const MinTldLength: u8 = 2;
+    pub const MinDomainLength: u8 = 3;
+    pub const MaxDomainLength: u8 = 63;
+
     pub const ReservationPeriodLimit: BlockNumber = 10 * (365 * DAYS);
     pub const OuterValueLimit: u16 = 256;
     // TODO: think on changing this value
@@ -464,6 +468,9 @@ impl pallet_domains::Config for Runtime {
     type Event = Event;
     type Currency = Balances;
     type SpacesProvider = Spaces;
+    type MinTldLength = MinTldLength;
+    type MinDomainLength = MinDomainLength;
+    type MaxDomainLength = MaxDomainLength;
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
     type OuterValueDeposit = OuterValueDeposit;

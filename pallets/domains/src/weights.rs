@@ -50,7 +50,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
             // Storage: Timestamp Now (r:1 w:0)
             // Storage: Domains PurchasedDomainsByAccount (r:1 w:1)
         fn purchase_domain() -> Weight {
-        (47_365_000 as Weight)
+        (45_655_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(5 as Weight))
             .saturating_add(T::DbWeight::get().writes(2 as Weight))
         }
@@ -64,7 +64,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
             // Storage: Timestamp Now (r:1 w:0)
             // Storage: Domains PurchasedDomainsByAccount (r:1 w:1)
         fn purchase_domain() -> Weight {
-        (47_365_000 as Weight)
+        (45_655_000 as Weight)
             .saturating_add(RocksDbWeight::get().reads(5 as Weight))
             .saturating_add(RocksDbWeight::get().writes(2 as Weight))
         }

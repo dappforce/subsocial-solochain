@@ -17,7 +17,7 @@ benchmarks! {
 	purchase_domain {
 		let owner: T::AccountId = whitelisted_caller();
 
-		let max_length_domain = vec![b'A'; MAX_DOMAIN_LENGTH];
+		let max_length_domain = vec![b'A'; T::MaxDomainLength::get().into()];
 		let domain = Domain {
 			tld: max_length_domain.clone(),
 			nested: max_length_domain,
@@ -28,15 +28,12 @@ benchmarks! {
 			vec![domain.tld.clone()],
 		)?;
 
-		let inner_value = Some(EntityId::Account(owner.clone()));
-		let outer_value = Some(vec![b'a'; T::OuterValueLimit::get().into()]);
-
 		let expires_in = T::ReservationPeriodLimit::get();
 		let sold_for = BalanceOf::<T>::max_value();
 
-	}: _(RawOrigin::Root, owner, domain.clone(), valid_content_ipfs(), inner_value, outer_value, expires_in, sold_for)
+	}: _(RawOrigin::Root, owner, domain.clone(), valid_content_ipfs(), expires_in, sold_for)
 	verify {
-		let Domain { tld, nested } = domain;
+		let Domain { tld, nested } = Pallet::<T>::lower_domain(&domain);
 		assert!(PurchasedDomains::<T>::get(&tld, &nested).is_some());
 	}
 

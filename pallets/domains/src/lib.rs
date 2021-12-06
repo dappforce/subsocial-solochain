@@ -39,11 +39,6 @@ pub mod pallet {
     type InnerValue<T> = Option<EntityId<<T as frame_system::Config>::AccountId>>;
     type OuterValue = Option<Vec<u8>>;
 
-    // TODO: maybe move to runtime constants
-    pub const MIN_TLD_LENGTH: usize = 2;
-    pub const MIN_DOMAIN_LENGTH: usize = 3;
-    pub const MAX_DOMAIN_LENGTH: usize = 63;
-
     pub(crate) type BalanceOf<T> =
         <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
@@ -78,12 +73,10 @@ pub mod pallet {
 
     impl<T: Config> DomainMeta<T> {
         fn new(
-            expires_at: T::BlockNumber,
-            sold_for: BalanceOf<T>,
             owner: T::AccountId,
             content: Content,
-            inner_value: InnerValue<T>,
-            outer_value: OuterValue,
+            expires_at: T::BlockNumber,
+            sold_for: BalanceOf<T>,
         ) -> Self {
             Self {
                 created: WhoAndWhen::new(owner.clone()),
@@ -92,8 +85,8 @@ pub mod pallet {
                 expires_at,
                 sold_for,
                 content,
-                inner_value,
-                outer_value,
+                inner_value: None,
+                outer_value: None,
             }
         }
     }
@@ -108,6 +101,15 @@ pub mod pallet {
 
         /// The loose coupled provider to get a space.
         type SpacesProvider: SpacesProvider;
+
+        /// Top level domain minimum length.
+        type MinTldLength: Get<u8>;
+
+        /// Domains minimum length.
+        type MinDomainLength: Get<u8>;
+
+        /// Domains maximum length.
+        type MaxDomainLength: Get<u8>;
 
         /// The maximum amount of time the domain may be held for.
         #[pallet::constant]
@@ -140,6 +142,7 @@ pub mod pallet {
     pub(super) type AllowedTopLevelDomains<T> =
         StorageMap<_, Twox64Concat, Vec<u8>, bool, ValueQuery>;
 
+    // TODO: how to clean this when domain has expired?
     #[pallet::storage]
     #[pallet::getter(fn purchased_domain)]
     pub(super) type PurchasedDomains<T: Config> =
@@ -203,8 +206,6 @@ pub mod pallet {
             owner: T::AccountId,
             domain: Domain,
             content: Content,
-            inner_value: InnerValue<T>,
-            outer_value: OuterValue,
             expires_in: T::BlockNumber,
             #[pallet::compact] sold_for: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
@@ -226,27 +227,21 @@ pub mod pallet {
 
             Utils::<T>::is_valid_content(content.clone())?;
 
-            Self::ensure_tld_allowed(&tld)?;
-            Self::ensure_valid_domain(&nested)?;
+            Self::ensure_tld_allowed(tld)?;
+            Self::ensure_valid_domain(nested)?;
 
             ensure!(
                 Self::purchased_domain(tld_lc, nested_lc).is_none(),
                 Error::<T>::DomainAlreadyStored,
             );
 
-            Self::ensure_valid_inner_value(&inner_value)?;
-            Self::ensure_valid_outer_value(&outer_value)?;
-            // TODO: reserve OuterValueDeposit
-
             let expires_at = expires_in.saturating_add(System::<T>::block_number());
             // TODO: calculate the payment amount
             let domain_meta = DomainMeta::new(
-                expires_at,
-                sold_for,
                 owner.clone(),
                 content,
-                inner_value,
-                outer_value,
+                expires_at,
+                sold_for,
             );
 
             PurchasedDomains::<T>::insert(tld_lc, nested_lc, domain_meta);
@@ -275,7 +270,7 @@ pub mod pallet {
             Self::try_mutate_domain(&domain_lc, |meta| meta.inner_value = inner_value)?;
 
             Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
-            Ok(Default::default())
+            Ok(())
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
@@ -299,7 +294,7 @@ pub mod pallet {
             Self::try_mutate_domain(&domain_lc, |meta| meta.outer_value = value)?;
 
             Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
-            Ok(Default::default())
+            Ok(())
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
@@ -321,7 +316,7 @@ pub mod pallet {
             Self::try_mutate_domain(&domain_lc, |meta| meta.content = content)?;
 
             Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
-            Ok(Default::default())
+            Ok(())
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().writes(domains.len() as u64))]
@@ -348,7 +343,7 @@ pub mod pallet {
             Self::insert_domains(
                 domains,
                 Self::ensure_valid_tld,
-                |domain| AllowedTopLevelDomains::<T>::insert(domain, true),
+                |domain| AllowedTopLevelDomains::<T>::insert(domain.to_ascii_lowercase(), true),
             )?;
 
             Self::deposit_event(Event::TopLevelDomainsAllowed);
@@ -360,14 +355,14 @@ pub mod pallet {
         /// Checks the length of the provided u8 slice.
         fn ensure_domain_has_valid_length(
             string: &[u8],
-            min: usize,
-            max: usize,
+            min: u8,
+            max: u8,
             error: Error<T>,
         ) -> DispatchResult {
             let length = string.len();
-            ensure!(length >= min && length <= max, error);
+            ensure!(length >= min.into() && length <= max.into(), error);
 
-            Ok(Default::default())
+            Ok(())
         }
 
         /// Throws an error if domain contains invalid character.
@@ -383,7 +378,7 @@ pub mod pallet {
                 error
             );
 
-            Ok(Default::default())
+            Ok(())
         }
 
         /// The domain must match the recommended IETF conventions:
@@ -396,8 +391,8 @@ pub mod pallet {
         pub fn ensure_valid_domain(domain: &[u8]) -> DispatchResult {
             Self::ensure_domain_has_valid_length(
                 domain,
-                MIN_DOMAIN_LENGTH,
-                MAX_DOMAIN_LENGTH,
+                T::MinDomainLength::get(),
+                T::MaxDomainLength::get(),
                 Error::<T>::TopLevelDomainIsOffLengthLimits,
             )?;
 
@@ -410,7 +405,7 @@ pub mod pallet {
                 domain, Error::<T>::TopLevelDomainContainsInvalidChar
             )?;
 
-            Ok(Default::default())
+            Ok(())
         }
 
         /// Top level domain must match the IETF convention:
@@ -420,8 +415,8 @@ pub mod pallet {
             // - not counting any leading or trailing periods (.).
             Self::ensure_domain_has_valid_length(
                 domain,
-                MIN_TLD_LENGTH,
-                MAX_DOMAIN_LENGTH,
+                T::MinTldLength::get(),
+                T::MaxDomainLength::get(),
                 Error::<T>::TopLevelDomainIsOffLengthLimits,
             )?;
 
@@ -433,7 +428,7 @@ pub mod pallet {
                 domain, Error::<T>::TopLevelDomainContainsInvalidChar
             )?;
 
-            Ok(Default::default())
+            Ok(())
         }
 
         /// Fails if the top level domain is not listed as allowed.
@@ -441,14 +436,15 @@ pub mod pallet {
             let domain_lc = domain.to_ascii_lowercase();
             ensure!(Self::top_level_domain_allowed(&domain_lc), Error::<T>::TopLevelDomainNotAllowed);
 
-            Ok(Default::default())
+            Ok(())
         }
 
         pub fn ensure_valid_inner_value(inner_value: &InnerValue<T>) -> DispatchResult {
             if inner_value.is_none() { return Ok(()) }
 
-            return match inner_value.clone().unwrap() {
+            match inner_value.clone().unwrap() {
                 EntityId::Space(space_id) => T::SpacesProvider::ensure_space_exists(space_id),
+                EntityId::Account(_) => Ok(()),
                 // TODO: support all inner values
                 _ => Err(Error::<T>::InnerValueNotSupported.into()),
             }
@@ -498,8 +494,9 @@ pub mod pallet {
         {
             let Domain { tld, nested } = domain_lc;
             PurchasedDomains::<T>::try_mutate(&tld, &nested, |meta_opt| -> DispatchResult {
-                return if let Some(meta) = meta_opt {
-                    Ok(change_fn(meta))
+                if let Some(meta) = meta_opt {
+                    change_fn(meta);
+                    Ok(())
                 } else {
                     Err(Error::<T>::DomainNotFound.into())
                 }

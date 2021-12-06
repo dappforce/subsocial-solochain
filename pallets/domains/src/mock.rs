@@ -101,8 +101,12 @@ impl pallet_utils::Config for Test {
 }
 
 parameter_types! {
+    pub const MinTldLength: u8 = 2;
+    pub const MinDomainLength: u8 = 3;
+    pub const MaxDomainLength: u8 = 63;
+
     pub const ReservationPeriodLimit: u32 = 100;
-    pub const OuterValueLimit: u32 = 256;
+    pub const OuterValueLimit: u16 = 256;
     pub const OuterValueDeposit: Balance = 1;
 }
 
@@ -110,9 +114,12 @@ impl pallet_domains::Config for Test {
     type Event = Event;
     type Currency = Balances;
     type SpacesProvider = Self;
-    type ReservationPeriodLimit = ();
-    type OuterValueLimit = ();
-    type OuterValueDeposit = ();
+    type MinTldLength = MinTldLength;
+    type MinDomainLength = MinDomainLength;
+    type MaxDomainLength = MaxDomainLength;
+    type ReservationPeriodLimit = ReservationPeriodLimit;
+    type OuterValueLimit = OuterValueLimit;
+    type OuterValueDeposit = OuterValueDeposit;
     type WeightInfo = ();
 }
 
