@@ -696,12 +696,12 @@ impl_runtime_apis! {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
-		fn benchmark_metadata(_extra: bool) -> (
+		fn benchmark_metadata(extra: bool) -> (
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			/*use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
-			use frame_support::traits::StorageInfoTrait;
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			// use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
@@ -709,23 +709,20 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-            // list_benchmark!(list, extra, pallet_permissions, Permissions);
 			// list_benchmark!(list, extra, pallet_posts, Posts);
 			// list_benchmark!(list, extra, pallet_profile_follows, DotsamaClaims);
 			// list_benchmark!(list, extra, pallet_profiles, Profiles);
 			// list_benchmark!(list, extra, pallet_reactions, Reactions);
 			// list_benchmark!(list, extra, pallet_roles, Roles);
-			// list_benchmark!(list, extra, pallet_scores, Scores);
 			// list_benchmark!(list, extra, pallet_space_follows, SpaceFollows);
 			// list_benchmark!(list, extra, pallet_space_ownership, SpaceOwnership);
 			// list_benchmark!(list, extra, pallet_spaces, Spaces);
 			// list_benchmark!(list, extra, pallet_faucets, Faucets);
 			list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
 
-			let storage_info = AllPalletsWithSystem::storage_info();
+			// let storage_info = AllPalletsWithSystem::storage_info();
 
-			return (list, storage_info)*/
-            todo!()
+			return (list, vec![])
 		}
 
 		fn dispatch_benchmark(
@@ -757,6 +754,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
 
+			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
 		}
 	}
