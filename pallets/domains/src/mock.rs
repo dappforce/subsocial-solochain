@@ -113,6 +113,7 @@ impl pallet_domains::Config for Test {
     type ReservationPeriodLimit = ();
     type OuterValueLimit = ();
     type OuterValueDeposit = ();
+    type WeightInfo = ();
 }
 
 pub(crate) const EXISTING_SPACE: u64 = 1;

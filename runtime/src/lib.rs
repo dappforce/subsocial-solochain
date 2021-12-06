@@ -467,6 +467,7 @@ impl pallet_domains::Config for Runtime {
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
     type OuterValueDeposit = OuterValueDeposit;
+    type WeightInfo = pallet_domains::weights::SubstrateWeight<Runtime>;
 }
 
 construct_runtime!(

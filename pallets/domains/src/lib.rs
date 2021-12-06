@@ -14,6 +14,7 @@ mod mock;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod weights;
 
 
 #[frame_support::pallet]
@@ -31,6 +32,8 @@ pub mod pallet {
     use df_traits::SpacesProvider;
     use pallet_utils::{Content, PostId, SpaceId, WhoAndWhen};
     use pallet_utils::Pallet as Utils;
+
+    pub use crate::weights::WeightInfo;
 
     type DomainsVec = Vec<Vec<u8>>;
     type InnerValue<T> = Option<EntityId<<T as frame_system::Config>::AccountId>>;
@@ -119,6 +122,9 @@ pub mod pallet {
         type OuterValueDeposit: Get<BalanceOf<Self>>;
 
         // TODO: add price coefficients for different domains lengths
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -191,7 +197,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(3, 1))]
+        #[pallet::weight(<T as Config>::WeightInfo::purchase_domain())]
         pub fn purchase_domain(
             origin: OriginFor<T>,
             owner: T::AccountId,
@@ -201,7 +207,7 @@ pub mod pallet {
             outer_value: OuterValue,
             expires_in: T::BlockNumber,
             #[pallet::compact] sold_for: BalanceOf<T>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
             ensure!(
@@ -247,7 +253,7 @@ pub mod pallet {
             PurchasedDomainsByAccount::<T>::mutate(&owner, |domains| domains.push(domain_lc));
 
             Self::deposit_event(Event::DomainPurchased(owner, tld.clone(), nested.clone()));
-            Ok(Default::default())
+            Ok(Pays::No.into())
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
