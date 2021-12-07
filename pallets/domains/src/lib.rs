@@ -26,7 +26,7 @@ pub mod pallet {
     use frame_system::Pallet as System;
     use frame_system::pallet_prelude::*;
     use scale_info::TypeInfo;
-    use sp_runtime::traits::Saturating;
+    use sp_runtime::traits::{Saturating, Zero};
     use sp_std::vec::Vec;
 
     use df_traits::SpacesProvider;
@@ -55,20 +55,32 @@ pub mod pallet {
         pub nested: Vec<u8>,
     }
 
+    // A domain metadata.
     #[derive(Encode, Decode, TypeInfo)]
     #[scale_info(skip_type_params(T))]
     pub struct DomainMeta<T: Config> {
+        // When the domain was created.
         created: WhoAndWhen<T>,
+        // When the domain was updated.
         updated: Option<WhoAndWhen<T>>,
 
+        // The domain owner.
         owner: T::AccountId,
 
+        // Specific block, when the domain will become unavailable.
         expires_at: T::BlockNumber,
+        // The amount that was paid to buy this domain.
         sold_for: BalanceOf<T>,
 
+        // Some additional (custom) domain metadata.
         content: Content,
+
+        // The inner domain link (some Subsocial entity).
         inner_value: InnerValue<T>,
+        // The outer domain link (any string).
         outer_value: OuterValue,
+        // The amount was held for storing outer value.
+        outer_value_bond: BalanceOf<T>,
     }
 
     impl<T: Config> DomainMeta<T> {
@@ -87,6 +99,7 @@ pub mod pallet {
                 content,
                 inner_value: None,
                 outer_value: None,
+                outer_value_bond: Zero::zero(),
             }
         }
     }
@@ -119,9 +132,9 @@ pub mod pallet {
         #[pallet::constant]
         type OuterValueLimit: Get<u16>;
 
-        /// The tokens amount to deposit for the outer value.
+        /// The amount held on deposit per byte within the domains outer value.
         #[pallet::constant]
-        type OuterValueDeposit: Get<BalanceOf<Self>>;
+        type OuterValueDepositPerByte: Get<BalanceOf<Self>>;
 
         // TODO: add price coefficients for different domains lengths
 
@@ -188,6 +201,8 @@ pub mod pallet {
         OuterValueOffLengthLimit,
         /// A new outer value is the same as the old one.
         OuterValueNotChanged,
+        /// Reservation period cannot be a zero value.
+        ZeroReservationPeriod,
         /// Cannot store a domain for that long period of time.
         TooBigReservationPeriod,
         /// The top level domain may contain only A-Z, 0-9 and hyphen characters.
@@ -213,6 +228,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
+            ensure!(!expires_in.is_zero(), Error::<T>::ZeroReservationPeriod);
             ensure!(
                 expires_in <= T::ReservationPeriodLimit::get(),
                 Error::<T>::TooBigReservationPeriod,
@@ -282,7 +298,7 @@ pub mod pallet {
         pub fn set_outer_value(
             origin: OriginFor<T>,
             domain: Domain,
-            value: OuterValue,
+            value_opt: OuterValue,
         ) -> DispatchResult {
             let sender = ensure_signed(origin)?;
 
@@ -293,13 +309,28 @@ pub mod pallet {
             ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
 
             ensure!(sender == owner, Error::<T>::NotADomainOwner);
-            ensure!(outer_value != value, Error::<T>::OuterValueNotChanged);
+            ensure!(outer_value != value_opt, Error::<T>::OuterValueNotChanged);
 
-            Self::ensure_valid_outer_value(&value)?;
+            Self::ensure_valid_outer_value(&value_opt)?;
 
-            // TODO: reserve/unreserve OuterValueDeposit
+            let mut new_bond = Zero::zero();
 
-            Self::try_mutate_domain(&domain_lc, |meta| meta.outer_value = value)?;
+            if let Some(value) = &value_opt {
+                new_bond = T::OuterValueDepositPerByte::get().saturating_mul(
+                    (value.len() as u32).into()
+                );
+
+                <T as Config>::Currency::reserve(&sender, new_bond)?;
+            } else if !outer_value_bond.is_zero() {
+                <T as Config>::Currency::unreserve(&sender, outer_value_bond);
+            }
+
+            Self::try_mutate_domain(&domain_lc, |meta| {
+                meta.outer_value = value_opt;
+                if outer_value_bond != new_bond {
+                    meta.outer_value_bond = new_bond;
+                }
+            })?;
 
             Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
             Ok(())

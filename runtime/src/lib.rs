@@ -473,7 +473,7 @@ impl pallet_domains::Config for Runtime {
     type MaxDomainLength = MaxDomainLength;
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
-    type OuterValueDeposit = OuterValueDeposit;
+    type OuterValueDepositPerByte = OuterValueDeposit;
     type WeightInfo = pallet_domains::weights::SubstrateWeight<Runtime>;
 }
 

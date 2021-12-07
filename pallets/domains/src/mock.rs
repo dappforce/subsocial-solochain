@@ -119,7 +119,7 @@ impl pallet_domains::Config for Test {
     type MaxDomainLength = MaxDomainLength;
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
-    type OuterValueDeposit = OuterValueDeposit;
+    type OuterValueDepositPerByte = OuterValueDeposit;
     type WeightInfo = ();
 }
 
