@@ -170,6 +170,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// The content stored in domain metadata was not changed.
         DomainContentWasNotChanged,
+        /// The domain has expired.
+        DomainHasExpired,
         /// Domain was not found by either custom domain name or top level domain.
         DomainNotFound,
         /// This domain cannot be purchased yet, because it is reserved.
@@ -260,7 +262,10 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let DomainMeta{ owner, inner_value, .. } = Self::require_domain(&domain_lc)?;
+            let DomainMeta { owner, inner_value, expires_at, .. } =
+                Self::require_domain(&domain_lc)?;
+
+            ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
 
             ensure!(sender == owner, Error::<T>::NotADomainOwner);
             ensure!(inner_value != value, Error::<T>::InnerValueNotChanged);
@@ -282,7 +287,10 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let DomainMeta { owner, outer_value, .. } = Self::require_domain(&domain_lc)?;
+            let DomainMeta { owner, outer_value, expires_at, outer_value_bond, .. } =
+                Self::require_domain(&domain_lc)?;
+
+            ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
 
             ensure!(sender == owner, Error::<T>::NotADomainOwner);
             ensure!(outer_value != value, Error::<T>::OuterValueNotChanged);
