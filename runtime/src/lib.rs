@@ -458,12 +458,14 @@ parameter_types! {
     pub const MinDomainLength: u8 = 3;
     pub const MaxDomainLength: u8 = 63;
 
+    pub const DomainsInsertLimit: u32 = 30_000;
     pub const ReservationPeriodLimit: BlockNumber = 10 * (365 * DAYS);
     pub const OuterValueLimit: u16 = 256;
-    // TODO: think on changing this value
-    pub const OuterValueDeposit: Balance = 1 * UNITS;
 
-    pub const DomainsInsertLimit: u32 = 30_000;
+    // TODO: think on changing this values
+    pub const DomainDeposit: Balance = 1 * UNITS;
+    pub const InnerValueDeposit: Balance = 10 * CENTS;
+    pub const OuterValueDepositPerByte: Balance = 1 * CENTS;
 }
 
 impl pallet_domains::Config for Runtime {
@@ -473,10 +475,12 @@ impl pallet_domains::Config for Runtime {
     type MinTldLength = MinTldLength;
     type MinDomainLength = MinDomainLength;
     type MaxDomainLength = MaxDomainLength;
+    type DomainsInsertLimit = DomainsInsertLimit;
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
-    type OuterValueDepositPerByte = OuterValueDeposit;
-    type DomainsInsertLimit = DomainsInsertLimit;
+    type DomainDeposit = DomainDeposit;
+    type InnerValueDeposit = InnerValueDeposit;
+    type OuterValueDepositPerByte = OuterValueDepositPerByte;
     type WeightInfo = pallet_domains::weights::SubstrateWeight<Runtime>;
 }
 

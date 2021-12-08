@@ -105,11 +105,13 @@ parameter_types! {
     pub const MinDomainLength: u8 = 3;
     pub const MaxDomainLength: u8 = 63;
 
+    pub const DomainsInsertLimit: u32 = 30_000;
     pub const ReservationPeriodLimit: u32 = 100;
     pub const OuterValueLimit: u16 = 256;
-    pub const OuterValueDeposit: Balance = 1;
 
-    pub const DomainsInsertLimit: u32 = 30_000;
+    pub const DomainDeposit: Balance = 10;
+    pub const InnerValueDeposit: Balance = 10;
+    pub const OuterValueDepositPerByte: Balance = 1;
 }
 
 impl pallet_domains::Config for Test {
@@ -119,10 +121,12 @@ impl pallet_domains::Config for Test {
     type MinTldLength = MinTldLength;
     type MinDomainLength = MinDomainLength;
     type MaxDomainLength = MaxDomainLength;
+    type DomainsInsertLimit = DomainsInsertLimit;
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
-    type OuterValueDepositPerByte = OuterValueDeposit;
-    type DomainsInsertLimit = DomainsInsertLimit;
+    type DomainDeposit = DomainDeposit;
+    type InnerValueDeposit = InnerValueDeposit;
+    type OuterValueDepositPerByte = OuterValueDepositPerByte;
     type WeightInfo = ();
 }
 

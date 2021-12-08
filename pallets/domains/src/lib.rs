@@ -78,8 +78,13 @@ pub mod pallet {
         inner_value: InnerValue<T>,
         // The outer domain link (any string).
         outer_value: OuterValue,
-        // The amount was held for storing outer value.
-        outer_value_bond: BalanceOf<T>,
+
+        // The amount was held as a deposit for storing this structure.
+        domain_deposit: BalanceOf<T>,
+        // The amount was held as a deposit for storing inner value.
+        inner_value_deposit: BalanceOf<T>,
+        // The amount was held as a deposit for storing outer value.
+        outer_value_deposit: BalanceOf<T>,
     }
 
     impl<T: Config> DomainMeta<T> {
@@ -96,7 +101,9 @@ pub mod pallet {
                 content,
                 inner_value: None,
                 outer_value: None,
-                outer_value_bond: Zero::zero(),
+                domain_deposit: Zero::zero(),
+                inner_value_deposit: Zero::zero(),
+                outer_value_deposit: Zero::zero(),
             }
         }
     }
@@ -121,6 +128,10 @@ pub mod pallet {
         /// Domains maximum length.
         type MaxDomainLength: Get<u8>;
 
+        /// The maximum domains amount can be inserted to a storage at once.
+        #[pallet::constant]
+        type DomainsInsertLimit: Get<u32>;
+
         /// The maximum amount of time the domain may be held for.
         #[pallet::constant]
         type ReservationPeriodLimit: Get<Self::BlockNumber>;
@@ -129,13 +140,17 @@ pub mod pallet {
         #[pallet::constant]
         type OuterValueLimit: Get<u16>;
 
+        /// The amount held on deposit for storing the domains structure.
+        #[pallet::constant]
+        type DomainDeposit: Get<BalanceOf<Self>>;
+
+        /// The amount held on deposit for storing the domains inner value.
+        #[pallet::constant]
+        type InnerValueDeposit: Get<BalanceOf<Self>>;
+
         /// The amount held on deposit per byte within the domains outer value.
         #[pallet::constant]
         type OuterValueDepositPerByte: Get<BalanceOf<Self>>;
-
-        /// The maximum domains amount can be inserted to a storage at once.
-        #[pallet::constant]
-        type DomainsInsertLimit: Get<u32>;
 
         // TODO: add price coefficients for different domains lengths
 
@@ -235,6 +250,8 @@ pub mod pallet {
             expires_in: T::BlockNumber,
             #[pallet::compact] price: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
+            // TODO: use DomainDeposit
+
             ensure_root(origin)?;
 
             ensure!(!expires_in.is_zero(), Error::<T>::ZeroReservationPeriod);
@@ -283,6 +300,8 @@ pub mod pallet {
             domain: Domain,
             value: InnerValue<T>,
         ) -> DispatchResult {
+            // TODO: use inner_value deposit
+
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
@@ -311,7 +330,7 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let DomainMeta { owner, outer_value, expires_at, outer_value_bond, .. } =
+            let DomainMeta { owner, outer_value, expires_at, outer_value_deposit, .. } =
                 Self::require_domain(&domain_lc)?;
 
             ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
@@ -329,14 +348,14 @@ pub mod pallet {
                 );
 
                 <T as Config>::Currency::reserve(&sender, new_bond)?;
-            } else if !outer_value_bond.is_zero() {
-                <T as Config>::Currency::unreserve(&sender, outer_value_bond);
+            } else if !outer_value_deposit.is_zero() {
+                <T as Config>::Currency::unreserve(&sender, outer_value_deposit);
             }
 
             Self::try_mutate_domain(&domain_lc, |meta| {
                 meta.outer_value = value_opt;
-                if outer_value_bond != new_bond {
-                    meta.outer_value_bond = new_bond;
+                if outer_value_deposit != new_bond {
+                    meta.outer_value_deposit = new_bond;
                 }
             })?;
 
