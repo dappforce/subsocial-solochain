@@ -65,13 +65,11 @@ pub mod pallet {
         // When the domain was updated.
         updated: Option<WhoAndWhen<T>>,
 
-        // The domain owner.
-        owner: T::AccountId,
-
         // Specific block, when the domain will become unavailable.
         expires_at: T::BlockNumber,
-        // The amount that was paid to buy this domain.
-        sold_for: BalanceOf<T>,
+
+        // The domain owner.
+        owner: T::AccountId,
 
         // Some additional (custom) domain metadata.
         content: Content,
@@ -86,17 +84,15 @@ pub mod pallet {
 
     impl<T: Config> DomainMeta<T> {
         fn new(
+            expires_at: T::BlockNumber,
             owner: T::AccountId,
             content: Content,
-            expires_at: T::BlockNumber,
-            sold_for: BalanceOf<T>,
         ) -> Self {
             Self {
                 created: WhoAndWhen::new(owner.clone()),
                 updated: None,
-                owner,
                 expires_at,
-                sold_for,
+                owner,
                 content,
                 inner_value: None,
                 outer_value: None,
@@ -181,7 +177,7 @@ pub mod pallet {
     pub enum Event<T: Config> {
         // TODO: add payment amount to the event
         /// The domain name was successfully registered and stored.
-        DomainRegistered(T::AccountId, Domain),
+        DomainRegistered(T::AccountId, Domain, BalanceOf<T>),
         /// The domain meta was successfully updated.
         DomainUpdated(T::AccountId, Domain),
         /// The domains list was successfully added to a reserved list.
@@ -237,7 +233,7 @@ pub mod pallet {
             full_domain: Domain,
             content: Content,
             expires_in: T::BlockNumber,
-            #[pallet::compact] sold_for: BalanceOf<T>,
+            #[pallet::compact] price: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
@@ -269,16 +265,15 @@ pub mod pallet {
             let expires_at = expires_in.saturating_add(System::<T>::block_number());
             // TODO: calculate the payment amount
             let domain_meta = DomainMeta::new(
+                expires_at,
                 owner.clone(),
                 content,
-                expires_at,
-                sold_for,
             );
 
             RegisteredDomains::<T>::insert(tld_lc, domain_lc, domain_meta);
             RegisteredDomainsByAccount::<T>::mutate(&owner, |domains| domains.push(full_domain_lc));
 
-            Self::deposit_event(Event::DomainRegistered(owner, full_domain));
+            Self::deposit_event(Event::DomainRegistered(owner, full_domain, price));
             Ok(Pays::No.into())
         }
 
