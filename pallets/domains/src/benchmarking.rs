@@ -23,7 +23,7 @@ benchmarks! {
 			domain: max_length_domain,
 		};
 
-		Pallet::<T>::add_top_level_domains(
+		Pallet::<T>::add_tlds(
 			RawOrigin::Root.into(),
 			vec![full_domain.tld.clone()],
 		)?;

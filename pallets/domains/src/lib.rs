@@ -152,8 +152,8 @@ pub mod pallet {
     pub(super) type ReservedDomains<T> = StorageMap<_, Twox64Concat, DomainName, bool, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn top_level_domain_allowed)]
-    pub(super) type AllowedTopLevelDomains<T> =
+    #[pallet::getter(fn tld_supported)]
+    pub(super) type SupportedTlds<T> =
         StorageMap<_, Twox64Concat, DomainName, bool, ValueQuery>;
 
     // TODO: how to clean this when domain has expired?
@@ -182,14 +182,14 @@ pub mod pallet {
         DomainUpdated(T::AccountId, Domain),
         /// The domains list was successfully added to a reserved list.
         DomainsReserved(u16),
-        /// The list of top level domains was successfully added to an allow list.
-        TopLevelDomainsAllowed(u16),
+        /// The list of top level domains was successfully added to the supported list.
+        NewTldAdded(u16),
     }
 
     #[pallet::error]
     pub enum Error<T> {
         /// The content stored in domain metadata was not changed.
-        DomainContentWasNotChanged,
+        DomainContentNotChanged,
         /// Cannot insert that many domains to a storage at once.
         DomainsInsertLimitReached,
         /// The domain has expired.
@@ -218,8 +218,8 @@ pub mod pallet {
         TopLevelDomainContainsInvalidChar,
         /// The top level domain length must be between 3 and 63 characters, inclusive.
         TopLevelDomainIsOffLengthLimits,
-        /// This top level domain is not allowed.
-        TopLevelDomainNotAllowed,
+        /// This top level domain is not supported.
+        TopLevelDomainNotSupported,
         /// This inner value is not supported yet.
         InnerValueNotSupported,
     }
@@ -386,7 +386,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().writes(domains.len() as u64))]
-        pub fn add_top_level_domains(
+        pub fn add_tlds(
             origin: OriginFor<T>,
             domains: DomainsVec,
         ) -> DispatchResultWithPostInfo {
@@ -398,10 +398,10 @@ pub mod pallet {
             Self::insert_domains(
                 domains,
                 Self::ensure_valid_tld,
-                |domain| AllowedTopLevelDomains::<T>::insert(domain.to_ascii_lowercase(), true),
+                |domain| SupportedTlds::<T>::insert(domain.to_ascii_lowercase(), true),
             )?;
 
-            Self::deposit_event(Event::TopLevelDomainsAllowed(domains_len as u16));
+            Self::deposit_event(Event::NewTldAdded(domains_len as u16));
             Ok(Pays::No.into())
         }
     }
@@ -489,7 +489,7 @@ pub mod pallet {
         /// Fails if the top level domain is not listed as allowed.
         pub fn ensure_tld_allowed(domain: &[u8]) -> DispatchResult {
             let domain_lc = domain.to_ascii_lowercase();
-            ensure!(Self::top_level_domain_allowed(&domain_lc), Error::<T>::TopLevelDomainNotAllowed);
+            ensure!(Self::tld_supported(&domain_lc), Error::<T>::TopLevelDomainNotSupported);
 
             Ok(())
         }
