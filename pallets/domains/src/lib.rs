@@ -330,14 +330,12 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let DomainMeta { owner, outer_value, expires_at, outer_value_deposit, .. } =
-                Self::require_domain(&domain_lc)?;
+            let domain_meta = Self::require_domain(&domain_lc)?;
 
-            ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
+            Self::ensure_allowed_to_update_domain(&domain_meta, &sender)?;
 
-            ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            let DomainMeta { outer_value, outer_value_deposit, .. } = domain_meta;
             ensure!(outer_value != value_opt, Error::<T>::OuterValueNotChanged);
-
             Self::ensure_valid_outer_value(&value_opt)?;
 
             let mut new_bond = Zero::zero();
@@ -372,13 +370,12 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let DomainMeta{ owner, content, expires_at, .. } = Self::require_domain(&domain_lc)?;
+            let domain_meta = Self::require_domain(&domain_lc)?;
 
-            ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
+            Self::ensure_allowed_to_update_domain(&domain_meta, &sender)?;
 
-            ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            let DomainMeta { content, .. } = domain_meta;
             ensure!(content != new_content, Error::<T>::DomainContentNotChanged);
-
             Utils::<T>::is_valid_content(content.clone())?;
 
             Self::try_mutate_domain(&domain_lc, |meta| meta.content = content)?;
@@ -584,6 +581,17 @@ pub mod pallet {
             ensure!(domains_len <= domains_insert_limit, Error::<T>::DomainsInsertLimitReached);
 
             Ok(Default::default())
+        }
+
+        pub fn ensure_allowed_to_update_domain(
+            domain_meta: &DomainMeta<T>,
+            sender: &T::AccountId,
+        ) -> DispatchResult {
+            let DomainMeta { owner, expires_at, .. } = domain_meta;
+
+            ensure!(expires_at > &System::<T>::block_number(), Error::<T>::DomainHasExpired);
+            ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            Ok(())
         }
     }
 }
