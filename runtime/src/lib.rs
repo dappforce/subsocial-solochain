@@ -462,6 +462,8 @@ parameter_types! {
     pub const OuterValueLimit: u16 = 256;
     // TODO: think on changing this value
     pub const OuterValueDeposit: Balance = 1 * UNITS;
+
+    pub const DomainsInsertLimit: u32 = 30_000;
 }
 
 impl pallet_domains::Config for Runtime {
@@ -474,6 +476,7 @@ impl pallet_domains::Config for Runtime {
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
     type OuterValueDepositPerByte = OuterValueDeposit;
+    type DomainsInsertLimit = DomainsInsertLimit;
     type WeightInfo = pallet_domains::weights::SubstrateWeight<Runtime>;
 }
 

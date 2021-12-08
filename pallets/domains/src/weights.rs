@@ -38,7 +38,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_domains.
 pub trait WeightInfo {
-    fn purchase_domain() -> Weight;
+    fn register_domain() -> Weight;
 }
 
 /// Weights for pallet_domains using the Substrate node and recommended hardware.
@@ -49,7 +49,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
             // Storage: Domains PurchasedDomains (r:1 w:1)
             // Storage: Timestamp Now (r:1 w:0)
             // Storage: Domains PurchasedDomainsByAccount (r:1 w:1)
-        fn purchase_domain() -> Weight {
+        fn register_domain() -> Weight {
         (45_655_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(5 as Weight))
             .saturating_add(T::DbWeight::get().writes(2 as Weight))
@@ -63,7 +63,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
             // Storage: Domains PurchasedDomains (r:1 w:1)
             // Storage: Timestamp Now (r:1 w:0)
             // Storage: Domains PurchasedDomainsByAccount (r:1 w:1)
-        fn purchase_domain() -> Weight {
+        fn register_domain() -> Weight {
         (45_655_000 as Weight)
             .saturating_add(RocksDbWeight::get().reads(5 as Weight))
             .saturating_add(RocksDbWeight::get().writes(2 as Weight))

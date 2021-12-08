@@ -1,6 +1,6 @@
-//! # Module for storing purchased domains.
+//! # Module for storing registered domains.
 //!
-//! Pallet that allows a trusted bridge account to store the user's purchased domains.
+//! Pallet that allows a trusted bridge account to store the user's registered domains.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -35,7 +35,8 @@ pub mod pallet {
 
     pub use crate::weights::WeightInfo;
 
-    type DomainsVec = Vec<Vec<u8>>;
+    type DomainName = Vec<u8>;
+    type DomainsVec = Vec<DomainName>;
     type InnerValue<T> = Option<EntityId<<T as frame_system::Config>::AccountId>>;
     type OuterValue = Option<Vec<u8>>;
 
@@ -51,8 +52,8 @@ pub mod pallet {
 
     #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
     pub struct Domain {
-        pub tld: Vec<u8>,
-        pub nested: Vec<u8>,
+        pub tld: DomainName,
+        pub domain: DomainName,
     }
 
     // A domain metadata.
@@ -136,6 +137,10 @@ pub mod pallet {
         #[pallet::constant]
         type OuterValueDepositPerByte: Get<BalanceOf<Self>>;
 
+        /// The maximum domains amount can be inserted to a storage at once.
+        #[pallet::constant]
+        type DomainsInsertLimit: Get<u32>;
+
         // TODO: add price coefficients for different domains lengths
 
         /// Weight information for extrinsics in this pallet.
@@ -148,46 +153,54 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn reserved_domain)]
-    pub(super) type ReservedDomains<T> = StorageMap<_, Twox64Concat, Vec<u8>, bool, ValueQuery>;
+    pub(super) type ReservedDomains<T> = StorageMap<_, Twox64Concat, DomainName, bool, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn top_level_domain_allowed)]
     pub(super) type AllowedTopLevelDomains<T> =
-        StorageMap<_, Twox64Concat, Vec<u8>, bool, ValueQuery>;
+        StorageMap<_, Twox64Concat, DomainName, bool, ValueQuery>;
 
     // TODO: how to clean this when domain has expired?
     #[pallet::storage]
-    #[pallet::getter(fn purchased_domain)]
-    pub(super) type PurchasedDomains<T: Config> =
-        StorageDoubleMap<_, Blake2_128Concat, Vec<u8>, Blake2_128Concat, Vec<u8>, DomainMeta<T>>;
+    #[pallet::getter(fn registered_domain)]
+    pub(super) type RegisteredDomains<T: Config> =
+        StorageDoubleMap<_,
+            Blake2_128Concat,
+            DomainName, /* TLD */
+            Blake2_128Concat,
+            DomainName, /* Domain */
+            DomainMeta<T>
+        >;
 
     #[pallet::storage]
-    pub(super) type PurchasedDomainsByAccount<T: Config> =
+    pub(super) type RegisteredDomainsByAccount<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Domain>, ValueQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         // TODO: add payment amount to the event
-        /// The domain name was successfully purchased and stored.
-        DomainPurchased(T::AccountId, Vec<u8>, Vec<u8>),
+        /// The domain name was successfully registered and stored.
+        DomainRegistered(T::AccountId, Domain),
         /// The domain meta was successfully updated.
-        DomainUpdated(T::AccountId, Vec<u8>, Vec<u8>),
+        DomainUpdated(T::AccountId, Domain),
         /// The domains list was successfully added to a reserved list.
-        DomainsReserved,
+        DomainsReserved(u16),
         /// The list of top level domains was successfully added to an allow list.
-        TopLevelDomainsAllowed,
+        TopLevelDomainsAllowed(u16),
     }
 
     #[pallet::error]
     pub enum Error<T> {
         /// The content stored in domain metadata was not changed.
         DomainContentWasNotChanged,
+        /// Cannot insert that many domains to a storage at once.
+        DomainsInsertLimitReached,
         /// The domain has expired.
         DomainHasExpired,
         /// Domain was not found by either custom domain name or top level domain.
         DomainNotFound,
-        /// This domain cannot be purchased yet, because it is reserved.
+        /// This domain cannot be registered yet, because it is reserved.
         DomainReserved,
         /// This domain is already held by another account.
         DomainAlreadyStored,
@@ -217,11 +230,11 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(<T as Config>::WeightInfo::purchase_domain())]
-        pub fn purchase_domain(
+        #[pallet::weight(<T as Config>::WeightInfo::register_domain())]
+        pub fn register_domain(
             origin: OriginFor<T>,
             owner: T::AccountId,
-            domain: Domain,
+            full_domain: Domain,
             content: Content,
             expires_in: T::BlockNumber,
             #[pallet::compact] sold_for: BalanceOf<T>,
@@ -237,19 +250,19 @@ pub mod pallet {
             // Note that while upper and lower case letters are allowed in domain
             // names, no significance is attached to the case. That is, two names with
             // the same spelling but different case are to be treated as if identical.
-            let Domain { tld, nested } = &domain;
-            let domain_lc = Self::lower_domain(&domain);
-            let Domain { tld: tld_lc, nested: nested_lc} = &domain_lc;
+            let Domain { tld, domain } = &full_domain;
+            let full_domain_lc = Self::lower_domain(&full_domain);
+            let Domain { tld: tld_lc, domain: domain_lc } = &full_domain_lc;
 
             ensure!(!Self::reserved_domain(tld_lc), Error::<T>::DomainReserved);
 
             Utils::<T>::is_valid_content(content.clone())?;
 
             Self::ensure_tld_allowed(tld)?;
-            Self::ensure_valid_domain(nested)?;
+            Self::ensure_valid_domain(domain)?;
 
             ensure!(
-                Self::purchased_domain(tld_lc, nested_lc).is_none(),
+                Self::registered_domain(tld_lc, domain_lc).is_none(),
                 Error::<T>::DomainAlreadyStored,
             );
 
@@ -262,10 +275,10 @@ pub mod pallet {
                 sold_for,
             );
 
-            PurchasedDomains::<T>::insert(tld_lc, nested_lc, domain_meta);
-            PurchasedDomainsByAccount::<T>::mutate(&owner, |domains| domains.push(domain_lc));
+            RegisteredDomains::<T>::insert(tld_lc, domain_lc, domain_meta);
+            RegisteredDomainsByAccount::<T>::mutate(&owner, |domains| domains.push(full_domain_lc));
 
-            Self::deposit_event(Event::DomainPurchased(owner, tld.clone(), nested.clone()));
+            Self::deposit_event(Event::DomainRegistered(owner, full_domain));
             Ok(Pays::No.into())
         }
 
@@ -290,7 +303,7 @@ pub mod pallet {
 
             Self::try_mutate_domain(&domain_lc, |meta| meta.inner_value = value)?;
 
-            Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
+            Self::deposit_event(Event::DomainUpdated(sender, domain));
             Ok(())
         }
 
@@ -332,7 +345,7 @@ pub mod pallet {
                 }
             })?;
 
-            Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
+            Self::deposit_event(Event::DomainUpdated(sender, domain));
             Ok(())
         }
 
@@ -345,7 +358,9 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let DomainMeta{ owner, content, .. } = Self::require_domain(&domain_lc)?;
+            let DomainMeta{ owner, content, expires_at, .. } = Self::require_domain(&domain_lc)?;
+
+            ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
 
             ensure!(sender == owner, Error::<T>::NotADomainOwner);
             ensure!(content != new_content, Error::<T>::DomainContentWasNotChanged);
@@ -354,7 +369,7 @@ pub mod pallet {
 
             Self::try_mutate_domain(&domain_lc, |meta| meta.content = content)?;
 
-            Self::deposit_event(Event::DomainUpdated(sender, domain.tld, domain.nested));
+            Self::deposit_event(Event::DomainUpdated(sender, domain));
             Ok(())
         }
 
@@ -362,13 +377,16 @@ pub mod pallet {
         pub fn reserve(origin: OriginFor<T>, domains: DomainsVec) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
+            let domains_len = domains.len();
+            Self::ensure_domains_insert_limit_not_reached(domains_len)?;
+
             Self::insert_domains(
                 domains,
                 Self::ensure_valid_domain,
                 |domain| ReservedDomains::<T>::insert(domain, true),
             )?;
 
-            Self::deposit_event(Event::DomainsReserved);
+            Self::deposit_event(Event::DomainsReserved(domains_len as u16));
             Ok(Pays::No.into())
         }
 
@@ -379,13 +397,16 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
+            let domains_len = domains.len();
+            Self::ensure_domains_insert_limit_not_reached(domains_len)?;
+
             Self::insert_domains(
                 domains,
                 Self::ensure_valid_tld,
                 |domain| AllowedTopLevelDomains::<T>::insert(domain.to_ascii_lowercase(), true),
             )?;
 
-            Self::deposit_event(Event::TopLevelDomainsAllowed);
+            Self::deposit_event(Event::TopLevelDomainsAllowed(domains_len as u16));
             Ok(Pays::No.into())
         }
     }
@@ -506,7 +527,7 @@ pub mod pallet {
         ) -> DispatchResult
             where
                 F: Fn(&[u8]) -> DispatchResult,
-                S: FnMut(&Vec<u8>),
+                S: FnMut(&DomainName),
         {
             for domain in &domains {
                 check_fn(domain)?;
@@ -518,21 +539,21 @@ pub mod pallet {
 
         /// Try to get domain meta by it's custom and top level domain names.
         pub fn require_domain(domain: &Domain) -> Result<DomainMeta<T>, DispatchError> {
-            Ok(Self::purchased_domain(&domain.tld, &domain.nested).ok_or(Error::<T>::DomainNotFound)?)
+            Ok(Self::registered_domain(&domain.tld, &domain.domain).ok_or(Error::<T>::DomainNotFound)?)
         }
 
         pub fn lower_domain(domain: &Domain) -> Domain {
             Domain {
                 tld: domain.tld.to_ascii_lowercase(),
-                nested: domain.nested.to_ascii_lowercase(),
+                domain: domain.domain.to_ascii_lowercase(),
             }
         }
 
-        pub fn try_mutate_domain<F>(domain_lc: &Domain, change_fn: F) -> DispatchResult
+        pub fn try_mutate_domain<F>(full_domain_lc: &Domain, change_fn: F) -> DispatchResult
             where F: FnOnce(&mut DomainMeta<T>)
         {
-            let Domain { tld, nested } = domain_lc;
-            PurchasedDomains::<T>::try_mutate(&tld, &nested, |meta_opt| -> DispatchResult {
+            let Domain { tld, domain } = full_domain_lc;
+            RegisteredDomains::<T>::try_mutate(&tld, &domain, |meta_opt| -> DispatchResult {
                 if let Some(meta) = meta_opt {
                     change_fn(meta);
                     Ok(())
@@ -540,6 +561,15 @@ pub mod pallet {
                     Err(Error::<T>::DomainNotFound.into())
                 }
             })
+        }
+
+        pub fn ensure_domains_insert_limit_not_reached(
+            domains_len: usize,
+        ) -> DispatchResultWithPostInfo {
+            let domains_insert_limit = T::DomainsInsertLimit::get() as usize;
+            ensure!(domains_len <= domains_insert_limit, Error::<T>::DomainsInsertLimitReached);
+
+            Ok(Default::default())
         }
     }
 }

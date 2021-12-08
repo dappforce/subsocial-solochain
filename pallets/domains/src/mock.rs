@@ -108,6 +108,8 @@ parameter_types! {
     pub const ReservationPeriodLimit: u32 = 100;
     pub const OuterValueLimit: u16 = 256;
     pub const OuterValueDeposit: Balance = 1;
+
+    pub const DomainsInsertLimit: u32 = 30_000;
 }
 
 impl pallet_domains::Config for Test {
@@ -120,6 +122,7 @@ impl pallet_domains::Config for Test {
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
     type OuterValueDepositPerByte = OuterValueDeposit;
+    type DomainsInsertLimit = DomainsInsertLimit;
     type WeightInfo = ();
 }
 
