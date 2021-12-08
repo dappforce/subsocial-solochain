@@ -169,7 +169,7 @@ pub mod pallet {
         >;
 
     #[pallet::storage]
-    pub(super) type RegisteredDomainsByAccount<T: Config> =
+    pub(super) type RegisteredDomainsByOwner<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Domain>, ValueQuery>;
 
     #[pallet::event]
@@ -271,7 +271,7 @@ pub mod pallet {
             );
 
             RegisteredDomains::<T>::insert(tld_lc, domain_lc, domain_meta);
-            RegisteredDomainsByAccount::<T>::mutate(&owner, |domains| domains.push(full_domain_lc));
+            RegisteredDomainsByOwner::<T>::mutate(&owner, |domains| domains.push(full_domain_lc));
 
             Self::deposit_event(Event::DomainRegistered(owner, full_domain, price));
             Ok(Pays::No.into())
@@ -358,7 +358,7 @@ pub mod pallet {
             ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
 
             ensure!(sender == owner, Error::<T>::NotADomainOwner);
-            ensure!(content != new_content, Error::<T>::DomainContentWasNotChanged);
+            ensure!(content != new_content, Error::<T>::DomainContentNotChanged);
 
             Utils::<T>::is_valid_content(content.clone())?;
 
