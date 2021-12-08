@@ -1,5 +1,5 @@
 {
-  "EntityId": {
+  "DomainInnerLink": {
     "_enum": {
       "Account": "AccountId",
       "Space": "SpaceId",
@@ -8,16 +8,16 @@
   },
   "Domain": {
     "tld": "Text",
-    "nested": "Text"
+    "domain": "Text"
   },
   "DomainMeta": {
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
-    "owner": "AccountId",
     "expires_at": "BlockNumber",
-    "sold_for": "Balance",
+    "owner": "AccountId",
     "content": "Content",
+
     "inner_value": "Option<EntityId>",
-    "outer_value": "Option<Text>"
+    "outer_value": "Option<Text>",
   }
 }

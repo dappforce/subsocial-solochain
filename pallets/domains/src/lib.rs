@@ -37,14 +37,14 @@ pub mod pallet {
 
     type DomainName = Vec<u8>;
     type DomainsVec = Vec<DomainName>;
-    type InnerValue<T> = Option<EntityId<<T as frame_system::Config>::AccountId>>;
+    type InnerValue<T> = Option<DomainInnerLink<<T as frame_system::Config>::AccountId>>;
     type OuterValue = Option<Vec<u8>>;
 
     pub(crate) type BalanceOf<T> =
         <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
     #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-    pub enum EntityId<AccountId> {
+    pub enum DomainInnerLink<AccountId> {
         Account(AccountId),
         Space(SpaceId),
         Post(PostId),
@@ -498,8 +498,8 @@ pub mod pallet {
             if inner_value.is_none() { return Ok(()) }
 
             match inner_value.clone().unwrap() {
-                EntityId::Space(space_id) => T::SpacesProvider::ensure_space_exists(space_id),
-                EntityId::Account(_) => Ok(()),
+                DomainInnerLink::Space(space_id) => T::SpacesProvider::ensure_space_exists(space_id),
+                DomainInnerLink::Account(_) => Ok(()),
                 // TODO: support all inner values
                 _ => Err(Error::<T>::InnerValueNotSupported.into()),
             }
