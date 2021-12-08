@@ -385,7 +385,10 @@ pub mod pallet {
         }
 
         #[pallet::weight(10_000 + T::DbWeight::get().writes(domains.len() as u64))]
-        pub fn reserve(origin: OriginFor<T>, domains: DomainsVec) -> DispatchResultWithPostInfo {
+        pub fn reserve_domains(
+            origin: OriginFor<T>,
+            domains: DomainsVec,
+        ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
             let domains_len = domains.len();
