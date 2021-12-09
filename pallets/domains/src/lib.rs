@@ -36,7 +36,7 @@ pub mod pallet {
     pub use crate::weights::WeightInfo;
 
     type DomainName = Vec<u8>;
-    type DomainsVec = Vec<DomainName>;
+    pub(crate) type DomainsVec = Vec<DomainName>;
     type InnerValue<T> = Option<DomainInnerLink<<T as frame_system::Config>::AccountId>>;
     type OuterValue = Option<Vec<u8>>;
 
@@ -75,14 +75,12 @@ pub mod pallet {
         content: Content,
 
         // The inner domain link (some Subsocial entity).
-        inner_value: InnerValue<T>,
+        pub inner_value: InnerValue<T>,
         // The outer domain link (any string).
-        outer_value: OuterValue,
+        pub outer_value: OuterValue,
 
         // The amount was held as a deposit for storing this structure.
         domain_deposit: BalanceOf<T>,
-        // The amount was held as a deposit for storing inner value.
-        inner_value_deposit: BalanceOf<T>,
         // The amount was held as a deposit for storing outer value.
         outer_value_deposit: BalanceOf<T>,
     }
@@ -92,6 +90,7 @@ pub mod pallet {
             expires_at: T::BlockNumber,
             owner: T::AccountId,
             content: Content,
+            domain_deposit: BalanceOf<T>,
         ) -> Self {
             Self {
                 created: WhoAndWhen::new(owner.clone()),
@@ -101,8 +100,7 @@ pub mod pallet {
                 content,
                 inner_value: None,
                 outer_value: None,
-                domain_deposit: Zero::zero(),
-                inner_value_deposit: Zero::zero(),
+                domain_deposit,
                 outer_value_deposit: Zero::zero(),
             }
         }
@@ -144,13 +142,9 @@ pub mod pallet {
         #[pallet::constant]
         type DomainDeposit: Get<BalanceOf<Self>>;
 
-        /// The amount held on deposit for storing the domains inner value.
-        #[pallet::constant]
-        type InnerValueDeposit: Get<BalanceOf<Self>>;
-
         /// The amount held on deposit per byte within the domains outer value.
         #[pallet::constant]
-        type OuterValueDepositPerByte: Get<BalanceOf<Self>>;
+        type OuterValueByteDeposit: Get<BalanceOf<Self>>;
 
         // TODO: add price coefficients for different domains lengths
 
@@ -190,7 +184,6 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        // TODO: add payment amount to the event
         /// The domain name was successfully registered and stored.
         DomainRegistered(T::AccountId, Domain, BalanceOf<T>),
         /// The domain meta was successfully updated.
@@ -250,8 +243,6 @@ pub mod pallet {
             expires_in: T::BlockNumber,
             #[pallet::compact] price: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
-            // TODO: use DomainDeposit
-
             ensure_root(origin)?;
 
             ensure!(!expires_in.is_zero(), Error::<T>::ZeroReservationPeriod);
@@ -280,12 +271,16 @@ pub mod pallet {
             );
 
             let expires_at = expires_in.saturating_add(System::<T>::block_number());
-            // TODO: calculate the payment amount
+
+            let deposit = T::DomainDeposit::get();
             let domain_meta = DomainMeta::new(
                 expires_at,
                 owner.clone(),
                 content,
+                deposit,
             );
+
+            <T as Config>::Currency::reserve(&owner, deposit)?;
 
             RegisteredDomains::<T>::insert(tld_lc, domain_lc, domain_meta);
             RegisteredDomainsByOwner::<T>::mutate(&owner, |domains| domains.push(full_domain_lc));
@@ -294,34 +289,32 @@ pub mod pallet {
             Ok(Pays::No.into())
         }
 
-        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
+        #[pallet::weight(<T as Config>::WeightInfo::set_inner_value())]
         pub fn set_inner_value(
             origin: OriginFor<T>,
             domain: Domain,
             value: InnerValue<T>,
         ) -> DispatchResult {
-            // TODO: use inner_value deposit
-
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let DomainMeta { owner, inner_value, expires_at, .. } =
-                Self::require_domain(&domain_lc)?;
+            let mut meta = Self::require_domain(&domain_lc)?;
 
-            ensure!(expires_at > System::<T>::block_number(), Error::<T>::DomainHasExpired);
+            Self::ensure_allowed_to_update_domain(&meta, &sender)?;
 
-            ensure!(sender == owner, Error::<T>::NotADomainOwner);
-            ensure!(inner_value != value, Error::<T>::InnerValueNotChanged);
-
+            ensure!(meta.inner_value != value, Error::<T>::InnerValueNotChanged);
             Self::ensure_valid_inner_value(&value)?;
 
-            Self::try_mutate_domain(&domain_lc, |meta| meta.inner_value = value)?;
+            meta.inner_value = value;
+            RegisteredDomains::<T>::insert(&domain_lc.tld, &domain_lc.domain, meta);
 
             Self::deposit_event(Event::DomainUpdated(sender, domain));
             Ok(())
         }
 
-        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
+        #[pallet::weight(<T as Config>::WeightInfo::set_outer_value({
+            if let Some(value) = value_opt { value.len() as u32 } else { Zero::zero() }
+        }))]
         pub fn set_outer_value(
             origin: OriginFor<T>,
             domain: Domain,
@@ -330,32 +323,27 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let domain_meta = Self::require_domain(&domain_lc)?;
+            let mut meta = Self::require_domain(&domain_lc)?;
 
-            Self::ensure_allowed_to_update_domain(&domain_meta, &sender)?;
+            Self::ensure_allowed_to_update_domain(&meta, &sender)?;
 
-            let DomainMeta { outer_value, outer_value_deposit, .. } = domain_meta;
-            ensure!(outer_value != value_opt, Error::<T>::OuterValueNotChanged);
+            ensure!(meta.outer_value != value_opt, Error::<T>::OuterValueNotChanged);
             Self::ensure_valid_outer_value(&value_opt)?;
 
-            let mut new_bond = Zero::zero();
-
+            let mut new_deposit = Zero::zero();
             if let Some(value) = &value_opt {
-                new_bond = T::OuterValueDepositPerByte::get().saturating_mul(
-                    (value.len() as u32).into()
-                );
-
-                <T as Config>::Currency::reserve(&sender, new_bond)?;
-            } else if !outer_value_deposit.is_zero() {
-                <T as Config>::Currency::unreserve(&sender, outer_value_deposit);
+                new_deposit = T::OuterValueByteDeposit::get() * <BalanceOf<T>>::from(value.len() as u32);
+                Self::try_reserve_deposit(&sender, &mut meta.outer_value_deposit, new_deposit)?;
+            } else {
+                Self::try_unreserve_deposit(&sender, &mut meta.outer_value_deposit)?;
             }
 
-            Self::try_mutate_domain(&domain_lc, |meta| {
-                meta.outer_value = value_opt;
-                if outer_value_deposit != new_bond {
-                    meta.outer_value_deposit = new_bond;
-                }
-            })?;
+            if meta.outer_value_deposit != new_deposit {
+                meta.outer_value_deposit = new_deposit;
+            }
+
+            meta.outer_value = value_opt;
+            RegisteredDomains::<T>::insert(&domain_lc.tld, &domain_lc.domain, meta);
 
             Self::deposit_event(Event::DomainUpdated(sender, domain));
             Ok(())
@@ -370,15 +358,15 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
 
             let domain_lc = Self::lower_domain(&domain);
-            let domain_meta = Self::require_domain(&domain_lc)?;
+            let mut meta = Self::require_domain(&domain_lc)?;
 
-            Self::ensure_allowed_to_update_domain(&domain_meta, &sender)?;
+            Self::ensure_allowed_to_update_domain(&meta, &sender)?;
 
-            let DomainMeta { content, .. } = domain_meta;
-            ensure!(content != new_content, Error::<T>::DomainContentNotChanged);
-            Utils::<T>::is_valid_content(content.clone())?;
+            ensure!(meta.content != new_content, Error::<T>::DomainContentNotChanged);
+            Utils::<T>::is_valid_content(new_content.clone())?;
 
-            Self::try_mutate_domain(&domain_lc, |meta| meta.content = content)?;
+            meta.content = new_content;
+            RegisteredDomains::<T>::insert(&domain_lc.tld, &domain_lc.domain, meta);
 
             Self::deposit_event(Event::DomainUpdated(sender, domain));
             Ok(())
@@ -563,20 +551,6 @@ pub mod pallet {
             }
         }
 
-        pub fn try_mutate_domain<F>(full_domain_lc: &Domain, change_fn: F) -> DispatchResult
-            where F: FnOnce(&mut DomainMeta<T>)
-        {
-            let Domain { tld, domain } = full_domain_lc;
-            RegisteredDomains::<T>::try_mutate(&tld, &domain, |meta_opt| -> DispatchResult {
-                if let Some(meta) = meta_opt {
-                    change_fn(meta);
-                    Ok(())
-                } else {
-                    Err(Error::<T>::DomainNotFound.into())
-                }
-            })
-        }
-
         pub fn ensure_domains_insert_limit_not_reached(
             domains_len: usize,
         ) -> DispatchResultWithPostInfo {
@@ -594,6 +568,41 @@ pub mod pallet {
 
             ensure!(expires_at > &System::<T>::block_number(), Error::<T>::DomainHasExpired);
             ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            Ok(())
+        }
+
+        pub fn try_reserve_deposit(
+            depositor: &T::AccountId,
+            stored_value: &mut BalanceOf<T>,
+            new_deposit: BalanceOf<T>,
+        ) -> DispatchResult {
+            let old_deposit = &mut stored_value.clone();
+            *stored_value = new_deposit;
+
+            use sp_std::cmp::Ordering;
+
+            match stored_value.cmp(&old_deposit) {
+                Ordering::Greater => <T as Config>::Currency::reserve(depositor, *stored_value - *old_deposit)?,
+                Ordering::Less => {
+                    let err_amount = <T as Config>::Currency::unreserve(
+                        depositor, *old_deposit - *stored_value,
+                    );
+                    debug_assert!(err_amount.is_zero());
+                },
+                _ => (),
+            }
+            Ok(())
+        }
+
+        pub fn try_unreserve_deposit(
+            depositor: &T::AccountId,
+            stored_value: &mut BalanceOf<T>,
+        ) -> DispatchResult {
+            let old_deposit = *stored_value;
+            *stored_value = Zero::zero();
+
+            <T as Config>::Currency::unreserve(depositor, old_deposit);
+
             Ok(())
         }
     }

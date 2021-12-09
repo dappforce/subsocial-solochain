@@ -21,7 +21,6 @@
     "outer_value": "Option<Text>",
 
     "domain_deposit": "Balance",
-    "inner_value_deposit": "Balance",
     "outer_value_deposit": "Balance"
   }
 }

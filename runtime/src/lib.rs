@@ -463,24 +463,26 @@ parameter_types! {
     pub const OuterValueLimit: u16 = 256;
 
     // TODO: think on changing this values
-    pub const DomainDeposit: Balance = 1 * UNITS;
-    pub const InnerValueDeposit: Balance = 10 * CENTS;
-    pub const OuterValueDepositPerByte: Balance = 1 * CENTS;
+    pub const DomainDeposit: Balance = deposit(1, 140);
+    pub const OuterValueByteDeposit: Balance = 500 * MILLICENTS;
 }
 
 impl pallet_domains::Config for Runtime {
     type Event = Event;
     type Currency = Balances;
     type SpacesProvider = Spaces;
+
     type MinTldLength = MinTldLength;
     type MinDomainLength = MinDomainLength;
     type MaxDomainLength = MaxDomainLength;
+
     type DomainsInsertLimit = DomainsInsertLimit;
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
+
     type DomainDeposit = DomainDeposit;
-    type InnerValueDeposit = InnerValueDeposit;
-    type OuterValueDepositPerByte = OuterValueDepositPerByte;
+    type OuterValueByteDeposit = OuterValueByteDeposit;
+
     type WeightInfo = pallet_domains::weights::SubstrateWeight<Runtime>;
 }
 

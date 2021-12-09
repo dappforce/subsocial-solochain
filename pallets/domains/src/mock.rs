@@ -28,7 +28,9 @@ frame_support::construct_runtime!(
 	}
 );
 
+pub(crate) type AccountId = u64;
 type Balance = u64;
+type BlockNumber = u64;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -43,10 +45,10 @@ impl system::Config for Test {
     type Origin = Origin;
     type Call = Call;
     type Index = u64;
-    type BlockNumber = u64;
+    type BlockNumber = BlockNumber;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = u64;
+    type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
     type Event = Event;
@@ -106,12 +108,11 @@ parameter_types! {
     pub const MaxDomainLength: u8 = 63;
 
     pub const DomainsInsertLimit: u32 = 30_000;
-    pub const ReservationPeriodLimit: u32 = 100;
+    pub const ReservationPeriodLimit: BlockNumber = 100;
     pub const OuterValueLimit: u16 = 256;
 
     pub const DomainDeposit: Balance = 10;
-    pub const InnerValueDeposit: Balance = 10;
-    pub const OuterValueDepositPerByte: Balance = 1;
+    pub const OuterValueByteDeposit: Balance = 1;
 }
 
 impl pallet_domains::Config for Test {
@@ -125,8 +126,7 @@ impl pallet_domains::Config for Test {
     type ReservationPeriodLimit = ReservationPeriodLimit;
     type OuterValueLimit = OuterValueLimit;
     type DomainDeposit = DomainDeposit;
-    type InnerValueDeposit = InnerValueDeposit;
-    type OuterValueDepositPerByte = OuterValueDepositPerByte;
+    type OuterValueByteDeposit = OuterValueByteDeposit;
     type WeightInfo = ();
 }
 
