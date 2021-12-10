@@ -14,6 +14,7 @@ use frame_system::RawOrigin;
 
 use sp_runtime::traits::Bounded;
 use sp_std::{vec, vec::Vec};
+use pallet_utils::Content;
 
 use pallet_utils::mock_functions::valid_content_ipfs;
 
@@ -54,6 +55,18 @@ fn add_domain<T: Config>(owner: T::AccountId) -> Result<Domain, DispatchErrorWit
 	Ok(domain)
 }
 
+// TODO: replace with mock function when merged with other benchmarks.
+fn valid_content_ipfs_2() -> Content {
+	let mut new_content = Vec::new();
+	if let Content::IPFS(mut content) = valid_content_ipfs() {
+		content.swap_remove(0);
+		content.push(b'a');
+		new_content = content;
+	}
+
+	Content::IPFS(new_content)
+}
+
 benchmarks! {
 	register_domain {
 		let owner = account_with_balance::<T>();
@@ -79,7 +92,7 @@ benchmarks! {
 	verify {
 		let Domain { tld, domain } = Pallet::<T>::lower_domain(&full_domain);
 		let DomainMeta { inner_value, .. } = RegisteredDomains::<T>::get(&tld, &domain).unwrap();
-		ensure!(value == inner_value, "Inner value was not set.")
+		ensure!(value == inner_value, "Inner value was not updated.")
 	}
 
 	set_outer_value {
@@ -94,7 +107,20 @@ benchmarks! {
 	verify {
 		let Domain { tld, domain } = Pallet::<T>::lower_domain(&full_domain);
 		let DomainMeta { outer_value, .. } = RegisteredDomains::<T>::get(&tld, &domain).unwrap();
-		ensure!(value == outer_value, "Outer value was not set.")
+		ensure!(value == outer_value, "Outer value was not updated.")
+	}
+
+	set_domain_content {
+		let owner = account_with_balance::<T>();
+
+		let full_domain = add_domain::<T>(owner.clone())?;
+
+		let new_content = valid_content_ipfs_2();
+	}: _(RawOrigin::Signed(owner), full_domain.clone(), new_content.clone())
+	verify {
+		let Domain { tld, domain } = Pallet::<T>::lower_domain(&full_domain);
+		let DomainMeta { content, .. } = RegisteredDomains::<T>::get(&tld, &domain).unwrap();
+		ensure!(new_content == content, "Content was not updated.")
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

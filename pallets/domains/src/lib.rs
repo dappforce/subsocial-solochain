@@ -72,7 +72,7 @@ pub mod pallet {
         owner: T::AccountId,
 
         // Some additional (custom) domain metadata.
-        content: Content,
+        pub content: Content,
 
         // The inner domain link (some Subsocial entity).
         pub inner_value: InnerValue<T>,
