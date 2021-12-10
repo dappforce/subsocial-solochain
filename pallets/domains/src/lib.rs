@@ -188,7 +188,7 @@ pub mod pallet {
         DomainRegistered(T::AccountId, Domain, BalanceOf<T>),
         /// The domain meta was successfully updated.
         DomainUpdated(T::AccountId, Domain),
-        /// The domains list was successfully added to a reserved list.
+        /// The domains list was successfully added to the reserved list.
         DomainsReserved(u16),
         /// The list of top level domains was successfully added to the supported list.
         NewTldAdded(u16),
@@ -205,21 +205,21 @@ pub mod pallet {
         /// Domain was not found by either custom domain name or top level domain.
         DomainNotFound,
         /// This domain cannot be registered yet, because it is reserved.
-        DomainReserved,
+        DomainIsReserved,
         /// This domain is already held by another account.
-        DomainAlreadyStored,
+        DomainAlreadyOwned,
         /// A new inner value is the same as the old one.
         InnerValueNotChanged,
         /// Lower than Second level domains are not allowed.
         LowerLevelDomainsNotAllowed,
         /// This account is not allowed to update the domain metadata.
-        NotADomainOwner,
+        NotDomainOwner,
         /// Outer value exceeds its length limit.
         OuterValueOffLengthLimit,
         /// A new outer value is the same as the old one.
         OuterValueNotChanged,
         /// Reservation period cannot be a zero value.
-        ZeroReservationPeriod,
+        InvalidReservationPeriod,
         /// Cannot store a domain for that long period of time.
         TooBigReservationPeriod,
         /// The top level domain may contain only A-Z, 0-9 and hyphen characters.
@@ -245,20 +245,20 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            ensure!(!expires_in.is_zero(), Error::<T>::ZeroReservationPeriod);
+            ensure!(!expires_in.is_zero(), Error::<T>::InvalidReservationPeriod);
             ensure!(
                 expires_in <= T::ReservationPeriodLimit::get(),
                 Error::<T>::TooBigReservationPeriod,
             );
 
             // Note that while upper and lower case letters are allowed in domain
-            // names, no significance is attached to the case. That is, two names with
+            // names, domain names are not case-sensitive. That is, two names with
             // the same spelling but different case are to be treated as if identical.
             let Domain { tld, domain } = &full_domain;
             let full_domain_lc = Self::lower_domain(&full_domain);
             let Domain { tld: tld_lc, domain: domain_lc } = &full_domain_lc;
 
-            ensure!(!Self::reserved_domain(tld_lc), Error::<T>::DomainReserved);
+            ensure!(!Self::reserved_domain(tld_lc), Error::<T>::DomainIsReserved);
 
             Utils::<T>::is_valid_content(content.clone())?;
 
@@ -267,7 +267,7 @@ pub mod pallet {
 
             ensure!(
                 Self::registered_domain(tld_lc, domain_lc).is_none(),
-                Error::<T>::DomainAlreadyStored,
+                Error::<T>::DomainAlreadyOwned,
             );
 
             let expires_at = expires_in.saturating_add(System::<T>::block_number());
@@ -414,7 +414,7 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Checks the length of the provided u8 slice.
+        /// Checks the length of the provided u8 array.
         fn ensure_domain_has_valid_length(
             string: &[u8],
             min: u8,
@@ -446,8 +446,8 @@ pub mod pallet {
         /// The domain must match the recommended IETF conventions:
         /// https://datatracker.ietf.org/doc/html/rfc1035#section-2.3.1
         ///
-        /// The domains must must start with a letter, end with a letter or digit,
-        /// and have as interior characters only letters, digits, and hyphen.
+        /// The domains must start with a letter, end with a letter or digit,
+        /// and have as interior characters only letters, digits, and/or hyphens.
         /// There are also some restrictions on the length:
         /// Domains length must be between 3 and 63 characters.
         pub fn ensure_valid_domain(domain: &[u8]) -> DispatchResult {
@@ -485,7 +485,7 @@ pub mod pallet {
             // The TLD consist of only ASCII characters from the groups "letters" (A-Z),
             // "digits" (0-9) and "hyphen" (-).
             // It MUST start with an ASCII "letter", and it MUST NOT end with a "hyphen".
-            // Upper and lower case MAY be mixed at random, since DNS lookups are case-insensitive.
+            // Upper and lower case MAY be mixed at random, since DNS lookups are not case-sensitive.
             Self::ensure_domain_contains_valid_chars(
                 domain, Error::<T>::TopLevelDomainContainsInvalidChar
             )?;
@@ -567,7 +567,7 @@ pub mod pallet {
             let DomainMeta { owner, expires_at, .. } = domain_meta;
 
             ensure!(expires_at > &System::<T>::block_number(), Error::<T>::DomainHasExpired);
-            ensure!(sender == owner, Error::<T>::NotADomainOwner);
+            ensure!(sender == owner, Error::<T>::NotDomainOwner);
             Ok(())
         }
 
