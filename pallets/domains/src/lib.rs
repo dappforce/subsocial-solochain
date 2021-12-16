@@ -26,7 +26,7 @@ pub mod pallet {
     use frame_system::Pallet as System;
     use frame_system::pallet_prelude::*;
     use scale_info::TypeInfo;
-    use sp_runtime::traits::{Saturating, Zero};
+    use sp_runtime::traits::{Saturating, StaticLookup, Zero};
     use sp_std::vec::Vec;
 
     use df_traits::SpacesProvider;
@@ -235,13 +235,14 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_domain())]
         pub fn register_domain(
             origin: OriginFor<T>,
-            owner: T::AccountId,
+            owner: <T::Lookup as StaticLookup>::Source,
             full_domain: Domain,
             content: Content,
             expires_in: T::BlockNumber,
             #[pallet::compact] price: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            let owner = T::Lookup::lookup(owner)?;
 
             ensure!(!expires_in.is_zero(), Error::<T>::InvalidReservationPeriod);
             ensure!(

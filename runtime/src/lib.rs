@@ -458,7 +458,7 @@ parameter_types! {
     pub const MinDomainLength: u8 = 3;
     pub const MaxDomainLength: u8 = 63;
 
-    pub const DomainsInsertLimit: u32 = 30_000;
+    pub const DomainsInsertLimit: u32 = 100;
     pub const ReservationPeriodLimit: BlockNumber = 10 * (365 * DAYS);
     pub const OuterValueLimit: u16 = 256;
 
