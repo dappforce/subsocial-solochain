@@ -1,14 +1,35 @@
-FROM paritytech/ci-linux:production as builder
-LABEL description="This is the build stage for Subsocial. Here we build the Subsocial node binary."
-
+FROM oap75/cargo-chef:latest  AS chef
 WORKDIR /subsocial
 
-COPY . /subsocial
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-RUN cargo build --release
+FROM chef AS builder 
+COPY --from=planner /subsocial/recipe.json recipe.json
+# Build dependencies - this is the caching Docker layer!
+RUN cargo chef cook --release --recipe-path recipe.json
+# Build application
+COPY . .
+RUN cargo build --release 
 
+
+#FROM debian:bullseye-slim AS runtime
+#WORKDIR app
+#COPY --from=builder /opt/app/subsocial/target/release/app /usr/local/bin
+#ENTRYPOINT ["/usr/local/bin/app"]
+
+
+#FROM paritytech/ci-linux:production as builder
+#LABEL description="This is the build stage for Subsocial. Here we build the Subsocial node binary."
+#
+#WORKDIR /subsocial
+#
+#COPY . /subsocial
+#
+#RUN cargo build --release
+#
 FROM debian:buster-slim
-LABEL description="This is the 2nd stage. Here we assembly a very small docker image where we copy the Subsocial binary."
 COPY --from=builder /subsocial/target/release/subsocial-node /usr/local/bin
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /subsocial subsocial && \
