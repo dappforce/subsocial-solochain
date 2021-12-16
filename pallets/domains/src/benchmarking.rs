@@ -12,7 +12,7 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 
-use sp_runtime::traits::Bounded;
+use sp_runtime::traits::{Bounded, StaticLookup};
 use sp_std::{vec, vec::Vec};
 use pallet_utils::Content;
 
@@ -24,6 +24,32 @@ fn account_with_balance<T: Config>() -> T::AccountId {
 
 	owner
 }
+
+fn lookup_source_from_account<T: Config>(
+	account: &T::AccountId,
+) -> <T::Lookup as StaticLookup>::Source {
+	T::Lookup::unlookup(account.clone())
+}
+
+fn create_domain_names<T: Config>(num: usize) -> DomainsVec {
+	let mut domains: DomainsVec = Vec::new();
+
+	let max_domain_length = T::MaxDomainLength::get() as usize;
+	let mut domain = vec![b'A'; max_domain_length];
+
+	for i in 0..num {
+		let idx = i % max_domain_length;
+
+		let next_char = (domain[idx] + 1).clamp(65, 90);
+		let _ = sp_std::mem::replace(&mut domain[idx], next_char);
+		domains.push(domain.clone());
+	}
+
+	assert_eq!(num, domains.len());
+
+	domains
+}
+
 fn mock_domain<T: Config>() -> Domain {
 	let max_length_domain = vec![b'A'; T::MaxDomainLength::get().into()];
 
@@ -40,7 +66,7 @@ fn add_tld<T: Config>(tld: Vec<u8>) -> DispatchResultWithPostInfo {
 	)
 }
 
-fn add_domain<T: Config>(owner: T::AccountId) -> Result<Domain, DispatchErrorWithPostInfo> {
+fn add_domain<T: Config>(owner: <T::Lookup as StaticLookup>::Source) -> Result<Domain, DispatchErrorWithPostInfo> {
 	let domain = mock_domain::<T>();
 
 	add_tld::<T>(domain.tld.clone())?;
@@ -69,7 +95,8 @@ fn valid_content_ipfs_2() -> Content {
 
 benchmarks! {
 	register_domain {
-		let owner = account_with_balance::<T>();
+		let account_with_balance = account_with_balance::<T>();
+		let owner = lookup_source_from_account::<T>(&account_with_balance);
 
 		let full_domain = mock_domain::<T>();
 		add_tld::<T>(full_domain.tld.clone())?;
@@ -85,7 +112,7 @@ benchmarks! {
 
 	set_inner_value {
 		let owner = account_with_balance::<T>();
-		let full_domain = add_domain::<T>(owner.clone())?;
+		let full_domain = add_domain::<T>(lookup_source_from_account::<T>(&owner))?;
 
 		let value = Some(DomainInnerLink::Account(owner.clone()));
 	}: _(RawOrigin::Signed(owner), full_domain.clone(), value.clone())
@@ -96,13 +123,10 @@ benchmarks! {
 	}
 
 	set_outer_value {
-		let s in 1 .. T::OuterValueLimit::get().into();
-
 		let owner = account_with_balance::<T>();
+		let full_domain = add_domain::<T>(lookup_source_from_account::<T>(&owner))?;
 
-		let full_domain = add_domain::<T>(owner.clone())?;
-
-		let value = Some(vec![b'A'; s as usize]);
+		let value = Some(vec![b'A'; T::OuterValueLimit::get() as usize]);
 	}: _(RawOrigin::Signed(owner), full_domain.clone(), value.clone())
 	verify {
 		let Domain { tld, domain } = Pallet::<T>::lower_domain(&full_domain);
@@ -113,7 +137,7 @@ benchmarks! {
 	set_domain_content {
 		let owner = account_with_balance::<T>();
 
-		let full_domain = add_domain::<T>(owner.clone())?;
+		let full_domain = add_domain::<T>(lookup_source_from_account::<T>(&owner))?;
 
 		let new_content = valid_content_ipfs_2();
 	}: _(RawOrigin::Signed(owner), full_domain.clone(), new_content.clone())
@@ -121,6 +145,22 @@ benchmarks! {
 		let Domain { tld, domain } = Pallet::<T>::lower_domain(&full_domain);
 		let DomainMeta { content, .. } = RegisteredDomains::<T>::get(&tld, &domain).unwrap();
 		ensure!(new_content == content, "Content was not updated.")
+	}
+
+	reserve_domains {
+		let s in 1 .. T::DomainsInsertLimit::get() => ();
+		let domains = create_domain_names::<T>(s as usize);
+	}: _(RawOrigin::Root, domains)
+	verify {
+		ensure!(ReservedDomains::<T>::iter().count() as u32 == s, "Domains were not reserved.");
+	}
+
+	add_tlds {
+		let s in 1 .. T::DomainsInsertLimit::get() => ();
+		let domains = create_domain_names::<T>(s as usize);
+	}: _(RawOrigin::Root, domains)
+	verify {
+		ensure!(SupportedTlds::<T>::iter().count() as u32 == s, "TLDs were not added.");
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

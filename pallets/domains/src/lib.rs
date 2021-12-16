@@ -146,8 +146,6 @@ pub mod pallet {
         #[pallet::constant]
         type OuterValueByteDeposit: Get<BalanceOf<Self>>;
 
-        // TODO: add price coefficients for different domains lengths
-
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -312,9 +310,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::set_outer_value({
-            if let Some(value) = value_opt { value.len() as u32 } else { Zero::zero() }
-        }))]
+        #[pallet::weight(<T as Config>::WeightInfo::set_outer_value())]
         pub fn set_outer_value(
             origin: OriginFor<T>,
             domain: Domain,
@@ -349,7 +345,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 1))]
+        #[pallet::weight(<T as Config>::WeightInfo::set_domain_content())]
         pub fn set_domain_content(
             origin: OriginFor<T>,
             domain: Domain,
@@ -372,7 +368,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(domains.len() as u64))]
+        #[pallet::weight(<T as Config>::WeightInfo::reserve_domains(T::DomainsInsertLimit::get()))]
         pub fn reserve_domains(
             origin: OriginFor<T>,
             domains: DomainsVec,
@@ -382,17 +378,20 @@ pub mod pallet {
             let domains_len = domains.len();
             Self::ensure_domains_insert_limit_not_reached(domains_len)?;
 
-            Self::insert_domains(
+            let inserted_domains_count = Self::insert_domains(
                 domains,
                 Self::ensure_valid_domain,
                 |domain| ReservedDomains::<T>::insert(domain, true),
             )?;
 
             Self::deposit_event(Event::DomainsReserved(domains_len as u16));
-            Ok(Pays::No.into())
+            Ok((
+                Some(<T as Config>::WeightInfo::reserve_domains(inserted_domains_count)),
+                Pays::No,
+            ).into())
         }
 
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(domains.len() as u64))]
+        #[pallet::weight(<T as Config>::WeightInfo::add_tlds(T::DomainsInsertLimit::get()))]
         pub fn add_tlds(
             origin: OriginFor<T>,
             domains: DomainsVec,
@@ -402,14 +401,17 @@ pub mod pallet {
             let domains_len = domains.len();
             Self::ensure_domains_insert_limit_not_reached(domains_len)?;
 
-            Self::insert_domains(
+            let inserted_domains_count = Self::insert_domains(
                 domains,
                 Self::ensure_valid_tld,
                 |domain| SupportedTlds::<T>::insert(domain.to_ascii_lowercase(), true),
             )?;
 
             Self::deposit_event(Event::NewTldAdded(domains_len as u16));
-            Ok(Pays::No.into())
+            Ok((
+                Some(<T as Config>::WeightInfo::add_tlds(inserted_domains_count)),
+                Pays::No,
+            ).into())
         }
     }
 
@@ -526,7 +528,7 @@ pub mod pallet {
             domains: DomainsVec,
             check_fn: F,
             insert_storage_fn: S,
-        ) -> DispatchResult
+        ) -> Result<u32, DispatchError>
             where
                 F: Fn(&[u8]) -> DispatchResult,
                 S: FnMut(&DomainName),
@@ -536,7 +538,7 @@ pub mod pallet {
             }
 
             domains.iter().for_each(insert_storage_fn);
-            Ok(())
+            Ok(domains.len() as u32)
         }
 
         /// Try to get domain meta by it's custom and top level domain names.
