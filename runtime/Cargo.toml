@@ -68,6 +68,8 @@ frame-system-rpc-runtime-api = { git = 'https://github.com/paritytech/substrate'
 pallet-aura = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
 pallet-balances = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
 pallet-grandpa = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+pallet-multisig = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+pallet-proxy = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
 pallet-randomness-collective-flip = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
 pallet-scheduler = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
 pallet-sudo = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
@@ -98,6 +100,8 @@ runtime-benchmarks = [
     'frame-support/runtime-benchmarks',
     'frame-system/runtime-benchmarks',
     'pallet-balances/runtime-benchmarks',
+    'pallet-multisig/runtime-benchmarks',
+    'pallet-proxy/runtime-benchmarks',
     'pallet-timestamp/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks',
     'pallet-dotsama-claims/runtime-benchmarks',
@@ -112,6 +116,8 @@ std = [
     'pallet-aura/std',
     'pallet-balances/std',
     'pallet-grandpa/std',
+    'pallet-multisig/std',
+    'pallet-proxy/std',
     'pallet-randomness-collective-flip/std',
     'pallet-scheduler/std',
     'pallet-sudo/std',

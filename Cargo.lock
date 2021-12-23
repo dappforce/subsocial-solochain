@@ -4066,6 +4066,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-multisig"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#acb44df78015906174daf359b40916b7bef58c57"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-permissions"
 version = "0.7.1"
 dependencies = [
@@ -4146,6 +4161,21 @@ dependencies = [
  "pallet-utils",
  "parity-scale-codec",
  "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-proxy"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#acb44df78015906174daf359b40916b7bef58c57"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -7865,12 +7895,14 @@ dependencies = [
  "pallet-dotsama-claims",
  "pallet-faucets",
  "pallet-grandpa",
+ "pallet-multisig",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
  "pallet-profile-follows",
  "pallet-profile-history",
  "pallet-profiles",
+ "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-reactions",
  "pallet-roles",
