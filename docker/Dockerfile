@@ -14,30 +14,18 @@ COPY . .
 RUN cargo build --release 
 
 
-#FROM debian:bullseye-slim AS runtime
-#WORKDIR app
-#COPY --from=builder /opt/app/subsocial/target/release/app /usr/local/bin
-#ENTRYPOINT ["/usr/local/bin/app"]
-
-
-#FROM paritytech/ci-linux:production as builder
-#LABEL description="This is the build stage for Subsocial. Here we build the Subsocial node binary."
-#
-#WORKDIR /subsocial
-#
-#COPY . /subsocial
-#
-#RUN cargo build --release
-#
 FROM debian:buster-slim
 COPY --from=builder /subsocial/target/release/subsocial-node /usr/local/bin
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /subsocial subsocial && \
+        apt update && apt install curl -y && \
 	mkdir -p /subsocial/.local/share && \
 	mkdir /data && \
 	chown -R subsocial:subsocial /data && \
-	ln -s /data /subsocial/.local/share/subsocial-node && \
-	rm -rf /usr/bin /usr/sbin
+	ln -s /data /subsocial/.local/share/subsocial-node 
+#&& \
+#	rm -rf /usr/bin /usr/sbin
+       
 
 USER subsocial
 EXPOSE 30333 9933 9944
