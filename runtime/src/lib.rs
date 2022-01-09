@@ -461,7 +461,7 @@ construct_runtime!(
 
 		// Subsocial custom pallets:
 
-		Permissions: pallet_permissions::{Pallet, Call},
+		Permissions: pallet_permissions::{Pallet},
 		Posts: pallet_posts::{Pallet, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Pallet, Storage},
 		ProfileFollows: pallet_profile_follows::{Pallet, Call, Storage, Event<T>},
