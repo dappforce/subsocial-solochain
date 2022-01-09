@@ -161,7 +161,7 @@ pub mod pallet {
                 new_pallet_prefix
             );
             migration::move_pallet(old_pallet_prefix.as_bytes(), new_pallet_prefix.as_bytes());
-            0
+            T::BlockWeights::get().max_block
         }
     }
 
