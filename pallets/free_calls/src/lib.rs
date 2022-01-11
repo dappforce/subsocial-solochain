@@ -228,6 +228,10 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Determine if `account` can have a free call and update user window usage.
+        ///
+        /// Window usage for the caller `account` will only update if there is quota and all of the
+        /// previous window usages doesn't exceed the defined windows config.
         fn can_make_free_call_and_update_stats(account: &T::AccountId) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
             let windows_config = T::WindowsConfig::get();
