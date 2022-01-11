@@ -67,7 +67,8 @@ use pallet_spaces::rpc::FlatSpace;
 use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
 
 pub mod constants;
-use constants::{currency::*, time::*};
+use constants::{free_calls::*, currency::*, time::*};
+use pallet_free_calls::WindowConfig;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -428,6 +429,18 @@ impl Contains<Call> for BaseFilter {
     }
 }
 
+parameter_types! {
+	pub FreeCallsWindowsConfig: Vec<WindowConfig<BlockNumber>> = FREE_CALLS_WINDOWS_CONFIG.to_vec();
+}
+
+
+impl pallet_free_calls::Config for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type WindowsConfig = FreeCallsWindowsConfig;
+    type ManagerOrigin =  EnsureRoot<AccountId>;
+}
+
 /*parameter_types! {
     pub const DefaultAutoblockThreshold: u16 = 20;
 }
@@ -474,6 +487,7 @@ construct_runtime!(
 		SpaceOwnership: pallet_space_ownership::{Pallet, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Pallet, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Pallet, Storage, Event<T>, Config<T>},
+        FreeCalls: pallet_free_calls::{Pallet, Storage, Event<T>},
 
 		// New experimental pallets. Not recommended to use in production yet.
 

@@ -46,6 +46,8 @@ pallet-spaces = { default-features = false, path = '../pallets/spaces' }
 
 pallet-utils = { default-features = false, path = '../pallets/utils' }
 
+pallet-free-calls = { default-features = false, path = '../pallets/free_calls' }
+
 # Custom Runtime APIs
 posts-runtime-api = { default-features = false, path = '../pallets/posts/rpc/runtime-api' }
 profile-follows-runtime-api = { default-features = false, path = '../pallets/profile-follows/rpc/runtime-api' }

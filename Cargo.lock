@@ -4020,6 +4020,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-free-calls"
+version = "0.7.1"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples 0.1.3",
+ "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-grandpa"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#acb44df78015906174daf359b40916b7bef58c57"
@@ -7864,6 +7880,7 @@ dependencies = [
  "pallet-balances",
  "pallet-dotsama-claims",
  "pallet-faucets",
+ "pallet-free-calls",
  "pallet-grandpa",
  "pallet-permissions",
  "pallet-post-history",
