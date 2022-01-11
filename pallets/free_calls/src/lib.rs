@@ -92,20 +92,25 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
+        /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+        /// The call type from the runtime which has all the calls available in your runtime.
         type Call: Parameter + GetDispatchInfo + Dispatchable<Origin=Self::Origin>;
 
+        /// The configurations that will be used to limit the usage of the allocated quota to these
+        /// different configs.
         #[pallet::constant]
         type WindowsConfig: Get<Vec<WindowConfig<Self::BlockNumber>>>;
 
+        /// The origin which can change the allocated quota for accounts.
         type ManagerOrigin: EnsureOrigin<Self::Origin>;
     }
 
 
+    /// Keeps tracks of the allocated quota to each account.
     #[pallet::storage]
     #[pallet::getter(fn quota_by_account)]
-    /// Keeps track of what accounts own what Kitty.
     pub(super) type QuotaByAccount<T: Config> = StorageMap<
         _,
         Twox64Concat,
@@ -114,9 +119,9 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// Keeps track of each windows usage for each account.
     #[pallet::storage]
     #[pallet::getter(fn window_stats_by_account)]
-    /// Keeps track of each windows usage for each account.
     pub(super) type WindowStatsByAccount<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
@@ -134,6 +139,10 @@ pub mod pallet {
         FreeCallResult(T::AccountId, DispatchResult),
     }
 
+    /// Try to execute a call using the free allocated quota. This call may not execute because one of
+    /// the following reasons:
+    ///  * Caller have no free quota set.
+    ///  * The caller have used all the allowed intersects for one or all of the current windows.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         // TODO: fix weight
@@ -159,6 +168,7 @@ pub mod pallet {
         }
 
 
+        /// Set an account's quota. This will fail if the caller doesn't match `T::ManagerOrigin`.
         #[pallet::weight(10_000)]
         pub fn change_account_quota(origin: OriginFor<T>, account: T::AccountId, quota: NumberOfCalls) -> DispatchResult {
             let _ = T::ManagerOrigin::ensure_origin(origin);
