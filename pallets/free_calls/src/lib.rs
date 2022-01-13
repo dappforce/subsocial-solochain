@@ -31,9 +31,11 @@ pub mod pallet {
     use sp_std::boxed::Box;
     use sp_std::vec::Vec;
     use sp_std::cmp::max;
+    use sp_runtime::traits::Zero;
 
 
     // TODO: find a better name
+    // TODO: disallow users to enter 0
     /// The ratio between the quota and a particular window.
     ///
     /// ## Example:
@@ -234,7 +236,13 @@ pub mod pallet {
         /// previous window usages doesn't exceed the defined windows config.
         fn can_make_free_call_and_update_stats(account: &T::AccountId) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
-            let windows_config = T::WindowsConfig::get();
+
+            // TODO: can we make this const or check in compile time???
+            // ignore windows of period 0 and rate of 0.
+            let windows_config: Vec<_> = T::WindowsConfig::get()
+                .into_iter()
+                .filter(|config| config.period.is_zero() || config.quota_ratio.is_zero())
+                .collect();
             let quota = Self::quota_by_account(account);
 
             let quota = match quota {
