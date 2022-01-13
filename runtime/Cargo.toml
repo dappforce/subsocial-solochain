@@ -26,6 +26,8 @@ static_assertions = "1.1.0"
 pallet-dotsama-claims = { default-features = false, path = '../pallets/dotsama-claims' }
 
 pallet-faucets = { default-features = false, path = '../pallets/faucets' }
+pallet-free-calls = { default-features = false, path = '../pallets/free-calls' }
+
 #pallet-moderation = { default-features = false, path = '../pallets/moderation' }
 pallet-permissions = { default-features = false, path = '../pallets/permissions' }
 
@@ -46,7 +48,6 @@ pallet-spaces = { default-features = false, path = '../pallets/spaces' }
 
 pallet-utils = { default-features = false, path = '../pallets/utils' }
 
-pallet-free-calls = { default-features = false, path = '../pallets/free_calls' }
 
 # Custom Runtime APIs
 posts-runtime-api = { default-features = false, path = '../pallets/posts/rpc/runtime-api' }
@@ -136,6 +137,7 @@ std = [
     'subsocial-primitives/std',
     'pallet-dotsama-claims/std',
     'pallet-faucets/std',
+    'pallet-free-calls/std',
 #    'pallet-moderation/std',
     'pallet-permissions/std',
     'pallet-post-history/std',
