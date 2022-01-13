@@ -438,7 +438,7 @@ impl pallet_free_calls::Config for Runtime {
     type Event = Event;
     type Call = Call;
     type WindowsConfig = FreeCallsWindowsConfig;
-    type ManagerOrigin =  EnsureRoot<AccountId>;
+    type ManagerOrigin = EnsureRoot<AccountId>;
 }
 
 /*parameter_types! {
