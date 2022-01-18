@@ -139,6 +139,9 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// free call was executed. [who, result]
         FreeCallResult(T::AccountId, DispatchResult),
+
+        /// quota have been changed for an acocunt. [who, allocated_quota]
+        QuotaChanged(T::AccountId, NumberOfCalls),
     }
 
     /// Try to execute a call using the free allocated quota. This call may not execute because one of
@@ -175,7 +178,9 @@ pub mod pallet {
         pub fn change_account_quota(origin: OriginFor<T>, account: T::AccountId, quota: NumberOfCalls) -> DispatchResult {
             let _ = T::ManagerOrigin::ensure_origin(origin);
 
-            <QuotaByAccount<T>>::insert(account, quota);
+            <QuotaByAccount<T>>::insert(account.clone(), quota);
+
+            Self::deposit_event(Event::QuotaChanged(account, quota));
 
             Ok(())
         }
