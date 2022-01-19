@@ -487,7 +487,7 @@ construct_runtime!(
 		SpaceOwnership: pallet_space_ownership::{Pallet, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Pallet, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Pallet, Storage, Event<T>, Config<T>},
-		FreeCalls: pallet_free_calls::{Pallet, Storage, Event<T>},
+		FreeCalls: pallet_free_calls::{Pallet, Call, Storage, Event<T>},
 
 		// New experimental pallets. Not recommended to use in production yet.
 
