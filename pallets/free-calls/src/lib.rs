@@ -248,6 +248,21 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        // TODO: can we make this const or check in compile time???----
+        /// Makes sure the configs are safe by removing any config that have zero period or zero quota_ratio
+        /// Also sort the configs in reverse order using the quota_ratio
+        fn safe_windows_config() -> Vec<WindowConfig<T::BlockNumber>> {
+            let mut windows_config: Vec<_> = T::WindowsConfig::get()
+                .into_iter()
+                .filter(|config| !config.period.is_zero() && !config.quota_ratio.is_zero())
+                .collect();
+
+            windows_config.sort_by_key(|config| config.quota_ratio);
+            windows_config.reverse();
+
+            windows_config
+        }
+
         /// Determine if `account` can have a free call and update user window usage.
         ///
         /// Window usage for the caller `account` will only update if there is quota and all of the
@@ -255,14 +270,11 @@ pub mod pallet {
         fn can_make_free_call_and_update_stats(account: &T::AccountId) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
-            // TODO: can we make this const or check in compile time???----
-            // TODO: remove
-            // ignore windows of period 0 and rate of 0.
-            let windows_config: Vec<_> = T::WindowsConfig::get()
-                .into_iter()
-                // TODO: fix me remote fileter
-                .filter(|config| !config.period.is_zero() && !config.quota_ratio.is_zero())
-                .collect();
+            let windows_config = Self::safe_windows_config();
+
+            if windows_config.is_empty() {
+                return false;
+            }
 
             let quota = Self::quota_by_account(account);
 
