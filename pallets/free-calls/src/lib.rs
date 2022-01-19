@@ -46,28 +46,26 @@ pub mod pallet {
     /// Type to keep track of how many calls is in quota or used in a particular window.
     pub type NumberOfCalls = u16;
 
-    /// Defines the type that will be used to describe window size and window index.
+    /// Defines the type that will be used to describe window size and config index.
     /// 3~4 windows should be sufficient (1 block, 3 mins, 1 hour, 1 day).
     pub type WindowConfigsSize = u8;
 
-    // TODO: change to ConsumerStats
     /// Keeps track of the executed number of calls per window per account.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
-    pub struct WindowStats<BlockNumber> {
+    pub struct ConsumerStats<BlockNumber> {
         // TODO: find a better name?
         /// The index of this window in the timeline.
-        pub index: BlockNumber,
+        pub timeline_index: BlockNumber,
 
         /// The number of calls executed during this window.
-        // TODO: rename used_calls
-        pub num_of_calls: NumberOfCalls,
+        pub used_calls: NumberOfCalls,
     }
 
-    impl<BlockNumber> WindowStats<BlockNumber> {
+    impl<BlockNumber> ConsumerStats<BlockNumber> {
         fn new(window_index: BlockNumber) -> Self {
-            WindowStats {
-                index: window_index,
-                num_of_calls: 0,
+            ConsumerStats {
+                timeline_index: window_index,
+                used_calls: 0,
             }
         }
     }
@@ -133,7 +131,7 @@ pub mod pallet {
         Twox64Concat,
         // Index of the window in the list of window configurations.
         WindowConfigsSize,
-        WindowStats<T::BlockNumber>,
+        ConsumerStats<T::BlockNumber>,
     >;
 
     #[pallet::event]
@@ -200,8 +198,8 @@ pub mod pallet {
         account: T::AccountId,
         config_index: WindowConfigsSize,
         config: WindowConfig<T::BlockNumber>,
-        window_index: T::BlockNumber,
-        stats: WindowStats<T::BlockNumber>,
+        timeline_index: T::BlockNumber,
+        stats: ConsumerStats<T::BlockNumber>,
         can_be_called: bool,
     }
 
@@ -213,32 +211,32 @@ pub mod pallet {
             current_block: T::BlockNumber,
             config_index: WindowConfigsSize,
             config: WindowConfig<T::BlockNumber>,
-            window_stats: Option<WindowStats<T::BlockNumber>>,
+            window_stats: Option<ConsumerStats<T::BlockNumber>>,
         ) -> Self {
-            let window_index = current_block / config.period;
+            let timeline_index = current_block / config.period;
 
-            let reset_stats = || WindowStats::new(window_index);
+            let reset_stats = || ConsumerStats::new(timeline_index);
 
             let mut stats = window_stats.unwrap_or_else(reset_stats);
 
-            if stats.index < window_index {
+            if stats.timeline_index < timeline_index {
                 stats = reset_stats();
             }
 
-            let can_be_called = stats.num_of_calls < max(1, quota / config.quota_ratio);
+            let can_be_called = stats.used_calls < max(1, quota / config.quota_ratio);
 
             Window {
                 account: account.clone(),
                 config_index,
                 config,
-                window_index,
+                timeline_index,
                 stats,
                 can_be_called,
             }
         }
 
         fn increment_window_stats(&mut self) {
-            self.stats.num_of_calls = self.stats.num_of_calls.saturating_add(1);
+            self.stats.used_calls = self.stats.used_calls.saturating_add(1);
             <WindowStatsByAccount<T>>::insert(
                 self.account.clone(),
                 self.config_index,
