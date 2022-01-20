@@ -15,6 +15,17 @@
     "period_limit": "Option<Balance>",
     "drip_limit": "Option<Balance>"
   },
+  "QuotaToWindowRatio": "u16",
+  "NumberOfCalls": "u16",
+  "WindowConfigsSize": "u8",
+  "WindowConfig": {
+    "period": "BlockNumber",
+    "quota_ratio": "QuotaToWindowRatio"
+  },
+  "ConsumerStats": {
+    "timeline_index": "BlockNumber",
+    "used_calls": "NumberOfCalls"
+  },
   "ReportId": "u64",
   "EntityId": {
     "_enum": {
