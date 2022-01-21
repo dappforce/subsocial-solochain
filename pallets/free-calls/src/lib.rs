@@ -103,11 +103,17 @@ pub mod pallet {
 
         /// The configurations that will be used to limit the usage of the allocated quota to these
         /// different configs.
-        #[pallet::constant]
-        type WindowsConfig: Get<Vec<WindowConfig<Self::BlockNumber>>>;
+        const WINDOWS_CONFIG: &'static [WindowConfig<Self::BlockNumber>];
 
         /// The origin which can change the allocated quota for accounts.
         type ManagerOrigin: EnsureOrigin<Self::Origin>;
+    }
+
+    #[pallet::extra_constants]
+    impl<T: Config> Pallet<T> {
+        /// The configurations that will be used to limit the usage of the allocated quota to these
+        /// different configs.
+        fn windows_config() -> &'static [WindowConfig<T::BlockNumber>] { T::WINDOWS_CONFIG }
     }
 
     /// Keeps tracks of the allocated quota to each account.
@@ -197,7 +203,7 @@ pub mod pallet {
     struct Window<T: Config> {
         account: T::AccountId,
         config_index: WindowConfigsSize,
-        config: WindowConfig<T::BlockNumber>,
+        config: &'static WindowConfig<T::BlockNumber>,
         timeline_index: T::BlockNumber,
         stats: ConsumerStats<T::BlockNumber>,
         can_be_called: bool,
@@ -210,7 +216,7 @@ pub mod pallet {
             quota: NumberOfCalls,
             current_block: T::BlockNumber,
             config_index: WindowConfigsSize,
-            config: WindowConfig<T::BlockNumber>,
+            config: &'static WindowConfig<T::BlockNumber>,
             window_stats: Option<ConsumerStats<T::BlockNumber>>,
         ) -> Self {
             let timeline_index = current_block / config.period;
@@ -249,8 +255,8 @@ pub mod pallet {
         // TODO: can we make this const or check in compile time???----
         /// Makes sure the configs are safe by removing any config that have zero period or zero quota_ratio
         /// Also sort the configs in reverse order using the quota_ratio
-        fn safe_windows_config() -> Vec<WindowConfig<T::BlockNumber>> {
-            let mut windows_config: Vec<_> = T::WindowsConfig::get()
+        fn safe_windows_config() -> Vec<&'static WindowConfig<T::BlockNumber>> {
+            let mut windows_config: Vec<_> = T::WINDOWS_CONFIG
                 .into_iter()
                 .filter(|config| !config.period.is_zero() && !config.quota_ratio.is_zero())
                 .collect();
