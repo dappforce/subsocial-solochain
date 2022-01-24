@@ -34,7 +34,7 @@ pub mod free_calls {
 	// make sure that every next period is equal or smaller and ratio is equal or bigger
     pub const FREE_CALLS_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 3] = [
         // Window that last a day and have 100% of the allocated quota.
-			WindowConfig::new(1 * DAYS, 1),
+		WindowConfig::new(1 * DAYS, 1),
         // Window that last an hour and have (1/12) of the allocated quota.
         WindowConfig::new(1 * HOURS, 3),
         // Window that last for 5 minutes and have (1/100) of the allocated quota.

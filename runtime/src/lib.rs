@@ -29,6 +29,7 @@ use pallet_grandpa::fg_primitives;
 use sp_version::RuntimeVersion;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
+use sp_runtime::traits::Zero;
 
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
@@ -434,6 +435,42 @@ impl pallet_free_calls::Config for Runtime {
     type Call = Call;
     const WINDOWS_CONFIG: &'static [WindowConfig<BlockNumber>] = &FREE_CALLS_WINDOWS_CONFIG;
     type ManagerOrigin = EnsureRoot<AccountId>;
+}
+
+
+// Assert at compile time that the free-calls configs are in the optimal shape.
+const_assert!(check_free_calls_config(&FREE_CALLS_WINDOWS_CONFIG));
+const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) -> bool {
+    // cannot have empty configs
+    if configs.is_empty() {
+        return false;
+    }
+    let mut config = &configs[0];
+    // first config must have 1 as ratio
+    if config.quota_ratio != 1 {
+        return false;
+    }
+
+    let mut i = 1;
+
+    while i < configs.len() {
+        let current_config = &configs[i];
+
+        // current period must be less than the previous period
+        if current_config.period >= config.period {
+            return false;
+        }
+
+        // current ratio must be grater than or equal the previous ratio
+        if current_config.quota_ratio < config.quota_ratio {
+            return false;
+        }
+
+        config = current_config;
+        i = i + 1;
+    }
+
+    return true;
 }
 
 /*parameter_types! {
