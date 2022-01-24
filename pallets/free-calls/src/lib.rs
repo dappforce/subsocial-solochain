@@ -164,7 +164,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let sender = ensure_signed(origin.clone())?;
 
-            if Self::can_make_free_call_and_update_stats(&sender) {
+            if Self::can_make_free_call(&sender, ShouldUpdateAccountStats::YES) {
                 // Dispatch the call
                 let result = call.dispatch(origin);
 
@@ -252,12 +252,17 @@ pub mod pallet {
         }
     }
 
+    enum ShouldUpdateAccountStats {
+        YES,
+        NO,
+    }
+
     impl<T: Config> Pallet<T> {
-        /// Determine if `account` can have a free call and update user window usage.
+        /// Determine if `account` can have a free call and optionally update user window usage.
         ///
         /// Window usage for the caller `account` will only update if there is quota and all of the
         /// previous window usages doesn't exceed the defined windows config.
-        fn can_make_free_call_and_update_stats(account: &T::AccountId) -> bool {
+        fn can_make_free_call(account: &T::AccountId, should_update_account_stats: ShouldUpdateAccountStats) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
             let windows_config = T::WINDOWS_CONFIG;
@@ -305,8 +310,11 @@ pub mod pallet {
 
             if can_call {
                 log::info!("{:?} can have this free call", account);
-                for window in &mut windows {
-                    window.increment_window_stats();
+                if let ShouldUpdateAccountStats::YES = should_update_account_stats {
+                    log::info!("{:?} updating window stats", account);
+                    for window in &mut windows {
+                        window.increment_window_stats();
+                    }
                 }
             } else {
                 log::info!("{:?} don't have free calls", account);
