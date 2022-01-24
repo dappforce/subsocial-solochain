@@ -11,6 +11,15 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
+use frame_support::ensure;
+use frame_support::traits::IsSubType;
+use sp_runtime::{
+    traits::{DispatchInfoOf, SignedExtension, Saturating},
+    transaction_validity::{InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction},
+};
+use sp_std::fmt::Debug;
+
 pub use pallet::*;
 //
 // #[cfg(test)]
@@ -252,7 +261,7 @@ pub mod pallet {
         }
     }
 
-    enum ShouldUpdateAccountStats {
+    pub enum ShouldUpdateAccountStats {
         YES,
         NO,
     }
@@ -262,7 +271,7 @@ pub mod pallet {
         ///
         /// Window usage for the caller `account` will only update if there is quota and all of the
         /// previous window usages doesn't exceed the defined windows config.
-        fn can_make_free_call(account: &T::AccountId, should_update_account_stats: ShouldUpdateAccountStats) -> bool {
+        pub fn can_make_free_call(account: &T::AccountId, should_update_account_stats: ShouldUpdateAccountStats) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
             let windows_config = T::WINDOWS_CONFIG;
@@ -322,5 +331,82 @@ pub mod pallet {
 
             can_call
         }
+    }
+}
+
+
+/// Validate `try_free_call` calls prior to execution. Needed to avoid a DoS attack since they are
+/// otherwise free to place on chain.
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct FreeCallsPrevalidation<T: Config + Send + Sync>(sp_std::marker::PhantomData<T>)
+    where
+        <T as frame_system::Config>::Call: IsSubType<Call<T>>;
+
+impl<T: Config + Send + Sync> Debug for FreeCallsPrevalidation<T>
+    where
+        <T as frame_system::Config>::Call: IsSubType<Call<T>>,
+{
+    #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        write!(f, "FreeCallsPrevalidation")
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        Ok(())
+    }
+}
+
+impl<T: Config + Send + Sync> FreeCallsPrevalidation<T>
+    where
+        <T as frame_system::Config>::Call: IsSubType<Call<T>>,
+{
+    /// Create new `SignedExtension` to check runtime version.
+    pub fn new() -> Self {
+        Self(sp_std::marker::PhantomData)
+    }
+}
+
+#[repr(u8)]
+enum FreeCallsValidityError {
+    /// The account is not allowed to have this free call.
+    DisallowedCall = 0,
+}
+
+impl From<FreeCallsValidityError> for u8 {
+    fn from(err: FreeCallsValidityError) -> Self {
+        err as u8
+    }
+}
+
+impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
+    where
+        <T as frame_system::Config>::Call: IsSubType<Call<T>>,
+{
+    const IDENTIFIER: &'static str = "FreeCallsPrevalidation";
+
+    type AccountId = T::AccountId;
+    type Call = <T as frame_system::Config>::Call;
+    type AdditionalSigned = ();
+    type Pre = ();
+
+
+    fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+        Ok(())
+    }
+
+    fn validate(
+        &self,
+        who: &Self::AccountId,
+        call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> TransactionValidity {
+        if let Some(local_call) = call.is_sub_type() {
+            if let Call::try_free_call(_) = local_call {
+                ensure!(Pallet::<T>::can_make_free_call(who, ShouldUpdateAccountStats::NO), InvalidTransaction::Custom(FreeCallsValidityError::DisallowedCall.into()));
+            }
+        }
+        Ok(ValidTransaction::default())
     }
 }
