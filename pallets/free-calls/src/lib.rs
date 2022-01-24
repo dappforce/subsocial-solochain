@@ -178,6 +178,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: remove me and migrate to a mirroring pallet for
         /// Set an account's quota. This will fail if the caller doesn't match `T::ManagerOrigin`.
         #[pallet::weight(10_000)]
         pub fn change_account_quota(
@@ -294,6 +295,12 @@ pub mod pallet {
             // TODO: using period and ratio
             for (config_index, config) in windows_config.into_iter().enumerate() {
                 let config_index = config_index as WindowConfigsSize;
+
+                if config.period.is_zero() || config.quota_ratio.is_zero() {
+                    can_call = false;
+                    break;
+                }
+
                 let window = Window::build(
                     account.clone(),
                     quota,
@@ -302,10 +309,12 @@ pub mod pallet {
                     config,
                     Self::window_stats_by_account(account.clone(), config_index),
                 );
+
                 can_call = window.can_be_called;
                 if !can_call {
                     break;
                 }
+
                 windows.push(window);
             }
 
