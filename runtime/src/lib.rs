@@ -435,6 +435,7 @@ impl pallet_free_calls::Config for Runtime {
     type Call = Call;
     const WINDOWS_CONFIG: &'static [WindowConfig<BlockNumber>] = &FREE_CALLS_WINDOWS_CONFIG;
     type ManagerOrigin = EnsureRoot<AccountId>;
+    type WeightInfo = ();
 }
 
 
@@ -731,19 +732,19 @@ impl_runtime_apis! {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
-		fn benchmark_metadata(_extra: bool) -> (
+		fn benchmark_metadata(extra: bool) -> (
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			/*use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
-			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_balances, Balances);
-			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			// list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			// list_benchmark!(list, extra, pallet_balances, Balances);
+			// list_benchmark!(list, extra, pallet_timestamp, Timestamp);
             // list_benchmark!(list, extra, pallet_permissions, Permissions);
 			// list_benchmark!(list, extra, pallet_posts, Posts);
 			// list_benchmark!(list, extra, pallet_profile_follows, DotsamaClaims);
@@ -755,12 +756,13 @@ impl_runtime_apis! {
 			// list_benchmark!(list, extra, pallet_space_ownership, SpaceOwnership);
 			// list_benchmark!(list, extra, pallet_spaces, Spaces);
 			// list_benchmark!(list, extra, pallet_faucets, Faucets);
-			list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
+			// list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
 
-			let storage_info = AllPalletsWithSystem::storage_info();
+            list_benchmark!(list, extra, pallet_free_calls, FreeCalls);
 
-			return (list, storage_info)*/
-            todo!()
+			let storage_info = FreeCalls::storage_info();
+
+			return (list, storage_info)
 		}
 
 		fn dispatch_benchmark(
@@ -791,6 +793,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
+			add_benchmark!(params, batches, pallet_free_calls, FreeCalls);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

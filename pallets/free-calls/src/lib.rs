@@ -21,26 +21,35 @@ use sp_runtime::{
 use sp_std::fmt::Debug;
 
 pub use pallet::*;
-//
-// #[cfg(test)]
-// mod mock;
-//
+
+#[cfg(test)]
+mod mock;
+
 // #[cfg(test)]
 // mod test_pallet;
 //
 // #[cfg(test)]
 // mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+mod weights;
+
+pub use weights::WeightInfo;
+
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::weights::GetDispatchInfo;
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
+    use frame_support::dispatch::PostDispatchInfo;
+    use frame_support::traits::IsSubType;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::Dispatchable;
     use sp_runtime::traits::Zero;
     use sp_std::boxed::Box;
     use sp_std::cmp::max;
     use sp_std::vec::Vec;
+    use crate::WeightInfo;
 
     // TODO: find a better name
     // TODO: disallow users to enter 0
@@ -108,7 +117,12 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// The call type from the runtime which has all the calls available in your runtime.
-        type Call: Parameter + GetDispatchInfo + Dispatchable<Origin = Self::Origin>;
+        type Call: Parameter
+            + Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo>
+            + GetDispatchInfo
+            + From<frame_system::Call<Self>>
+            + IsSubType<Call<Self>>
+            + IsType<<Self as frame_system::Config>::Call>;
 
         /// The configurations that will be used to limit the usage of the allocated quota to these
         /// different configs.
@@ -116,6 +130,9 @@ pub mod pallet {
 
         /// The origin which can change the allocated quota for accounts.
         type ManagerOrigin: EnsureOrigin<Self::Origin>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::extra_constants]
@@ -166,14 +183,30 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         // TODO: fix weight
-        #[pallet::weight(10_000)]
+        #[pallet::weight({
+            let boxed_call_info = call.get_dispatch_info();
+            let boxed_call_weight = boxed_call_info.weight;
+            let self_weight = <T as Config>::WeightInfo::try_free_call();
+
+            let total_weight = self_weight.saturating_add(boxed_call_weight);
+            (
+                total_weight,
+                boxed_call_info.class,
+                Pays::No,
+            )
+        })]
         pub fn try_free_call(
             origin: OriginFor<T>,
             call: Box<<T as Config>::Call>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin.clone())?;
 
+            let mut actual_weight = <T as Config>::WeightInfo::try_free_call();
+
             if Self::can_make_free_call(&sender, ShouldUpdateAccountStats::YES) {
+                // Add the current weight for the boxed call
+                actual_weight = actual_weight.saturating_add(call.get_dispatch_info().weight);
+
                 // Dispatch the call
                 let result = call.dispatch(origin);
 
@@ -184,7 +217,10 @@ pub mod pallet {
                 ));
             }
 
-            Ok(())
+            Ok(PostDispatchInfo {
+                actual_weight: Some(actual_weight),
+                pays_fee: Pays::No,
+            })
         }
 
         // TODO: remove me and migrate to a mirroring pallet for
