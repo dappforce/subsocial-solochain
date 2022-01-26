@@ -4028,6 +4028,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
+ "pallet-balances",
+ "pallet-locker-mirror",
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",

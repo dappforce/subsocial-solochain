@@ -69,7 +69,8 @@ use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_L
 
 pub mod constants;
 use constants::{free_calls::*, currency::*, time::*};
-use pallet_free_calls::WindowConfig;
+use pallet_free_calls::{NumberOfCalls, WindowConfig};
+use pallet_locker_mirror::LockedInfo;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -432,9 +433,7 @@ impl Contains<Call> for BaseFilter {
 
 /// Filter the calls that can be used as free calls.
 pub struct FreeCallsFilter;
-impl Default for FreeCallsFilter {
-    fn default() -> Self { Self }
-}
+impl Default for FreeCallsFilter { fn default() -> Self { Self } }
 impl Contains<Call> for FreeCallsFilter {
     fn contains(c: &Call) -> bool {
         match *c {
@@ -449,13 +448,33 @@ impl Contains<Call> for FreeCallsFilter {
     }
 }
 
+/// A calculation strategy for free calls quota
+pub struct FreeCallsCalculationStrategy;
+impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
+impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculationStrategy {
+    fn calculate(
+        current_block: <Runtime as frame_system::Config>::BlockNumber,
+        locked_info: Option<LockedInfo<Runtime>>
+    ) -> Option<NumberOfCalls> {
+        locked_info.and_then(|locked_info| {
+            if current_block >= locked_info.unlocks_on {
+                None
+            } else {
+                // TODO: add more sophisticated calculation
+                // TODO: think if we should make NumberOfCalls -> u32 instead of u16
+                Some((locked_info.locked_amount / 11 /*decimals*/) as NumberOfCalls)
+            }
+        })
+    }
+}
+
 impl pallet_free_calls::Config for Runtime {
     type Event = Event;
     type Call = Call;
     const WINDOWS_CONFIG: &'static [WindowConfig<BlockNumber>] = &FREE_CALLS_WINDOWS_CONFIG;
-    type ManagerOrigin = EnsureRoot<AccountId>;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
+    type QuotaCalculationStrategy = FreeCallsCalculationStrategy;
 }
 
 

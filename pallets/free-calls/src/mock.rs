@@ -44,6 +44,8 @@ frame_support::construct_runtime!(
     {
         System: system::{Pallet, Call, Config, Storage, Event<T>},
         FreeCalls: pallet_free_calls::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        LockerMirror: pallet_locker_mirror::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -70,13 +72,37 @@ impl system::Config for Test {
     type DbWeight = ();
     type Version = ();
     type PalletInfo = PalletInfo;
-    type AccountData = ();
+    type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
 }
+
+parameter_types! {
+    pub const ExistentialDeposit: u64 = 1;
+}
+
+impl pallet_balances::Config for Test {
+    type Balance = u64;
+    type DustRemoval = ();
+    type Event = Event;
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+}
+
+
+impl pallet_locker_mirror::Config for Test {
+    type Event = Event;
+    type Currency = Balances;
+    type ManagerOrigin = EnsureRoot<AccountId>;
+}
+
 
 impl pallet_free_calls::Config for Test {
     type Event = Event;
@@ -88,7 +114,6 @@ impl pallet_free_calls::Config for Test {
         WindowConfig::new(5 * MINUTES, 20),
         WindowConfig::new(1, 1000),
     ];
-    type ManagerOrigin = EnsureRoot<AccountId>;
     type CallFilter = Everything;
     type WeightInfo = ();
 }

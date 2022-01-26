@@ -20,6 +20,8 @@ std = [
     'frame-system/std',
     'sp-std/std',
     'pallet-utils/std',
+    'pallet-locker-mirror/std',
+    'pallet-balances/std',
     'df-traits/std',
     'pallet-permissions/std',
     'frame-benchmarking/std',
@@ -47,6 +49,8 @@ serde = { features = ['derive'], optional = true, version = '1.0.119' }
 df-traits = { default-features = false, path = '../traits' }
 pallet-utils = { default-features = false, path = '../utils' }
 pallet-permissions = { default-features = false, path = '../permissions' }
+pallet-locker-mirror = { default-features = false, path = '../locker-mirror' }
+pallet-balances = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
 subsocial-primitives = { default-features = false, path = '../../primitives' }
 
 # Substrate dependencies

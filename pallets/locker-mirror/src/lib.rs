@@ -52,7 +52,7 @@ pub mod pallet {
     /// Stores information about locked tokens for each account.
     #[pallet::storage]
     #[pallet::getter(fn locked_info_by_account)]
-    pub(super) type LockedInfoByAccount<T: Config> = StorageMap<
+    pub type LockedInfoByAccount<T: Config> = StorageMap<
         _,
         Twox64Concat,
         T::AccountId,

@@ -50,6 +50,7 @@ pub mod pallet {
     use sp_std::boxed::Box;
     use sp_std::cmp::max;
     use sp_std::vec::Vec;
+    use pallet_locker_mirror::{LockedInfo, LockedInfoByAccount};
     use crate::WeightInfo;
 
     // TODO: find a better name
@@ -113,7 +114,7 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {
+    pub trait Config: frame_system::Config + pallet_locker_mirror::Config {
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -129,14 +130,14 @@ pub mod pallet {
         /// different configs.
         const WINDOWS_CONFIG: &'static [WindowConfig<Self::BlockNumber>];
 
-        /// The origin which can change the allocated quota for accounts.
-        type ManagerOrigin: EnsureOrigin<Self::Origin>;
-
         /// Filter on which calls are permitted to be free.
         type CallFilter: Contains<<Self as Config>::Call>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// A calculation strategy to convert a locked tokens info to quota.
+        type QuotaCalculationStrategy: QuotaCalculationStrategy<Self>;
     }
 
     #[pallet::extra_constants]
@@ -145,17 +146,6 @@ pub mod pallet {
         /// different configs.
         fn windows_config() -> &'static [WindowConfig<T::BlockNumber>] { T::WINDOWS_CONFIG }
     }
-
-    /// Keeps tracks of the allocated quota to each account.
-    #[pallet::storage]
-    #[pallet::getter(fn quota_by_account)]
-    pub(super) type QuotaByAccount<T: Config> = StorageMap<
-        _,
-        Twox64Concat,
-        T::AccountId,
-        NumberOfCalls,
-        OptionQuery,
-    >;
 
     /// Keeps track of each windows usage for each account.
     #[pallet::storage]
@@ -175,9 +165,6 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// free call was executed. [who, result]
         FreeCallResult(T::AccountId, DispatchResult),
-
-        /// quota have been changed for an account. [who, allocated_quota]
-        AccountQuotaChanged(T::AccountId, NumberOfCalls),
     }
 
     /// Try to execute a call using the free allocated quota. This call may not execute because one of
@@ -226,28 +213,6 @@ pub mod pallet {
                 actual_weight: Some(actual_weight),
                 pays_fee: Pays::No,
             })
-        }
-
-        // TODO: remove me and migrate to a mirroring pallet for
-        /// Set an account's quota. This will fail if the caller doesn't match `T::ManagerOrigin`.
-        #[pallet::weight(10_000)]
-        pub fn change_account_quota(
-            origin: OriginFor<T>,
-            account: T::AccountId,
-            quota: NumberOfCalls,
-        ) -> DispatchResult {
-            let _ = T::ManagerOrigin::ensure_origin(origin);
-
-
-            // TODO: create clear_account_quota extrinsic
-            // if quota == 0 {
-            //     <QuotaByAccount<T>>::remo(account.clone(), quota);
-            // } else {
-            <QuotaByAccount<T>>::insert(account.clone(), quota);
-            // }
-            Self::deposit_event(Event::AccountQuotaChanged(account, quota));
-
-            Ok(())
         }
     }
 
@@ -321,9 +286,8 @@ pub mod pallet {
                 return false;
             }
 
-            let quota = Self::quota_by_account(account);
-
-            let quota = match quota {
+            let locked_info = <LockedInfoByAccount<T>>::get(account.clone());
+            let quota = match T::QuotaCalculationStrategy::calculate(current_block, locked_info) {
                 Some(quota) if quota > 0 => quota,
                 _ => return false,
             };
@@ -372,6 +336,11 @@ pub mod pallet {
 
             can_call
         }
+    }
+
+
+    pub trait QuotaCalculationStrategy<T: Config> {
+        fn calculate(current_block: T::BlockNumber, locked_info: Option<LockedInfo<T>>) -> Option<NumberOfCalls>;
     }
 }
 
