@@ -459,6 +459,12 @@ impl pallet_free_calls::Config for Runtime {
 }
 
 
+impl pallet_locker_mirror::Config for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type ManagerOrigin = EnsureRoot<AccountId>;
+}
+
 // Assert at compile time that the free-calls configs are in the optimal shape.
 const_assert!(check_free_calls_config(&FREE_CALLS_WINDOWS_CONFIG));
 const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) -> bool {
@@ -541,6 +547,7 @@ construct_runtime!(
 		Spaces: pallet_spaces::{Pallet, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Pallet, Storage, Event<T>, Config<T>},
 		FreeCalls: pallet_free_calls::{Pallet, Call, Storage, Event<T>},
+		LockerMirror: pallet_locker_mirror::{Pallet, Call, Storage, Event<T>},
 
 		// New experimental pallets. Not recommended to use in production yet.
 

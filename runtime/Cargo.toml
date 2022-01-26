@@ -28,6 +28,8 @@ pallet-dotsama-claims = { default-features = false, path = '../pallets/dotsama-c
 pallet-faucets = { default-features = false, path = '../pallets/faucets' }
 pallet-free-calls = { default-features = false, path = '../pallets/free-calls' }
 
+pallet-locker-mirror = { default-features = false, path = '../pallets/locker-mirror' }
+
 #pallet-moderation = { default-features = false, path = '../pallets/moderation' }
 pallet-permissions = { default-features = false, path = '../pallets/permissions' }
 
@@ -138,6 +140,7 @@ std = [
     'pallet-dotsama-claims/std',
     'pallet-faucets/std',
     'pallet-free-calls/std',
+    'pallet-locker-mirror/std',
 #    'pallet-moderation/std',
     'pallet-permissions/std',
     'pallet-post-history/std',
