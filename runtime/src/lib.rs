@@ -430,11 +430,31 @@ impl Contains<Call> for BaseFilter {
     }
 }
 
+/// Filter the calls that can be used as free calls.
+pub struct FreeCallsFilter;
+impl Default for FreeCallsFilter {
+    fn default() -> Self { Self }
+}
+impl Contains<Call> for FreeCallsFilter {
+    fn contains(c: &Call) -> bool {
+        match *c {
+            Call::Spaces(..) => true,
+            Call::SpaceFollows(..) => true,
+            Call::ProfileFollows(..) => true,
+            Call::Posts(..) => true,
+            Call::Reactions(..) => true,
+            Call::System(..) => cfg!(feature = "runtime-benchmarks"),
+            _ => false,
+        }
+    }
+}
+
 impl pallet_free_calls::Config for Runtime {
     type Event = Event;
     type Call = Call;
     const WINDOWS_CONFIG: &'static [WindowConfig<BlockNumber>] = &FREE_CALLS_WINDOWS_CONFIG;
     type ManagerOrigin = EnsureRoot<AccountId>;
+    type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
 }
 

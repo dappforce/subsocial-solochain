@@ -36,13 +36,14 @@ mod benchmarking;
 mod weights;
 
 pub use weights::WeightInfo;
+use frame_support::traits::Contains;
 
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::weights::GetDispatchInfo;
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
-    use frame_support::traits::IsSubType;
+    use frame_support::traits::{Contains, IsSubType};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::Dispatchable;
     use sp_runtime::traits::Zero;
@@ -131,6 +132,9 @@ pub mod pallet {
         /// The origin which can change the allocated quota for accounts.
         type ManagerOrigin: EnsureOrigin<Self::Origin>;
 
+        /// Filter on which calls are permitted to be free.
+        type CallFilter: Contains<<Self as Config>::Call>;
+
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -203,7 +207,8 @@ pub mod pallet {
 
             let mut actual_weight = <T as Config>::WeightInfo::try_free_call();
 
-            if Self::can_make_free_call(&sender, ShouldUpdateAccountStats::YES) {
+            if T::CallFilter::contains(&call) &&
+                Self::can_make_free_call(&sender, ShouldUpdateAccountStats::YES) {
                 // Add the current weight for the boxed call
                 actual_weight = actual_weight.saturating_add(call.get_dispatch_info().weight);
 
@@ -405,8 +410,11 @@ impl<T: Config + Send + Sync> FreeCallsPrevalidation<T>
 
 #[repr(u8)]
 enum FreeCallsValidityError {
-    /// The account is not allowed to have this free call.
-    DisallowedCall = 0,
+    /// The caller is out of quota.
+    OutOfQuota = 0,
+
+    /// The call cannot be free.
+    DisallowedCall = 1,
 }
 
 impl From<FreeCallsValidityError> for u8 {
@@ -439,8 +447,9 @@ impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
         _len: usize,
     ) -> TransactionValidity {
         if let Some(local_call) = call.is_sub_type() {
-            if let Call::try_free_call(_) = local_call {
-                ensure!(Pallet::<T>::can_make_free_call(who, ShouldUpdateAccountStats::NO), InvalidTransaction::Custom(FreeCallsValidityError::DisallowedCall.into()));
+            if let Call::try_free_call(boxed_call) = local_call {
+                ensure!(T::CallFilter::contains(boxed_call), InvalidTransaction::Custom(FreeCallsValidityError::DisallowedCall.into()));
+                ensure!(Pallet::<T>::can_make_free_call(who, ShouldUpdateAccountStats::NO), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
             }
         }
         Ok(ValidTransaction::default())

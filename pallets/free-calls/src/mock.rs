@@ -1,5 +1,6 @@
 use crate as pallet_free_calls;
 use frame_support::{parameter_types, sp_io};
+use frame_support::traits::Everything;
 use frame_system::EnsureRoot;
 use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header, Storage
@@ -79,6 +80,7 @@ impl pallet_free_calls::Config for Test {
         WindowConfig::new(1, 1000),
     ];
     type ManagerOrigin = EnsureRoot<AccountId>;
+    type CallFilter = Everything;
     type WeightInfo = ();
 }
 
