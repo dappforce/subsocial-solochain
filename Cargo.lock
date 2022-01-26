@@ -4062,6 +4062,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-locker-mirror"
+version = "0.7.1"
+dependencies = [
+ "df-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples 0.1.3",
+ "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "subsocial-primitives",
+]
+
+[[package]]
 name = "pallet-moderation"
 version = "0.7.1"
 dependencies = [
