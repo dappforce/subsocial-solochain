@@ -11,12 +11,19 @@ pub use pallet::*;
 // #[cfg(test)]
 // mod tests;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::{pallet_prelude::*};
     use frame_support::traits::{Currency};
     use frame_system::pallet_prelude::*;
+    use crate::weights::WeightInfo;
 
     pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
@@ -47,6 +54,9 @@ pub mod pallet {
 
         /// The origin which can reflect the locked tokens.
         type ManagerOrigin: EnsureOrigin<Self::Origin>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     /// Stores information about locked tokens for each account.
@@ -75,7 +85,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Sets the locked information for an account.
         #[pallet::weight((
-            10_000,
+            <T as Config>::WeightInfo::set_locked_info(),
             DispatchClass::Operational,
             Pays::Yes,
         ))]
@@ -103,7 +113,7 @@ pub mod pallet {
 
         // Clears the locked information for an account.
         #[pallet::weight((
-            10_000,
+            <T as Config>::WeightInfo::clear_locked_info(),
             DispatchClass::Operational,
             Pays::Yes,
         ))]

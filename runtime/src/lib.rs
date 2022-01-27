@@ -482,6 +482,7 @@ impl pallet_locker_mirror::Config for Runtime {
     type Event = Event;
     type Currency = Balances;
     type ManagerOrigin = EnsureRoot<AccountId>;
+    type WeightInfo = ();
 }
 
 // Assert at compile time that the free-calls configs are in the optimal shape.
@@ -805,6 +806,7 @@ impl_runtime_apis! {
 			// list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
 
             list_benchmark!(list, extra, pallet_free_calls, FreeCalls);
+            list_benchmark!(list, extra, pallet_locker_mirror, LockerMirror);
 
 			let storage_info = FreeCalls::storage_info();
 
@@ -840,6 +842,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
 			add_benchmark!(params, batches, pallet_free_calls, FreeCalls);
+			add_benchmark!(params, batches, pallet_locker_mirror, LockerMirror);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

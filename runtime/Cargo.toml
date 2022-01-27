@@ -106,6 +106,7 @@ runtime-benchmarks = [
     'sp-runtime/runtime-benchmarks',
     'pallet-dotsama-claims/runtime-benchmarks',
     'pallet-free-calls/runtime-benchmarks',
+    'pallet-locker-mirror/runtime-benchmarks',
 ]
 std = [
     'codec/std',
