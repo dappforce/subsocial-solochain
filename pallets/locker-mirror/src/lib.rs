@@ -5,11 +5,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 pub use pallet::*;
 
-// #[cfg(test)]
-// mod test_pallet;
-//
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 #[cfg(test)]
 mod mock;
@@ -96,7 +93,7 @@ pub mod pallet {
             lock_period: T::BlockNumber,
             unlocks_on: T::BlockNumber,
         ) -> DispatchResultWithPostInfo {
-            let _ = T::ManagerOrigin::ensure_origin(origin);
+            let _ = T::ManagerOrigin::ensure_origin(origin)?;
 
             let locked_info = LockedInfo {
                 locked_amount,
@@ -121,7 +118,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             account: T::AccountId,
         ) -> DispatchResultWithPostInfo {
-            let _ = T::ManagerOrigin::ensure_origin(origin);
+            let _ = T::ManagerOrigin::ensure_origin(origin)?;
 
             <LockedInfoByAccount<T>>::remove(account.clone());
 
