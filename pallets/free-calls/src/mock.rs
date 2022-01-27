@@ -114,7 +114,7 @@ impl pallet_free_calls::QuotaCalculationStrategy<Test> for FreeCallsCalculationS
         locked_info: Option<LockedInfo<Test>>
     ) -> Option<NumberOfCalls> {
         locked_info.and_then(|locked_info| {
-            if current_block >= locked_info.unlocks_on {
+            if current_block >= locked_info.unlocks_at {
                 None
             } else {
                 // TODO: add more sophisticated calculation

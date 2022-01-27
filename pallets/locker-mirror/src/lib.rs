@@ -1,6 +1,6 @@
 //! # Locker Mirror Pallet
 //!
-//! Pallet that allows mirroring of locked tokens in the parachain.
+//! Pallet that mirrors locked tokens and period from the parachain.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 pub use pallet::*;
@@ -24,16 +24,16 @@ pub mod pallet {
 
     pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-    /// Information about the locked tokens.
+    /// Information about the locked tokens on the parachain.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
     pub struct LockedInfo<T: Config> {
         /// How many tokens are locked.
         pub locked_amount: BalanceOf<T>,
 
-        /// When should tokens be unlcoked.
-        pub unlocks_on: T::BlockNumber,
+        /// At what block the tokens will be unlocked.
+        pub unlocks_at: T::BlockNumber,
 
-        /// How long tokens shall be locked.
+        /// How many blocks the tokens will be locked for.
         pub lock_period: T::BlockNumber,
     }
 
@@ -49,14 +49,15 @@ pub mod pallet {
         /// The Currency handler.
         type Currency: Currency<Self::AccountId>;
 
-        /// The origin which can reflect the locked tokens.
+        /// The oracle origin which can mirror the locked tokens.
+        // TODO Maybe rename to Oracle or OracleOrigin?
         type ManagerOrigin: EnsureOrigin<Self::Origin>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
 
-    /// Stores information about locked tokens for each account.
+    /// Stores information about locked tokens and period for each account.
     #[pallet::storage]
     #[pallet::getter(fn locked_info_by_account)]
     pub type LockedInfoByAccount<T: Config> = StorageMap<
@@ -74,12 +75,12 @@ pub mod pallet {
         LockedInfoSet(T::AccountId),
 
         /// Locked information is cleared for an account. [who]
-        LockedInfoCleared(T::AccountId)
+        LockedInfoCleared(T::AccountId),
     }
-
-
+    
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+
         /// Sets the locked information for an account.
         #[pallet::weight((
             <T as Config>::WeightInfo::set_locked_info(),
@@ -91,20 +92,20 @@ pub mod pallet {
             account: T::AccountId,
             locked_amount: BalanceOf<T>,
             lock_period: T::BlockNumber,
-            unlocks_on: T::BlockNumber,
+            unlocks_at: T::BlockNumber,
         ) -> DispatchResultWithPostInfo {
             let _ = T::ManagerOrigin::ensure_origin(origin)?;
 
             let locked_info = LockedInfo {
                 locked_amount,
                 lock_period,
-                unlocks_on,
+                unlocks_at,
             };
             <LockedInfoByAccount<T>>::insert(account.clone(), locked_info);
 
             Self::deposit_event(Event::LockedInfoSet(account));
 
-            // if the call did succeed don't charge the caller
+            // If the call did succeed, don't charge the caller
             Ok(Pays::No.into())
         }
 
@@ -122,9 +123,9 @@ pub mod pallet {
 
             <LockedInfoByAccount<T>>::remove(account.clone());
 
-            Self::deposit_event(Event::LockedInfoSet(account));
+            Self::deposit_event(Event::LockedInfoCleared(account));
 
-            // if the call did succeed don't charge the caller
+            // If the call did succeed, don't charge the caller
             Ok(Pays::No.into())
         }
     }

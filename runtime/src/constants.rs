@@ -23,21 +23,18 @@ pub mod time {
 	pub const DAYS: BlockNumber = HOURS * 24;
 }
 
-
 pub mod free_calls {
     use pallet_free_calls::WindowConfig;
     use crate::BlockNumber;
     use super::time::*;
 
-	// TODO: make a macro to allow for more readable config definition
-	// TODO: also check for any zero period and any zero ratio
-	// make sure that every next period is equal or smaller and ratio is equal or bigger
+	/// Make sure that every next period is equal or smaller and ratio is equal or bigger.
     pub const FREE_CALLS_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 3] = [
-        // Window that last a day and have 100% of the allocated quota.
+        /// Window that lasts a day and has 100% of the allocated quota.
 		WindowConfig::new(1 * DAYS, 1),
-        // Window that last an hour and have (1/12) of the allocated quota.
+        /// Window that lasts an hour and has (1/3) of the allocated quota.
         WindowConfig::new(1 * HOURS, 3),
-        // Window that last for 5 minutes and have (1/100) of the allocated quota.
+        /// Window that lasts for 5 minutes and has (1/10) of the allocated quota.
         WindowConfig::new(5 * MINUTES, 10),
     ];
 }

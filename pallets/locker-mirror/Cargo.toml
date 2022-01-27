@@ -6,7 +6,7 @@ edition = '2018'
 license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/dappforce-subsocial-node'
-description = 'Pallet that mirrors locked tokens on the parachain.'
+description = 'Pallet that mirrors locked tokens and period from the parachain.'
 keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 

@@ -32,7 +32,7 @@ benchmarks!{
         <LockedInfoByAccount<T>>::insert(caller.clone(), LockedInfo {
             lock_period: 1000u32.into(),
             locked_amount: BalanceOf::<T>::max_value(),
-            unlocks_on: current_block + 1000u32.into(),
+            unlocks_at: current_block + 1000u32.into(),
         });
     }: try_free_call(RawOrigin::Signed(caller.clone()), call)
     verify {

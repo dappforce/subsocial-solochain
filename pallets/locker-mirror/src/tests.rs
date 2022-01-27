@@ -5,7 +5,7 @@ use sp_io::KillStorageResult::AllRemoved;
 use sp_runtime::DispatchError::BadOrigin;
 
 #[test]
-fn set_locked_info__will_fail_when_not_manager_origin() {
+fn set_locked_info__should_fail_when_not_manager_origin() {
     new_test_ext().execute_with(|| {
         let caller = account("Test Account", 1 ,4);
         let subject = account("Test Account", 1, 4);
@@ -23,7 +23,7 @@ fn set_locked_info__will_fail_when_not_manager_origin() {
 }
 
 #[test]
-fn clear_locked_info__will_fail_when_not_manager_origin() {
+fn clear_locked_info__should_fail_when_not_manager_origin() {
     new_test_ext().execute_with(|| {
         let caller = account("Test Account", 1 ,4);
         let subject = account("Test Account2", 2, 5);

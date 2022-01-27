@@ -73,7 +73,7 @@ pub mod pallet {
     /// Keeps track of the executed number of calls per window per account.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
     pub struct ConsumerStats<BlockNumber> {
-        // TODO: find a better name?
+        // TODO: find a better name? maybe `stats_index`
         /// The index of this window in the timeline.
         pub timeline_index: BlockNumber,
 
@@ -90,13 +90,13 @@ pub mod pallet {
         }
     }
 
-    /// Configuration of window.
+    /// Configuration of a rate limiting window in terms of length and ratio to quota.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
     pub struct WindowConfig<BlockNumber> {
-        /// The span of the window in number of blocks it will last.
+        /// The length of the window in number of blocks it will last.
         pub period: BlockNumber,
 
-        /// The ratio between the quota and a this window.
+        /// The ratio between the quota and this window.
         pub quota_ratio: QuotaToWindowRatio,
     }
 
@@ -136,7 +136,7 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
 
-        /// A calculation strategy to convert a locked tokens info to quota.
+        /// A calculation strategy to convert locked tokens info to a quota.
         type QuotaCalculationStrategy: QuotaCalculationStrategy<Self>;
     }
 
@@ -147,6 +147,7 @@ pub mod pallet {
         fn windows_config() -> &'static [WindowConfig<T::BlockNumber>] { T::WINDOWS_CONFIG }
     }
 
+    // TODO Rename to ConsumerStatsByAccount?
     /// Keeps track of each windows usage for each account.
     #[pallet::storage]
     #[pallet::getter(fn window_stats_by_account)]
@@ -155,6 +156,7 @@ pub mod pallet {
         Blake2_128Concat,
         T::AccountId,
         Twox64Concat,
+        // TODO Rename to Window Type?
         // Index of the window in the list of window configurations.
         WindowConfigsSize,
         ConsumerStats<T::BlockNumber>,
@@ -163,17 +165,17 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// free call was executed. [who, result]
+        /// Free call was executed. [who, result]
         FreeCallResult(T::AccountId, DispatchResult),
     }
 
-    /// Try to execute a call using the free allocated quota. This call may not execute because one of
-    /// the following reasons:
-    ///  * Caller have no free quota set.
-    ///  * The caller have used all the allowed intersects for one or all of the current windows.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        // TODO: fix weight
+
+        /// Try to execute a call using the free allocated quota. This call may not execute because
+        /// one of the following reasons:
+        ///  * Caller has no free quota set.
+        ///  * The caller has used all the allowed quota for at least one window config.
         #[pallet::weight({
             let boxed_call_info = call.get_dispatch_info();
             let boxed_call_weight = boxed_call_info.weight;
@@ -222,6 +224,7 @@ pub mod pallet {
         config: &'static WindowConfig<T::BlockNumber>,
         timeline_index: T::BlockNumber,
         stats: ConsumerStats<T::BlockNumber>,
+        // TODO Rename to can_have_free_call ?
         can_be_called: bool,
     }
 
@@ -267,16 +270,19 @@ pub mod pallet {
         }
     }
 
+    // TODO Maybe rename to ShouldUpdateConsumerStats
     pub enum ShouldUpdateAccountStats {
         YES,
         NO,
     }
 
     impl<T: Config> Pallet<T> {
-        /// Determine if `account` can have a free call and optionally update user window usage.
+        /// Determine if `account` can have a free call and optionally update its window usage.
         ///
-        /// Window usage for the caller `account` will only update if there is quota and all of the
+        /// Window usage for the caller `account` will only update if there is a quota and all of the
         /// previous window usages doesn't exceed the defined windows config.
+        // TODO Maybe rename account to consumer or consumer_account
+        // TODO Rename should_update_account_stats -> should_update_consumer_stats
         pub fn can_make_free_call(account: &T::AccountId, should_update_account_stats: ShouldUpdateAccountStats) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
@@ -295,8 +301,6 @@ pub mod pallet {
             let mut windows: Vec<Window<T>> = Vec::new();
             let mut can_call = false;
 
-            // TODO: sort configs to allow this to fail fast
-            // TODO: using period and ratio
             for (config_index, config) in windows_config.into_iter().enumerate() {
                 let config_index = config_index as WindowConfigsSize;
 
@@ -331,7 +335,7 @@ pub mod pallet {
                     }
                 }
             } else {
-                log::info!("{:?} don't have free calls", account);
+                log::info!("{:?} doesn't have free calls", account);
             }
 
             can_call
@@ -344,9 +348,8 @@ pub mod pallet {
     }
 }
 
-
 /// Validate `try_free_call` calls prior to execution. Needed to avoid a DoS attack since they are
-/// otherwise free to place on chain.
+/// otherwise free to be included into blockchain.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
 pub struct FreeCallsPrevalidation<T: Config + Send + Sync>(sp_std::marker::PhantomData<T>)
     where
@@ -383,7 +386,7 @@ enum FreeCallsValidityError {
     OutOfQuota = 0,
 
     /// The call cannot be free.
-    DisallowedCall = 1,
+    CallCannotBeFree = 1,
 }
 
 impl From<FreeCallsValidityError> for u8 {
@@ -417,7 +420,7 @@ impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
     ) -> TransactionValidity {
         if let Some(local_call) = call.is_sub_type() {
             if let Call::try_free_call(boxed_call) = local_call {
-                ensure!(T::CallFilter::contains(boxed_call), InvalidTransaction::Custom(FreeCallsValidityError::DisallowedCall.into()));
+                ensure!(T::CallFilter::contains(boxed_call), InvalidTransaction::Custom(FreeCallsValidityError::CallCannotBeFree.into()));
                 ensure!(Pallet::<T>::can_make_free_call(who, ShouldUpdateAccountStats::NO), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
             }
         }
