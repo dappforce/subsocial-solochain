@@ -83,7 +83,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        // Sets the locked information for an account.
+        /// Sets the locked information for an account.
         #[pallet::weight((
             <T as Config>::WeightInfo::set_locked_info(),
             DispatchClass::Operational,
@@ -111,7 +111,7 @@ pub mod pallet {
             Ok(Pays::No.into())
         }
 
-        // Clears the locked information for an account.
+        /// Clears the locked information for an account.
         #[pallet::weight((
             <T as Config>::WeightInfo::clear_locked_info(),
             DispatchClass::Operational,
