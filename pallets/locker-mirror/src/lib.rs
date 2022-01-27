@@ -18,7 +18,7 @@ pub mod pallet {
     use frame_support::traits::{Currency};
     use frame_system::pallet_prelude::*;
 
-    type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+    pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
     /// Information about the locked tokens.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]

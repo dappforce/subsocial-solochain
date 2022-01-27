@@ -14,12 +14,13 @@ use frame_support::{
 use frame_support::traits::Everything;
 use frame_system as system;
 use frame_system::EnsureRoot;
+use pallet_locker_mirror::LockedInfo;
 
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 
 use crate::mock::time::*;
-use crate::WindowConfig;
+use crate::{NumberOfCalls, WindowConfig};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -103,6 +104,26 @@ impl pallet_locker_mirror::Config for Test {
     type ManagerOrigin = EnsureRoot<AccountId>;
 }
 
+/// A calculation strategy for free calls quota
+pub struct FreeCallsCalculationStrategy;
+impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
+impl pallet_free_calls::QuotaCalculationStrategy<Test> for FreeCallsCalculationStrategy {
+    fn calculate(
+        current_block: <Test as frame_system::Config>::BlockNumber,
+        locked_info: Option<LockedInfo<Test>>
+    ) -> Option<NumberOfCalls> {
+        locked_info.and_then(|locked_info| {
+            if current_block >= locked_info.unlocks_on {
+                None
+            } else {
+                // TODO: add more sophisticated calculation
+                // TODO: think if we should make NumberOfCalls -> u32 instead of u16
+                Some((locked_info.locked_amount / 11 /*decimals*/) as NumberOfCalls)
+            }
+        })
+    }
+}
+
 
 impl pallet_free_calls::Config for Test {
     type Event = Event;
@@ -116,6 +137,7 @@ impl pallet_free_calls::Config for Test {
     ];
     type CallFilter = Everything;
     type WeightInfo = ();
+    type QuotaCalculationStrategy = FreeCallsCalculationStrategy;
 }
 
 // Build genesis storage according to the mock runtime.
