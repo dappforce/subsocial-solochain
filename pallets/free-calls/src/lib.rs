@@ -163,7 +163,6 @@ pub mod pallet {
         Blake2_128Concat,
         T::AccountId,
         Twox64Concat,
-        // TODO Rename to Window Type?
         // Index of the window in the list of window configurations.
         WindowType,
         ConsumerStats<T::BlockNumber>,
@@ -231,8 +230,7 @@ pub mod pallet {
         config: &'static WindowConfig<T::BlockNumber>,
         timeline_index: T::BlockNumber,
         stats: ConsumerStats<T::BlockNumber>,
-        // TODO Rename to can_have_free_call ?
-        can_be_called: bool,
+        can_have_free_call: bool,
     }
 
     impl<T: Config> Window<T> {
@@ -263,7 +261,7 @@ pub mod pallet {
                 config,
                 timeline_index,
                 stats,
-                can_be_called,
+                can_have_free_call: can_be_called,
             }
         }
 
@@ -322,7 +320,7 @@ pub mod pallet {
                     Self::window_stats_by_consumer(consumer.clone(), config_index),
                 );
 
-                can_call = window.can_be_called;
+                can_call = window.can_have_free_call;
                 if !can_call {
                     break;
                 }
