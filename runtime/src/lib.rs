@@ -481,7 +481,7 @@ impl pallet_free_calls::Config for Runtime {
 impl pallet_locker_mirror::Config for Runtime {
     type Event = Event;
     type Currency = Balances;
-    type ManagerOrigin = EnsureRoot<AccountId>;
+    type OracleOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
 }
 

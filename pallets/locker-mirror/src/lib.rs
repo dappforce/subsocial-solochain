@@ -50,8 +50,7 @@ pub mod pallet {
         type Currency: Currency<Self::AccountId>;
 
         /// The oracle origin which can mirror the locked tokens.
-        // TODO Maybe rename to Oracle or OracleOrigin?
-        type ManagerOrigin: EnsureOrigin<Self::Origin>;
+        type OracleOrigin: EnsureOrigin<Self::Origin>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -94,7 +93,7 @@ pub mod pallet {
             lock_period: T::BlockNumber,
             unlocks_at: T::BlockNumber,
         ) -> DispatchResultWithPostInfo {
-            let _ = T::ManagerOrigin::ensure_origin(origin)?;
+            let _ = T::OracleOrigin::ensure_origin(origin)?;
 
             let locked_info = LockedInfo {
                 locked_amount,
@@ -119,7 +118,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             account: T::AccountId,
         ) -> DispatchResultWithPostInfo {
-            let _ = T::ManagerOrigin::ensure_origin(origin)?;
+            let _ = T::OracleOrigin::ensure_origin(origin)?;
 
             <LockedInfoByAccount<T>>::remove(account.clone());
 

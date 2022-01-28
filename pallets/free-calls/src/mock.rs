@@ -101,7 +101,7 @@ impl pallet_balances::Config for Test {
 impl pallet_locker_mirror::Config for Test {
     type Event = Event;
     type Currency = Balances;
-    type ManagerOrigin = EnsureRoot<AccountId>;
+    type OracleOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
 }
 
