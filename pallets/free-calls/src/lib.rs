@@ -63,9 +63,20 @@ pub mod pallet {
     /// Type to keep track of how many calls is in quota or used in a particular window.
     pub type NumberOfCalls = u16;
 
-    /// Defines the type that will be used to describe window size and config index.
+    /// Defines the type that will be used to describe configs size and config index.
     /// 3~4 windows should be sufficient (1 block, 3 mins, 1 hour, 1 day).
-    pub type WindowConfigsSize = u8;
+    ///
+    /// ## Example:
+    /// WindowConfigs = [1 day, 1 hour, 5 minutes, 10 blocks]
+    /// ```text
+    /// | WindowType | Window    |
+    /// |------------|-----------|
+    /// |      0     | 1 day     |
+    /// |      1     | 1 hour    |
+    /// |      2     | 5 minutes |
+    /// |      3     | 10 blocks |
+    /// ```
+    pub type WindowType = u8;
 
     /// Keeps track of the executed number of calls per window per consumer.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
@@ -154,7 +165,7 @@ pub mod pallet {
         Twox64Concat,
         // TODO Rename to Window Type?
         // Index of the window in the list of window configurations.
-        WindowConfigsSize,
+        WindowType,
         ConsumerStats<T::BlockNumber>,
     >;
 
@@ -216,7 +227,7 @@ pub mod pallet {
 
     struct Window<T: Config> {
         consumer: T::AccountId,
-        config_index: WindowConfigsSize,
+        config_index: WindowType,
         config: &'static WindowConfig<T::BlockNumber>,
         timeline_index: T::BlockNumber,
         stats: ConsumerStats<T::BlockNumber>,
@@ -230,7 +241,7 @@ pub mod pallet {
             consumer: T::AccountId,
             quota: NumberOfCalls,
             current_block: T::BlockNumber,
-            config_index: WindowConfigsSize,
+            config_index: WindowType,
             config: &'static WindowConfig<T::BlockNumber>,
             window_stats: Option<ConsumerStats<T::BlockNumber>>,
         ) -> Self {
@@ -295,7 +306,7 @@ pub mod pallet {
             let mut can_call = false;
 
             for (config_index, config) in windows_config.into_iter().enumerate() {
-                let config_index = config_index as WindowConfigsSize;
+                let config_index = config_index as WindowType;
 
                 if config.period.is_zero() || config.quota_ratio.is_zero() {
                     can_call = false;
