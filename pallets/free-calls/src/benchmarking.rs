@@ -36,9 +36,9 @@ benchmarks!{
         });
     }: try_free_call(RawOrigin::Signed(caller.clone()), call)
     verify {
-        let num_of_usages = <WindowStatsByAccount<T>>::iter_prefix_values(caller.clone()).count();
+        let num_of_usages = <WindowStatsByConsumer<T>>::iter_prefix_values(caller.clone()).count();
         ensure!(num_of_usages != 0, "Usage must not be empty after the call");
-        <WindowStatsByAccount<T>>::remove_prefix(caller.clone(), None);
+        <WindowStatsByConsumer<T>>::remove_prefix(caller.clone(), None);
     }
 }
 

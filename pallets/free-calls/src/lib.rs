@@ -53,9 +53,6 @@ pub mod pallet {
     use pallet_locker_mirror::{LockedInfo, LockedInfoByAccount};
     use crate::WeightInfo;
 
-    // TODO: find a better name
-    // TODO: disallow users to enter 0
-    // ideas for name: Fraction, Shares, ....
     /// The ratio between the quota and a particular window.
     ///
     /// ## Example:
@@ -70,7 +67,7 @@ pub mod pallet {
     /// 3~4 windows should be sufficient (1 block, 3 mins, 1 hour, 1 day).
     pub type WindowConfigsSize = u8;
 
-    /// Keeps track of the executed number of calls per window per account.
+    /// Keeps track of the executed number of calls per window per consumer.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
     pub struct ConsumerStats<BlockNumber> {
         // TODO: find a better name? maybe `stats_index`
@@ -147,11 +144,10 @@ pub mod pallet {
         fn windows_config() -> &'static [WindowConfig<T::BlockNumber>] { T::WINDOWS_CONFIG }
     }
 
-    // TODO Rename to ConsumerStatsByAccount?
-    /// Keeps track of each windows usage for each account.
+    /// Keeps track of each windows usage for each consumer.
     #[pallet::storage]
-    #[pallet::getter(fn window_stats_by_account)]
-    pub(super) type WindowStatsByAccount<T: Config> = StorageDoubleMap<
+    #[pallet::getter(fn window_stats_by_consumer)]
+    pub(super) type WindowStatsByConsumer<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
         T::AccountId,
@@ -197,7 +193,7 @@ pub mod pallet {
             let mut actual_weight = <T as Config>::WeightInfo::try_free_call();
 
             if T::CallFilter::contains(&call) &&
-                Self::can_make_free_call(&sender, ShouldUpdateAccountStats::YES) {
+                Self::can_make_free_call(&sender, ShouldUpdateConsumerStats::YES) {
                 // Add the current weight for the boxed call
                 actual_weight = actual_weight.saturating_add(call.get_dispatch_info().weight);
 
@@ -219,7 +215,7 @@ pub mod pallet {
     }
 
     struct Window<T: Config> {
-        account: T::AccountId,
+        consumer: T::AccountId,
         config_index: WindowConfigsSize,
         config: &'static WindowConfig<T::BlockNumber>,
         timeline_index: T::BlockNumber,
@@ -231,7 +227,7 @@ pub mod pallet {
     impl<T: Config> Window<T> {
         // TODO: refactor this into more lightweight version??
         fn build(
-            account: T::AccountId,
+            consumer: T::AccountId,
             quota: NumberOfCalls,
             current_block: T::BlockNumber,
             config_index: WindowConfigsSize,
@@ -251,7 +247,7 @@ pub mod pallet {
             let can_be_called = stats.used_calls < max(1, quota / config.quota_ratio);
 
             Window {
-                account: account.clone(),
+                consumer: consumer.clone(),
                 config_index,
                 config,
                 timeline_index,
@@ -262,28 +258,25 @@ pub mod pallet {
 
         fn increment_window_stats(&mut self) {
             self.stats.used_calls = self.stats.used_calls.saturating_add(1);
-            <WindowStatsByAccount<T>>::insert(
-                self.account.clone(),
+            <WindowStatsByConsumer<T>>::insert(
+                self.consumer.clone(),
                 self.config_index,
                 self.stats.clone(),
             );
         }
     }
 
-    // TODO Maybe rename to ShouldUpdateConsumerStats
-    pub enum ShouldUpdateAccountStats {
+    pub enum ShouldUpdateConsumerStats {
         YES,
         NO,
     }
 
     impl<T: Config> Pallet<T> {
-        /// Determine if `account` can have a free call and optionally update its window usage.
+        /// Determine if `consumer` can have a free call and optionally update its window usage.
         ///
-        /// Window usage for the caller `account` will only update if there is a quota and all of the
+        /// Window usage for the caller `consumer` will only update if there is a quota and all of the
         /// previous window usages doesn't exceed the defined windows config.
-        // TODO Maybe rename account to consumer or consumer_account
-        // TODO Rename should_update_account_stats -> should_update_consumer_stats
-        pub fn can_make_free_call(account: &T::AccountId, should_update_account_stats: ShouldUpdateAccountStats) -> bool {
+        pub fn can_make_free_call(consumer: &T::AccountId, should_update_consumer_stats: ShouldUpdateConsumerStats) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
             let windows_config = T::WINDOWS_CONFIG;
@@ -292,7 +285,7 @@ pub mod pallet {
                 return false;
             }
 
-            let locked_info = <LockedInfoByAccount<T>>::get(account.clone());
+            let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
             let quota = match T::QuotaCalculationStrategy::calculate(current_block, locked_info) {
                 Some(quota) if quota > 0 => quota,
                 _ => return false,
@@ -310,12 +303,12 @@ pub mod pallet {
                 }
 
                 let window = Window::build(
-                    account.clone(),
+                    consumer.clone(),
                     quota,
                     current_block,
                     config_index,
                     config,
-                    Self::window_stats_by_account(account.clone(), config_index),
+                    Self::window_stats_by_consumer(consumer.clone(), config_index),
                 );
 
                 can_call = window.can_be_called;
@@ -327,15 +320,15 @@ pub mod pallet {
             }
 
             if can_call {
-                log::info!("{:?} can have this free call", account);
-                if let ShouldUpdateAccountStats::YES = should_update_account_stats {
-                    log::info!("{:?} updating window stats", account);
+                log::info!("{:?} can have this free call", consumer);
+                if let ShouldUpdateConsumerStats::YES = should_update_consumer_stats {
+                    log::info!("{:?} updating window stats", consumer);
                     for window in &mut windows {
                         window.increment_window_stats();
                     }
                 }
             } else {
-                log::info!("{:?} doesn't have free calls", account);
+                log::info!("{:?} doesn't have free calls", consumer);
             }
 
             can_call
@@ -421,7 +414,7 @@ impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
         if let Some(local_call) = call.is_sub_type() {
             if let Call::try_free_call(boxed_call) = local_call {
                 ensure!(T::CallFilter::contains(boxed_call), InvalidTransaction::Custom(FreeCallsValidityError::CallCannotBeFree.into()));
-                ensure!(Pallet::<T>::can_make_free_call(who, ShouldUpdateAccountStats::NO), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
+                ensure!(Pallet::<T>::can_make_free_call(who, ShouldUpdateConsumerStats::NO), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
             }
         }
         Ok(ValidTransaction::default())
