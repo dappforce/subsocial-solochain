@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use frame_benchmarking::account;
 use crate::{mock::*, LockedInfoByAccount, BalanceOf};
 use frame_support::{assert_ok, assert_noop, assert_err};
