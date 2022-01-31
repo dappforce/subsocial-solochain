@@ -25,16 +25,16 @@ pub mod pallet {
     pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
     /// Information about the locked tokens on the parachain.
-    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
-    pub struct LockedInfo<T: Config> {
+    #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+    pub struct LockedInfo<BlockNumber, Balance> {
         /// How many tokens are locked.
-        pub locked_amount: BalanceOf<T>,
+        pub locked_amount: Balance,
 
         /// At what block the tokens will be unlocked.
-        pub unlocks_at: T::BlockNumber,
+        pub unlocks_at: BlockNumber,
 
         /// How many blocks the tokens will be locked for.
-        pub lock_period: T::BlockNumber,
+        pub lock_period: BlockNumber,
     }
 
     #[pallet::pallet]
@@ -63,7 +63,7 @@ pub mod pallet {
         _,
         Twox64Concat,
         T::AccountId,
-        LockedInfo<T>,
+        LockedInfo<T::BlockNumber, BalanceOf<T>>,
         OptionQuery,
     >;
 
@@ -89,17 +89,10 @@ pub mod pallet {
         pub fn set_locked_info(
             origin: OriginFor<T>,
             account: T::AccountId,
-            locked_amount: BalanceOf<T>,
-            lock_period: T::BlockNumber,
-            unlocks_at: T::BlockNumber,
+            locked_info: LockedInfo<T::BlockNumber, BalanceOf<T>>,
         ) -> DispatchResultWithPostInfo {
             let _ = T::OracleOrigin::ensure_origin(origin)?;
 
-            let locked_info = LockedInfo {
-                locked_amount,
-                lock_period,
-                unlocks_at,
-            };
             <LockedInfoByAccount<T>>::insert(account.clone(), locked_info);
 
             Self::deposit_event(Event::LockedInfoSet(account));

@@ -454,7 +454,7 @@ impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
 impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculationStrategy {
     fn calculate(
         current_block: <Runtime as frame_system::Config>::BlockNumber,
-        locked_info: Option<LockedInfo<Runtime>>
+        locked_info: Option<LockedInfo<<Runtime as frame_system::Config>::BlockNumber, pallet_locker_mirror::BalanceOf<Runtime>>>
     ) -> Option<NumberOfCalls> {
         locked_info.and_then(|locked_info| {
             if current_block >= locked_info.unlocks_at {

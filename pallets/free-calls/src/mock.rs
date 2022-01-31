@@ -14,7 +14,7 @@ use frame_support::{
 use frame_support::traits::Everything;
 use frame_system as system;
 use frame_system::EnsureRoot;
-use pallet_locker_mirror::LockedInfo;
+use pallet_locker_mirror::{BalanceOf, LockedInfo};
 
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
@@ -111,7 +111,7 @@ impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
 impl pallet_free_calls::QuotaCalculationStrategy<Test> for FreeCallsCalculationStrategy {
     fn calculate(
         current_block: <Test as frame_system::Config>::BlockNumber,
-        locked_info: Option<LockedInfo<Test>>
+        locked_info: Option<LockedInfo<<Test as frame_system::Config>::BlockNumber, BalanceOf<Test>>>
     ) -> Option<NumberOfCalls> {
         locked_info.and_then(|locked_info| {
             if current_block >= locked_info.unlocks_at {

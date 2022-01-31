@@ -9,21 +9,24 @@ use frame_benchmarking::vec;
 use frame_support::ensure;
 use sp_runtime::traits::Bounded;
 
+fn _mock_lock_info<T: Config>() -> LockedInfo<T::BlockNumber, BalanceOf<T>> {
+    LockedInfo::<T::BlockNumber, BalanceOf<T>> {
+        locked_amount: BalanceOf::<T>::max_value(),
+        lock_period: T::BlockNumber::from(11u32),
+        unlocks_at: T::BlockNumber::from(102u32),
+    }
+}
 
 benchmarks!{
 
     set_locked_info {
         let caller = RawOrigin::Root;
         let account: T::AccountId = account("BenchAccount", 1, 3);
-        let locked_amount = BalanceOf::<T>::max_value();
-        let lock_period = T::BlockNumber::from(11u32);
-        let unlocks_at = T::BlockNumber::from(102u32);
-    }: _(caller, account.clone(), locked_amount, lock_period, unlocks_at)
+        let locked_info = _mock_lock_info::<T>();
+    }: _(caller, account.clone(), locked_info.clone())
     verify {
         let res = <LockedInfoByAccount<T>>::get(account.clone()).expect("There should be a value stored for this account");
-        ensure!(res.locked_amount == locked_amount, "locked_amount is wrong");
-        ensure!(res.lock_period == lock_period, "lock_period is wrong");
-        ensure!(res.unlocks_at == unlocks_at, "unlocks_at is wrong");
+        ensure!(res == locked_info, "stored locked_info is not correct");
     }
 
 

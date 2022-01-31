@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use frame_benchmarking::account;
-use crate::{mock::*, LockedInfoByAccount, BalanceOf};
+use crate::{mock::*, LockedInfoByAccount, BalanceOf, LockedInfo};
 use frame_support::{assert_ok, assert_noop, assert_err};
 use sp_io::KillStorageResult::AllRemoved;
 use sp_runtime::DispatchError::BadOrigin;
@@ -14,9 +14,11 @@ fn set_locked_info__should_fail_when_not_manager_origin() {
             LockerMirror::set_locked_info(
                 Origin::signed(caller),
                 subject,
-                1_000_000_000_000u64.into(),
-                11u32.into(),
-                23u32.into(),
+                LockedInfo::<<Test as frame_system::Config>::BlockNumber, BalanceOf<Test>> {
+                    locked_amount: 1_000_000_000_000u64.into(),
+                    unlocks_at: 11u32.into(),
+                    lock_period: 23u32.into(),
+                }
             ),
             BadOrigin,
         );
