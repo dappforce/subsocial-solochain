@@ -61,3 +61,4 @@ sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v
 [dev-dependencies]
 sp-core = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
 sp-io = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+rand = "0.8.4"

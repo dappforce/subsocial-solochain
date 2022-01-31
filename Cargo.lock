@@ -4076,6 +4076,7 @@ dependencies = [
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",
+ "rand 0.8.4",
  "serde",
  "sp-core",
  "sp-io",
