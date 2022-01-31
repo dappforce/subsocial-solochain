@@ -103,16 +103,116 @@ fn clear_locked_info__should_ok_when_caller_is_manager() {
     });
 }
 
+fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    for item_a in a {
+        if !b.contains(item_a) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 #[test]
-fn clear_locked_info__should_remove_from_storage() {
+fn sequence_of_set_clear() {
     new_test_ext().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
-        <LockedInfoByAccount<Test>>::insert(subject_account_n::<Test>(1), random_locked_info());
-        <LockedInfoByAccount<Test>>::insert(subject_account_n::<Test>(2), random_locked_info());
-        <LockedInfoByAccount<Test>>::insert(subject_account_n::<Test>(3), random_locked_info());
-        <LockedInfoByAccount<Test>>::insert(subject_account_n::<Test>(4), random_locked_info());
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 4);
 
+        let mut expected = vec![
+            (subject_account_n::<Test>(1), random_locked_info()),
+            (subject_account_n::<Test>(2), random_locked_info()),
+            (subject_account_n::<Test>(3), random_locked_info()),
+            (subject_account_n::<Test>(4), random_locked_info()),
+        ];
+
+        for (account, info) in expected.iter() {
+            <LockedInfoByAccount<Test>>::insert(account.clone(), info.clone());
+        }
+
+        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 4);
+        let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
+
+
+        assert!(compare_ignore_order(&infos, &expected));
+
+
+        // nothing should happen since account 55 don't have any locked_info
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account_n::<Test>(55),
+            ),
+        );
+        let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
+        assert!(compare_ignore_order(&infos, &expected));
+
+
+
+        // remove account 4
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account_n::<Test>(4),
+            ),
+        );
+        let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
+        assert!(!compare_ignore_order(&infos, &expected));
+        expected.retain(|(account, _)| account != &subject_account_n::<Test>(4));
+        assert!(compare_ignore_order(&infos, &expected));
+
+        // nothing should happen since account 1312 don't have any locked_info
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account_n::<Test>(1312),
+            ),
+        );
+        let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
+        assert!(compare_ignore_order(&infos, &expected));
+
+
+        // remove account 1
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account_n::<Test>(1),
+            ),
+        );
+        let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
+        assert!(!compare_ignore_order(&infos, &expected));
+        expected.retain(|(account, _)| account != &subject_account_n::<Test>(1));
+        assert!(compare_ignore_order(&infos, &expected));
+
+
+        // Add a new account
+        let acc_221122 = subject_account_n::<Test>(221122);
+        let acc_221122_info = random_locked_info();
+        expected.push((acc_221122.clone(), acc_221122_info.clone()));
+        assert_ok!(
+            LockerMirror::set_locked_info(
+                root_caller_origin::<Test>(),
+                acc_221122,
+                acc_221122_info.clone(),
+            ),
+        );
+        let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
+        assert!(compare_ignore_order(&infos, &expected));
+
+
+        // remove account 221122
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account_n::<Test>(221122),
+            ),
+        );
+        let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
+        assert!(!compare_ignore_order(&infos, &expected));
+        expected.retain(|(account, _)| account != &subject_account_n::<Test>(221122));
+        assert!(compare_ignore_order(&infos, &expected));
     });
 }
