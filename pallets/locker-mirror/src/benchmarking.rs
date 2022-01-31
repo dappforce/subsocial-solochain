@@ -9,7 +9,7 @@ use frame_benchmarking::vec;
 use frame_support::ensure;
 use sp_runtime::traits::Bounded;
 
-fn _mock_lock_info<T: Config>() -> LockedInfo<T::BlockNumber, BalanceOf<T>> {
+fn _mock_lock_info<T: Config>() -> LockedInfoOf<T> {
     LockedInfo::<T::BlockNumber, BalanceOf<T>> {
         locked_amount: BalanceOf::<T>::max_value(),
         lock_period: T::BlockNumber::from(11u32),

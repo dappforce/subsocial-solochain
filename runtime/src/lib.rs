@@ -70,7 +70,7 @@ use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_L
 pub mod constants;
 use constants::{free_calls::*, currency::*, time::*};
 use pallet_free_calls::{NumberOfCalls, WindowConfig};
-use pallet_locker_mirror::LockedInfo;
+use pallet_locker_mirror::{LockedInfo, LockedInfoOf};
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -454,7 +454,7 @@ impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
 impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculationStrategy {
     fn calculate(
         current_block: <Runtime as frame_system::Config>::BlockNumber,
-        locked_info: Option<LockedInfo<<Runtime as frame_system::Config>::BlockNumber, pallet_locker_mirror::BalanceOf<Runtime>>>
+        locked_info: Option<LockedInfoOf<Runtime>>
     ) -> Option<NumberOfCalls> {
         locked_info.and_then(|locked_info| {
             if current_block >= locked_info.unlocks_at {

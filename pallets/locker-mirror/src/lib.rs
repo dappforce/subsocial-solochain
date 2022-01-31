@@ -24,6 +24,8 @@ pub mod pallet {
 
     pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+    pub type LockedInfoOf<T> = LockedInfo<<T as frame_system::Config>::BlockNumber, BalanceOf<T>>;
+
     /// Information about the locked tokens on the parachain.
     #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
     pub struct LockedInfo<BlockNumber, Balance> {
@@ -63,7 +65,7 @@ pub mod pallet {
         _,
         Twox64Concat,
         T::AccountId,
-        LockedInfo<T::BlockNumber, BalanceOf<T>>,
+        LockedInfoOf<T>,
         OptionQuery,
     >;
 
@@ -89,7 +91,7 @@ pub mod pallet {
         pub fn set_locked_info(
             origin: OriginFor<T>,
             account: T::AccountId,
-            locked_info: LockedInfo<T::BlockNumber, BalanceOf<T>>,
+            locked_info: LockedInfoOf<T>,
         ) -> DispatchResultWithPostInfo {
             let _ = T::OracleOrigin::ensure_origin(origin)?;
 

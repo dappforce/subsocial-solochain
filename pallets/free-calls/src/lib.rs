@@ -50,7 +50,7 @@ pub mod pallet {
     use sp_std::boxed::Box;
     use sp_std::cmp::max;
     use sp_std::vec::Vec;
-    use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoByAccount};
+    use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoByAccount, LockedInfoOf};
     use crate::WeightInfo;
 
     /// The ratio between the quota and a particular window.
@@ -346,7 +346,7 @@ pub mod pallet {
 
 
     pub trait QuotaCalculationStrategy<T: Config> {
-        fn calculate(current_block: T::BlockNumber, locked_info: Option<LockedInfo<T::BlockNumber, BalanceOf<T>>>) -> Option<NumberOfCalls>;
+        fn calculate(current_block: T::BlockNumber, locked_info: Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
     }
 }
 
