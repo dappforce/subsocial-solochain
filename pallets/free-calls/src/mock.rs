@@ -20,7 +20,7 @@ pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 
 use crate::mock::time::*;
-use crate::{NumberOfCalls, WindowConfig};
+use crate::{NumberOfCalls, QuotaToWindowRatio, WindowConfig};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -130,11 +130,11 @@ impl pallet_free_calls::Config for Test {
     type Event = Event;
     type Call = Call;
     const WINDOWS_CONFIG: &'static [WindowConfig<Self::BlockNumber>] = &[
-        WindowConfig::new(1 * DAYS, 1),
-        WindowConfig::new(2 * HOURS, 3),
-        WindowConfig::new(30 * MINUTES, 5),
-        WindowConfig::new(5 * MINUTES, 20),
-        WindowConfig::new(1, 1000),
+        WindowConfig::new(1 * DAYS, QuotaToWindowRatio::new(1)),
+        WindowConfig::new(2 * HOURS, QuotaToWindowRatio::new(3)),
+        WindowConfig::new(30 * MINUTES, QuotaToWindowRatio::new(5)),
+        WindowConfig::new(5 * MINUTES, QuotaToWindowRatio::new(20)),
+        WindowConfig::new(1, QuotaToWindowRatio::new(1000)),
     ];
     type CallFilter = Everything;
     type WeightInfo = ();

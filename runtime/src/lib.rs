@@ -494,7 +494,7 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
     }
     let mut config = &configs[0];
     // first config must have 1 as ratio
-    if config.quota_ratio != 1 {
+    if config.quota_ratio.get() != 1 {
         return false;
     }
 
@@ -509,7 +509,7 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
         }
 
         // current ratio must be grater than or equal the previous ratio
-        if current_config.quota_ratio < config.quota_ratio {
+        if current_config.quota_ratio.get() < config.quota_ratio.get() {
             return false;
         }
 

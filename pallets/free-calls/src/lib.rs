@@ -37,15 +37,18 @@ mod weights;
 
 pub use weights::WeightInfo;
 use frame_support::traits::Contains;
+use sp_runtime::traits::Zero;
 
 #[frame_support::pallet]
 pub mod pallet {
+    use sp_std::num::{NonZeroIsize, NonZeroU128, NonZeroU32};
+    use sp_std::num::NonZeroU16;
     use frame_support::weights::GetDispatchInfo;
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
     use frame_support::traits::{Contains, IsSubType};
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::Dispatchable;
+    use sp_runtime::traits::{AtLeast32BitUnsigned, Dispatchable};
     use sp_runtime::traits::Zero;
     use sp_std::boxed::Box;
     use sp_std::cmp::max;
@@ -58,7 +61,7 @@ pub mod pallet {
     /// ## Example:
     /// if ratio is 20 and the quota is 100 then each window should have maximum of 5 calls.
     /// max number of calls per window = quota / ratio.
-    pub type QuotaToWindowRatio = u16;
+    pub type QuotaToWindowRatio = NonZeroU16;
 
     /// Type to keep track of how many calls is in quota or used in a particular window.
     pub type NumberOfCalls = u16;
@@ -109,10 +112,14 @@ pub mod pallet {
     }
 
     impl<BlockNumber> WindowConfig<BlockNumber> {
-        pub const fn new(period: BlockNumber, quota_ratio: QuotaToWindowRatio) -> Self {
+        //TODO: try to also force period to be non zero.
+        pub const fn new(period: BlockNumber, quota_ratio: Option<QuotaToWindowRatio>) -> Self {
             WindowConfig {
                 period,
-                quota_ratio,
+                quota_ratio: match quota_ratio {
+                    Some(non_zero) => non_zero,
+                    None => panic!("quota_ratio must be non zero"),
+                },
             }
         }
     }
@@ -306,7 +313,7 @@ pub mod pallet {
             for (config_index, config) in windows_config.into_iter().enumerate() {
                 let config_index = config_index as WindowType;
 
-                if config.period.is_zero() || config.quota_ratio.is_zero() {
+                if config.period.is_zero() {
                     can_call = false;
                     break;
                 }

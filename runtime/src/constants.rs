@@ -25,17 +25,17 @@ pub mod time {
 }
 
 pub mod free_calls {
-    use pallet_free_calls::WindowConfig;
+    use pallet_free_calls::{QuotaToWindowRatio, WindowConfig};
     use crate::BlockNumber;
     use super::time::*;
 
 	/// Make sure that every next period is equal or smaller and ratio is equal or bigger.
     pub const FREE_CALLS_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 3] = [
         /// Window that lasts a day and has 100% of the allocated quota.
-		WindowConfig::new(1 * DAYS, 1),
+		WindowConfig::new(1 * DAYS, QuotaToWindowRatio::new(1)),
         /// Window that lasts an hour and has (1/3) of the allocated quota.
-        WindowConfig::new(1 * HOURS, 3),
+        WindowConfig::new(1 * HOURS, QuotaToWindowRatio::new(3)),
         /// Window that lasts for 5 minutes and has (1/10) of the allocated quota.
-        WindowConfig::new(5 * MINUTES, 10),
+        WindowConfig::new(5 * MINUTES, QuotaToWindowRatio::new(10)),
     ];
 }
