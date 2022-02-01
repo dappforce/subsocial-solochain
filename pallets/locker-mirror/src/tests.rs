@@ -1,12 +1,24 @@
 #![allow(non_snake_case)]
 use frame_benchmarking::account;
 use crate::{mock::*, LockedInfoByAccount, BalanceOf, LockedInfo, Config, LockedInfoOf};
-use frame_support::{assert_ok, assert_noop, assert_err};
+use frame_support::{assert_ok, assert_noop, assert_err, assert_err_with_weight};
+use frame_support::dispatch::DispatchResultWithPostInfo;
+use frame_support::weights::{Pays, PostDispatchInfo};
 use frame_system::pallet_prelude::OriginFor;
 use rand::Rng;
 use sp_runtime::DispatchError::BadOrigin;
+use sp_runtime::DispatchErrorWithPostInfo;
 use subsocial_primitives::Balance;
 
+
+fn extract_post_info(result: DispatchResultWithPostInfo) -> PostDispatchInfo {
+    let post_info = match result {
+        Ok(post_info) => post_info,
+        Err(DispatchErrorWithPostInfo { post_info, ..}) => post_info,
+    };
+
+    post_info
+}
 
 fn non_root_caller_origin<T: Config>() -> Origin {
     Origin::signed(account("Caller", 0, 0))
@@ -61,6 +73,38 @@ fn set_locked_info__should_ok_when_caller_is_manager() {
 }
 
 #[test]
+fn set_locked_info__should_pay_when_caller_is_not_manager() {
+    new_test_ext().execute_with(|| {
+        let res = LockerMirror::set_locked_info(
+            non_root_caller_origin::<Test>(),
+            subject_account::<Test>(),
+            random_locked_info(),
+        );
+        assert_err!(
+            res,
+            BadOrigin,
+        );
+
+        assert!(extract_post_info(res).pays_fee == Pays::Yes);
+    });
+}
+
+
+#[test]
+fn set_locked_info__should_not_pay_when_caller_is_manager() {
+    new_test_ext().execute_with(|| {
+        let res = LockerMirror::set_locked_info(
+            root_caller_origin::<Test>(),
+            subject_account::<Test>(),
+            random_locked_info(),
+        );
+        assert_ok!(res);
+
+        assert!(extract_post_info(res).pays_fee == Pays::No);
+    });
+}
+
+#[test]
 fn set_locked_info__should_change_storage_for_the_subject_account() {
     new_test_ext().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
@@ -100,6 +144,36 @@ fn clear_locked_info__should_ok_when_caller_is_manager() {
                 subject_account::<Test>(),
             ),
         );
+    });
+}
+
+#[test]
+fn clear_locked_info__should_pay_when_caller_is_not_manager() {
+    new_test_ext().execute_with(|| {
+        let res = LockerMirror::clear_locked_info(
+            non_root_caller_origin::<Test>(),
+            subject_account::<Test>(),
+        );
+        assert_err!(
+            res,
+            BadOrigin,
+        );
+
+        assert!(extract_post_info(res).pays_fee == Pays::Yes);
+    });
+}
+
+
+#[test]
+fn clear_locked_info__should_not_pay_when_caller_is_manager() {
+    new_test_ext().execute_with(|| {
+        let res = LockerMirror::clear_locked_info(
+            root_caller_origin::<Test>(),
+            subject_account::<Test>(),
+        );
+        assert_ok!(res);
+
+        assert!(extract_post_info(res).pays_fee == Pays::No);
     });
 }
 
