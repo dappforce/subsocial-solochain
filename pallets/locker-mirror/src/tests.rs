@@ -103,6 +103,46 @@ fn clear_locked_info__should_ok_when_caller_is_manager() {
     });
 }
 
+#[test]
+fn clear_locked_info__should_clear_storage() {
+    new_test_ext().execute_with(|| {
+        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
+
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account_n::<Test>(11),
+            ),
+        );
+        // nothing is changed
+        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
+
+        let account = subject_account::<Test>();
+        let info = random_locked_info();
+
+        <LockedInfoByAccount<Test>>::insert(account.clone(), info.clone());
+        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
+
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account_n::<Test>(12),
+            ),
+        );
+        // nothing will change
+        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
+
+        assert_ok!(
+            LockerMirror::clear_locked_info(
+                root_caller_origin::<Test>(),
+                subject_account::<Test>(),
+            ),
+        );
+        // now since the account is found, the storage is cleared
+        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
+    });
+}
+
 fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
     if a.len() != b.len() {
         return false;
@@ -130,7 +170,13 @@ fn sequence_of_set_clear() {
         ];
 
         for (account, info) in expected.iter() {
-            <LockedInfoByAccount<Test>>::insert(account.clone(), info.clone());
+            assert_ok!(
+                LockerMirror::set_locked_info(
+                    root_caller_origin::<Test>(),
+                    account.clone(),
+                    info.clone(),
+                ),
+            );
         }
 
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 4);
