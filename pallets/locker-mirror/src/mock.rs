@@ -87,7 +87,18 @@ impl pallet_locker_mirror::Config for Test {
     type WeightInfo = ();
 }
 
-// Build genesis storage according to the mock runtime.
-pub fn new_test_ext() -> TestExternalities {
-    frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+
+pub struct ExtBuilder;
+
+impl ExtBuilder {
+    pub fn build() -> TestExternalities {
+        let storage = &mut system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage.clone());
+        ext.execute_with(|| System::set_block_number(1));
+
+        ext
+    }
 }

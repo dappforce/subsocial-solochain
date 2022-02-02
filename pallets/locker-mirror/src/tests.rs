@@ -47,7 +47,7 @@ fn random_locked_info() -> LockedInfoOf<Test> {
 
 #[test]
 fn set_locked_info__should_fail_when_not_manager_origin() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         assert_err!(
             LockerMirror::set_locked_info(
                 non_root_caller_origin::<Test>(),
@@ -61,7 +61,7 @@ fn set_locked_info__should_fail_when_not_manager_origin() {
 
 #[test]
 fn set_locked_info__should_ok_when_caller_is_manager() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         assert_ok!(
             LockerMirror::set_locked_info(
                 root_caller_origin::<Test>(),
@@ -74,7 +74,7 @@ fn set_locked_info__should_ok_when_caller_is_manager() {
 
 #[test]
 fn set_locked_info__should_pay_when_caller_is_not_manager() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         let res = LockerMirror::set_locked_info(
             non_root_caller_origin::<Test>(),
             subject_account::<Test>(),
@@ -92,7 +92,7 @@ fn set_locked_info__should_pay_when_caller_is_not_manager() {
 
 #[test]
 fn set_locked_info__should_not_pay_when_caller_is_manager() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         let res = LockerMirror::set_locked_info(
             root_caller_origin::<Test>(),
             subject_account::<Test>(),
@@ -106,7 +106,7 @@ fn set_locked_info__should_not_pay_when_caller_is_manager() {
 
 #[test]
 fn set_locked_info__should_change_storage_for_the_subject_account() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
         let expected_locked_info = random_locked_info();
         assert_ok!(
@@ -124,7 +124,7 @@ fn set_locked_info__should_change_storage_for_the_subject_account() {
 
 #[test]
 fn clear_locked_info__should_fail_when_not_manager_origin() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         assert_err!(
             LockerMirror::clear_locked_info(
                 non_root_caller_origin::<Test>(),
@@ -137,7 +137,7 @@ fn clear_locked_info__should_fail_when_not_manager_origin() {
 
 #[test]
 fn clear_locked_info__should_ok_when_caller_is_manager() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         assert_ok!(
             LockerMirror::clear_locked_info(
                 root_caller_origin::<Test>(),
@@ -149,7 +149,7 @@ fn clear_locked_info__should_ok_when_caller_is_manager() {
 
 #[test]
 fn clear_locked_info__should_pay_when_caller_is_not_manager() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         let res = LockerMirror::clear_locked_info(
             non_root_caller_origin::<Test>(),
             subject_account::<Test>(),
@@ -166,7 +166,7 @@ fn clear_locked_info__should_pay_when_caller_is_not_manager() {
 
 #[test]
 fn clear_locked_info__should_not_pay_when_caller_is_manager() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         let res = LockerMirror::clear_locked_info(
             root_caller_origin::<Test>(),
             subject_account::<Test>(),
@@ -179,7 +179,7 @@ fn clear_locked_info__should_not_pay_when_caller_is_manager() {
 
 #[test]
 fn clear_locked_info__should_clear_storage() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
 
         assert_ok!(
@@ -233,7 +233,7 @@ fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
 
 #[test]
 fn sequence_of_set_clear() {
-    new_test_ext().execute_with(|| {
+    ExtBuilder::build().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
 
         let mut expected = vec![
