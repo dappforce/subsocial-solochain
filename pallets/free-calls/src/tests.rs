@@ -5,6 +5,7 @@ use frame_support::{assert_err, assert_ok};
 use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
 use crate::mock::*;
 use rand::Rng;
+use subsocial_primitives::Block;
 use crate::{ConsumerStats, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, WindowConfig, WindowType};
 use crate::WindowStatsByConsumer;
 
@@ -302,7 +303,6 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
 
 #[test]
 fn consumer_with_quota_but_no_previous_usages() {
-    // just make sure everything is okay
     ExtBuilder::default()
         .windows_config(vec![ WindowConfig::new(100, QuotaToWindowRatio::new(1)) ])
         .quota_calculation(|_, _| Some(100))
@@ -371,5 +371,54 @@ fn consumer_with_quota_but_no_previous_usages() {
                 used_calls: 1,
             };
             assert_eq!(consumer_stats, (0, expected_usage));
+        });
+}
+
+
+#[test]
+fn consumer_with_quota_and_have_previous_usages() {
+    ExtBuilder::default()
+        .windows_config(vec![ WindowConfig::new(50, QuotaToWindowRatio::new(1)) ])
+        .quota_calculation(|_, _| Some(34))
+        .build()
+        .execute_with(|| {
+            let consumer: AccountId = account("Consumer", 0, 0);
+
+            TestUtils::set_block_number(10);
+
+            <WindowStatsByConsumer<Test>>::insert(consumer, 0, ConsumerStats::<BlockNumber> {
+                timeline_index: 0,
+                used_calls: 34,
+            });
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, false, "The consumer is out of quota");
+
+            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
+            assert_eq!(consumer_stats.len(), 1, "We only have one window");
+            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
+                timeline_index: 0,
+                used_calls: 34,
+            }));
+
+            ////////
+
+            TestUtils::set_block_number(55);
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true, "We have entered a new window");
+
+            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
+            assert_eq!(consumer_stats.len(), 1, "We only have one window");
+            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
+                timeline_index: 1,
+                used_calls: 1,
+            }));
         });
 }
