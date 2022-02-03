@@ -420,5 +420,43 @@ fn consumer_with_quota_and_have_previous_usages() {
                 timeline_index: 1,
                 used_calls: 1,
             }));
+
+            ////////
+
+            TestUtils::set_block_number(80);
+
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true, "We still have quota to spend");
+
+            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
+            assert_eq!(consumer_stats.len(), 1, "We only have one window");
+            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
+                timeline_index: 1,
+                used_calls: 2,
+            }));
+
+
+            /////
+
+            TestUtils::set_block_number(100);
+
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true);
+
+            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
+            assert_eq!(consumer_stats.len(), 1, "We only have one window");
+            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
+                timeline_index: 2,
+                used_calls: 1,
+            }));
+
         });
 }
