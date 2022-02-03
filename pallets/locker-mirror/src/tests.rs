@@ -5,6 +5,7 @@ use frame_support::{assert_ok, assert_noop, assert_err, assert_err_with_weight};
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::weights::{Pays, PostDispatchInfo};
 use frame_system::pallet_prelude::OriginFor;
+use frame_system::RawOrigin;
 use rand::Rng;
 use sp_runtime::DispatchError::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
@@ -20,20 +21,18 @@ fn extract_post_info(result: DispatchResultWithPostInfo) -> PostDispatchInfo {
     post_info
 }
 
-fn non_root_caller_origin<T: Config>() -> Origin {
-    Origin::signed(account("Caller", 0, 0))
-}
-
-fn root_caller_origin<T: Config>() -> Origin {
-    Origin::root()
-}
-
 fn subject_account<T: Config>() -> T::AccountId {
-    account("Subject", 1, 1)
+    account("Subject", 0, 0)
 }
 
 fn subject_account_n<T: Config>(n: u32) -> T::AccountId {
-    account("Subject N", 2 + n, 2 + n)
+    assert_ne!(n, 0);
+    account("Subject N", n, n)
+}
+
+fn random_subject_account<T: Config>() -> T::AccountId {
+    let mut rng = rand::thread_rng();
+    subject_account_n::<T>(rng.gen_range(1..1024))
 }
 
 fn random_locked_info() -> LockedInfoOf<Test> {
@@ -45,12 +44,14 @@ fn random_locked_info() -> LockedInfoOf<Test> {
     }
 }
 
+
 #[test]
-fn set_locked_info__should_fail_when_not_manager_origin() {
-    ExtBuilder::build().execute_with(|| {
+fn set_locked_info__should_fail_when_unsigned() {
+    ExtBuilder::default()
+        .build().execute_with(|| {
         assert_err!(
             LockerMirror::set_locked_info(
-                non_root_caller_origin::<Test>(),
+                Origin::none(),
                 subject_account::<Test>(),
                 random_locked_info(),
             ),
@@ -60,11 +61,33 @@ fn set_locked_info__should_fail_when_not_manager_origin() {
 }
 
 #[test]
-fn set_locked_info__should_ok_when_caller_is_manager() {
-    ExtBuilder::build().execute_with(|| {
+fn set_locked_info__should_fail_when_not_oracle_origin() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
+        assert_err!(
+            LockerMirror::set_locked_info(
+                Origin::signed(non_oracle.clone()),
+                subject_account::<Test>(),
+                random_locked_info(),
+            ),
+            BadOrigin,
+        );
+    });
+}
+
+#[test]
+fn set_locked_info__should_ok_when_caller_is_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         assert_ok!(
             LockerMirror::set_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account::<Test>(),
                 random_locked_info(),
             ),
@@ -73,10 +96,14 @@ fn set_locked_info__should_ok_when_caller_is_manager() {
 }
 
 #[test]
-fn set_locked_info__should_pay_when_caller_is_not_manager() {
-    ExtBuilder::build().execute_with(|| {
+fn set_locked_info__should_pay_when_caller_is_not_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         let res = LockerMirror::set_locked_info(
-            non_root_caller_origin::<Test>(),
+            Origin::signed(non_oracle.clone()),
             subject_account::<Test>(),
             random_locked_info(),
         );
@@ -91,10 +118,14 @@ fn set_locked_info__should_pay_when_caller_is_not_manager() {
 
 
 #[test]
-fn set_locked_info__should_not_pay_when_caller_is_manager() {
-    ExtBuilder::build().execute_with(|| {
+fn set_locked_info__should_not_pay_when_caller_is_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         let res = LockerMirror::set_locked_info(
-            root_caller_origin::<Test>(),
+            Origin::signed(oracle.clone()),
             subject_account::<Test>(),
             random_locked_info(),
         );
@@ -106,12 +137,16 @@ fn set_locked_info__should_not_pay_when_caller_is_manager() {
 
 #[test]
 fn set_locked_info__should_change_storage_for_the_subject_account() {
-    ExtBuilder::build().execute_with(|| {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
         let expected_locked_info = random_locked_info();
         assert_ok!(
             LockerMirror::set_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account::<Test>(),
                 expected_locked_info.clone(),
             ),
@@ -123,11 +158,12 @@ fn set_locked_info__should_change_storage_for_the_subject_account() {
 }
 
 #[test]
-fn clear_locked_info__should_fail_when_not_manager_origin() {
-    ExtBuilder::build().execute_with(|| {
+fn clear_locked_info__should_fail_when_unsigned() {
+    ExtBuilder::default()
+        .build().execute_with(|| {
         assert_err!(
             LockerMirror::clear_locked_info(
-                non_root_caller_origin::<Test>(),
+                Origin::none(),
                 subject_account::<Test>(),
             ),
             BadOrigin,
@@ -136,11 +172,32 @@ fn clear_locked_info__should_fail_when_not_manager_origin() {
 }
 
 #[test]
-fn clear_locked_info__should_ok_when_caller_is_manager() {
-    ExtBuilder::build().execute_with(|| {
+fn clear_locked_info__should_fail_when_not_oracle_origin() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
+        assert_err!(
+            LockerMirror::clear_locked_info(
+                Origin::signed(non_oracle.clone()),
+                subject_account::<Test>(),
+            ),
+            BadOrigin,
+        );
+    });
+}
+
+#[test]
+fn clear_locked_info__should_ok_when_caller_is_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account::<Test>(),
             ),
         );
@@ -148,10 +205,14 @@ fn clear_locked_info__should_ok_when_caller_is_manager() {
 }
 
 #[test]
-fn clear_locked_info__should_pay_when_caller_is_not_manager() {
-    ExtBuilder::build().execute_with(|| {
+fn clear_locked_info__should_pay_when_caller_is_not_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         let res = LockerMirror::clear_locked_info(
-            non_root_caller_origin::<Test>(),
+            Origin::signed(non_oracle.clone()),
             subject_account::<Test>(),
         );
         assert_err!(
@@ -165,10 +226,14 @@ fn clear_locked_info__should_pay_when_caller_is_not_manager() {
 
 
 #[test]
-fn clear_locked_info__should_not_pay_when_caller_is_manager() {
-    ExtBuilder::build().execute_with(|| {
+fn clear_locked_info__should_not_pay_when_caller_is_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         let res = LockerMirror::clear_locked_info(
-            root_caller_origin::<Test>(),
+            Origin::signed(oracle.clone()),
             subject_account::<Test>(),
         );
         assert_ok!(res);
@@ -179,12 +244,16 @@ fn clear_locked_info__should_not_pay_when_caller_is_manager() {
 
 #[test]
 fn clear_locked_info__should_clear_storage() {
-    ExtBuilder::build().execute_with(|| {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
 
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account_n::<Test>(11),
             ),
         );
@@ -199,7 +268,7 @@ fn clear_locked_info__should_clear_storage() {
 
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account_n::<Test>(12),
             ),
         );
@@ -208,7 +277,7 @@ fn clear_locked_info__should_clear_storage() {
 
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account::<Test>(),
             ),
         );
@@ -233,7 +302,11 @@ fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
 
 #[test]
 fn sequence_of_set_clear() {
-    ExtBuilder::build().execute_with(|| {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
 
         let mut expected = vec![
@@ -246,7 +319,7 @@ fn sequence_of_set_clear() {
         for (account, info) in expected.iter() {
             assert_ok!(
                 LockerMirror::set_locked_info(
-                    root_caller_origin::<Test>(),
+                    Origin::signed(oracle.clone()),
                     account.clone(),
                     info.clone(),
                 ),
@@ -263,7 +336,7 @@ fn sequence_of_set_clear() {
         // nothing should happen since account 55 don't have any locked_info
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account_n::<Test>(55),
             ),
         );
@@ -275,7 +348,7 @@ fn sequence_of_set_clear() {
         // remove account 4
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account_n::<Test>(4),
             ),
         );
@@ -287,7 +360,7 @@ fn sequence_of_set_clear() {
         // nothing should happen since account 1312 don't have any locked_info
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account_n::<Test>(1312),
             ),
         );
@@ -298,7 +371,7 @@ fn sequence_of_set_clear() {
         // remove account 1
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account_n::<Test>(1),
             ),
         );
@@ -314,7 +387,7 @@ fn sequence_of_set_clear() {
         expected.push((acc_221122.clone(), acc_221122_info.clone()));
         assert_ok!(
             LockerMirror::set_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 acc_221122,
                 acc_221122_info.clone(),
             ),
@@ -326,7 +399,7 @@ fn sequence_of_set_clear() {
         // remove account 221122
         assert_ok!(
             LockerMirror::clear_locked_info(
-                root_caller_origin::<Test>(),
+                Origin::signed(oracle.clone()),
                 subject_account_n::<Test>(221122),
             ),
         );

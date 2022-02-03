@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -6,11 +8,10 @@ use sp_runtime::{
 
 use crate as pallet_locker_mirror;
 
-use frame_support::{
-    parameter_types,
-};
+use frame_support::{ord_parameter_types, parameter_types};
+use frame_support::traits::{EnsureOrigin, SortedMembers};
 use frame_system as system;
-use frame_system::EnsureRoot;
+use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
 
 
 pub(crate) type AccountId = u64;
@@ -79,19 +80,46 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
 }
 
-
+thread_local! {
+    pub static TEST_ORACLE_ORIGIN: RefCell<AccountId> = RefCell::new(0);
+}
+pub struct OracleOriginSortedMembers;
+impl SortedMembers<AccountId> for OracleOriginSortedMembers {
+    fn sorted_members() -> Vec<AccountId> {
+        vec![TEST_ORACLE_ORIGIN.with(|v| v.borrow().clone())]
+    }
+}
 impl pallet_locker_mirror::Config for Test {
     type Event = Event;
     type Currency = Balances;
-    type OracleOrigin = EnsureRoot<AccountId>;
+    type OracleOrigin = EnsureSignedBy<OracleOriginSortedMembers, AccountId>;
     type WeightInfo = ();
 }
 
 
-pub struct ExtBuilder;
-
+pub struct ExtBuilder {
+    oracle_origin: AccountId,
+}
+impl Default for ExtBuilder {
+    fn default() -> Self {
+        Self {
+            oracle_origin: 0,
+        }
+    }
+}
 impl ExtBuilder {
-    pub fn build() -> TestExternalities {
+    pub fn oracle_account_id(mut self, oracle_origin: AccountId) -> Self {
+        self.oracle_origin = oracle_origin;
+        self
+    }
+
+    pub fn set_associated_consts(&self) {
+        TEST_ORACLE_ORIGIN.with(|v| *v.borrow_mut() = self.oracle_origin);
+    }
+
+    pub fn build(self) -> TestExternalities {
+        self.set_associated_consts();
+
         let storage = &mut system::GenesisConfig::default()
             .build_storage::<Test>()
             .unwrap();
