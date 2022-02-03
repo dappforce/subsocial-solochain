@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use frame_benchmarking::whitelisted_caller;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -81,7 +82,7 @@ impl pallet_balances::Config for Test {
 }
 
 thread_local! {
-    pub static TEST_ORACLE_ORIGIN: RefCell<AccountId> = RefCell::new(0);
+    pub static TEST_ORACLE_ORIGIN: RefCell<AccountId> = RefCell::new(whitelisted_caller());
 }
 pub struct OracleOriginSortedMembers;
 impl SortedMembers<AccountId> for OracleOriginSortedMembers {
@@ -103,7 +104,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            oracle_origin: 0,
+            oracle_origin: whitelisted_caller(),
         }
     }
 }

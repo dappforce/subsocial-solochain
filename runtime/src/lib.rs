@@ -468,10 +468,14 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
     }
 }
 
+parameter_types! {
+    pub WindowsConfig: Vec<WindowConfig<BlockNumber>> = FREE_CALLS_WINDOWS_CONFIG.to_vec();
+}
+
 impl pallet_free_calls::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    const WINDOWS_CONFIG: &'static [WindowConfig<BlockNumber>] = &FREE_CALLS_WINDOWS_CONFIG;
+    type WindowsConfig = WindowsConfig;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
     type QuotaCalculationStrategy = FreeCallsCalculationStrategy;

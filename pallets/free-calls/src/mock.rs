@@ -125,17 +125,20 @@ impl pallet_free_calls::QuotaCalculationStrategy<Test> for FreeCallsCalculationS
     }
 }
 
-
-impl pallet_free_calls::Config for Test {
-    type Event = Event;
-    type Call = Call;
-    const WINDOWS_CONFIG: &'static [WindowConfig<Self::BlockNumber>] = &[
+parameter_types! {
+    pub static WindowsConfig: Vec<WindowConfig<BlockNumber>> = [
         WindowConfig::new(1 * DAYS, QuotaToWindowRatio::new(1)),
         WindowConfig::new(2 * HOURS, QuotaToWindowRatio::new(3)),
         WindowConfig::new(30 * MINUTES, QuotaToWindowRatio::new(5)),
         WindowConfig::new(5 * MINUTES, QuotaToWindowRatio::new(20)),
         WindowConfig::new(1, QuotaToWindowRatio::new(1000)),
-    ];
+    ].to_vec();
+}
+
+impl pallet_free_calls::Config for Test {
+    type Event = Event;
+    type Call = Call;
+    type WindowsConfig = WindowsConfig;
     type CallFilter = Everything;
     type WeightInfo = ();
     type QuotaCalculationStrategy = FreeCallsCalculationStrategy;

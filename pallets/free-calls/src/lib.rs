@@ -144,7 +144,8 @@ pub mod pallet {
 
         /// The configurations that will be used to limit the usage of the allocated quota to these
         /// different configs.
-        const WINDOWS_CONFIG: &'static [WindowConfig<Self::BlockNumber>];
+        #[pallet::constant]
+        type WindowsConfig: Get<Vec<WindowConfig<Self::BlockNumber>>>;
 
         /// Filter on which calls are permitted to be free.
         type CallFilter: Contains<<Self as Config>::Call>;
@@ -154,13 +155,6 @@ pub mod pallet {
 
         /// A calculation strategy to convert locked tokens info to a quota.
         type QuotaCalculationStrategy: QuotaCalculationStrategy<Self>;
-    }
-
-    #[pallet::extra_constants]
-    impl<T: Config> Pallet<T> {
-        /// The configurations that will be used to limit the usage of the allocated quota to these
-        /// different configs.
-        fn windows_config() -> &'static [WindowConfig<T::BlockNumber>] { T::WINDOWS_CONFIG }
     }
 
     /// Keeps track of each windows usage for each consumer.
@@ -235,7 +229,7 @@ pub mod pallet {
     struct Window<T: Config> {
         consumer: T::AccountId,
         config_index: WindowType,
-        config: &'static WindowConfig<T::BlockNumber>,
+        config: WindowConfig<T::BlockNumber>,
         timeline_index: T::BlockNumber,
         stats: ConsumerStats<T::BlockNumber>,
         can_have_free_call: bool,
@@ -248,7 +242,7 @@ pub mod pallet {
             quota: NumberOfCalls,
             current_block: T::BlockNumber,
             config_index: WindowType,
-            config: &'static WindowConfig<T::BlockNumber>,
+            config: WindowConfig<T::BlockNumber>,
             window_stats: Option<ConsumerStats<T::BlockNumber>>,
         ) -> Self {
             let timeline_index = current_block / config.period;
@@ -296,7 +290,7 @@ pub mod pallet {
         pub fn can_make_free_call(consumer: &T::AccountId, should_update_consumer_stats: ShouldUpdateConsumerStats) -> bool {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
-            let windows_config = T::WINDOWS_CONFIG;
+            let windows_config = T::WindowsConfig::get();
 
             if windows_config.is_empty() {
                 return false;
@@ -324,7 +318,7 @@ pub mod pallet {
                     quota,
                     current_block,
                     config_index,
-                    config,
+                    config.clone(),
                     Self::window_stats_by_consumer(consumer.clone(), config_index),
                 );
 
