@@ -10,7 +10,7 @@
 //! - https://blog.cloudflare.com/counting-things-a-lot-of-different-things/
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(const_panic)]
+// #![feature(const_panic)] not needed for the new rust version
 
 use codec::{Decode, Encode};
 use frame_support::ensure;
