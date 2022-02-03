@@ -3,10 +3,11 @@
 
 use crate::*;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller, account};
-use frame_system::RawOrigin;
+use frame_system::{Origin, RawOrigin};
 use frame_benchmarking::Box;
 use frame_benchmarking::vec;
 use frame_support::ensure;
+use frame_system::pallet_prelude::OriginFor;
 use sp_runtime::traits::Bounded;
 
 fn _mock_lock_info<T: Config>() -> LockedInfoOf<T> {
@@ -17,13 +18,16 @@ fn _mock_lock_info<T: Config>() -> LockedInfoOf<T> {
     }
 }
 
+fn _get_oracle_origin<T: Config>() -> Origin<T> {
+    RawOrigin::Signed(<T as frame_system::Config>::AccountId::default())
+}
+
 benchmarks!{
 
     set_locked_info {
-        let caller = RawOrigin::Root;
         let account: T::AccountId = account("BenchAccount", 1, 3);
         let locked_info = _mock_lock_info::<T>();
-    }: _(caller, account.clone(), locked_info.clone())
+    }: _(_get_oracle_origin::<T>(), account.clone(), locked_info.clone())
     verify {
         let res = <LockedInfoByAccount<T>>::get(account.clone()).expect("There should be a value stored for this account");
         ensure!(res == locked_info, "stored locked_info is not correct");
@@ -49,6 +53,6 @@ benchmarks!{
 
 impl_benchmark_test_suite!(
     Pallet,
-    crate::mock::ExtBuilder::default().build(),
+    crate::mock::ExtBuilder::default().oracle_account_id(u64::default()).build(),
     crate::mock::Test,
 );
