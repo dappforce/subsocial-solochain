@@ -1,3 +1,6 @@
+use std::borrow::{Borrow, BorrowMut};
+use std::cell::RefCell;
+use std::thread::sleep;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -11,16 +14,16 @@ use frame_support::{
     assert_ok,
     dispatch::DispatchResultWithPostInfo,
 };
-use frame_support::traits::Everything;
+use frame_support::traits::{Contains, Everything};
 use frame_system as system;
-use frame_system::EnsureRoot;
+use frame_system::{EnsureRoot, EventRecord};
 use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoOf};
 
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 
 use crate::mock::time::*;
-use crate::{NumberOfCalls, QuotaToWindowRatio, WindowConfig};
+use crate::{ConsumerStats, NumberOfCalls, QuotaToWindowRatio, WindowConfig, WindowStatsByConsumer, WindowType};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -105,46 +108,118 @@ impl pallet_locker_mirror::Config for Test {
     type WeightInfo = ();
 }
 
-/// A calculation strategy for free calls quota
-pub struct FreeCallsCalculationStrategy;
-impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
-impl pallet_free_calls::QuotaCalculationStrategy<Test> for FreeCallsCalculationStrategy {
+////// Free Call Dependencies
+
+
+type CallFilterFn = fn(&Call) -> bool;
+static DEFAULT_CALL_FILTER_FN: CallFilterFn = |_| true;
+
+type QuotaCalculationFn<T> = fn(<T as frame_system::Config>::BlockNumber, Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
+static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |current_block, locked_info| {
+    return Some(10);
+};
+
+
+pub static DEFAULT_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 1] = [
+    WindowConfig::new(10, QuotaToWindowRatio::new(1)),
+];
+
+parameter_types! {
+    pub static WindowsConfig: Vec<WindowConfig<BlockNumber>> = DEFAULT_WINDOWS_CONFIG.to_vec();
+}
+
+thread_local! {
+    pub static CALL_FILTER: RefCell<CallFilterFn> = RefCell::new(DEFAULT_CALL_FILTER_FN);
+    pub static QUOTA_CALCULATION: RefCell<QuotaCalculationFn<Test>> = RefCell::new(DEFAULT_QUOTA_CALCULATION_FN);
+}
+
+pub struct TestCallFilter;
+impl Contains<Call> for TestCallFilter {
+    fn contains(call: &Call) -> bool {
+        CALL_FILTER.with(|filter| filter.borrow()(call))
+    }
+}
+
+pub struct TestQuotaCalculation;
+impl pallet_free_calls::QuotaCalculationStrategy<Test> for TestQuotaCalculation {
     fn calculate(
         current_block: <Test as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Test>>
     ) -> Option<NumberOfCalls> {
-        locked_info.and_then(|locked_info| {
-            if current_block >= locked_info.unlocks_at {
-                None
-            } else {
-                // TODO: add more sophisticated calculation
-                // TODO: think if we should make NumberOfCalls -> u32 instead of u16
-                Some((locked_info.locked_amount / 11 /*decimals*/) as NumberOfCalls)
-            }
-        })
+        QUOTA_CALCULATION.with(|strategy| strategy.borrow()(current_block, locked_info))
     }
-}
-
-parameter_types! {
-    pub static WindowsConfig: Vec<WindowConfig<BlockNumber>> = [
-        WindowConfig::new(1 * DAYS, QuotaToWindowRatio::new(1)),
-        WindowConfig::new(2 * HOURS, QuotaToWindowRatio::new(3)),
-        WindowConfig::new(30 * MINUTES, QuotaToWindowRatio::new(5)),
-        WindowConfig::new(5 * MINUTES, QuotaToWindowRatio::new(20)),
-        WindowConfig::new(1, QuotaToWindowRatio::new(1000)),
-    ].to_vec();
 }
 
 impl pallet_free_calls::Config for Test {
     type Event = Event;
     type Call = Call;
     type WindowsConfig = WindowsConfig;
-    type CallFilter = Everything;
+    type CallFilter = TestCallFilter;
     type WeightInfo = ();
-    type QuotaCalculationStrategy = FreeCallsCalculationStrategy;
+    type QuotaCalculationStrategy = TestQuotaCalculation;
 }
 
-// Build genesis storage according to the mock runtime.
-pub fn new_test_ext() -> TestExternalities {
-    frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+pub struct TestUtils;
+impl TestUtils {
+    pub fn set_block_number(n: BlockNumber) {
+        <frame_system::Pallet<Test>>::set_block_number(n)
+    }
+
+    pub fn system_events() -> Vec<EventRecord<Event, H256>> {
+        <frame_system::Pallet<Test>>::events()
+    }
+
+    pub fn get_stats_storage() -> Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)> {
+        <WindowStatsByConsumer<Test>>::iter().collect()
+    }
+}
+
+pub struct ExtBuilder {
+    call_filter: CallFilterFn,
+    quota_calculation: QuotaCalculationFn<Test>,
+    windows_config: Vec<WindowConfig<BlockNumber>>,
+}
+impl Default for ExtBuilder {
+    fn default() -> Self {
+        Self {
+            call_filter: DEFAULT_CALL_FILTER_FN,
+            quota_calculation: DEFAULT_QUOTA_CALCULATION_FN,
+            windows_config: DEFAULT_WINDOWS_CONFIG.to_vec(),
+        }
+    }
+}
+impl ExtBuilder {
+    pub fn call_filter(mut self, call_filter: CallFilterFn) -> Self {
+        self.call_filter = call_filter;
+        self
+    }
+
+    pub fn quota_calculation(mut self, quota_calculation: QuotaCalculationFn<Test>) -> Self {
+        self.quota_calculation = quota_calculation;
+        self
+    }
+
+    pub fn windows_config(mut self, windows_config: Vec<WindowConfig<BlockNumber>>) -> Self {
+        self.windows_config = windows_config;
+        self
+    }
+
+    pub fn set_configs(&self) {
+        CALL_FILTER.with(|filter| *filter.borrow_mut() = self.call_filter);
+        QUOTA_CALCULATION.with(|calc| *calc.borrow_mut() = self.quota_calculation);
+        WINDOWS_CONFIG.with(|configs| *configs.borrow_mut() = self.windows_config.clone());
+    }
+
+    pub fn build(self) -> TestExternalities {
+        self.set_configs();
+
+        let storage = &mut system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage.clone());
+        ext.execute_with(|| TestUtils::set_block_number(1));
+
+        ext
+    }
 }
