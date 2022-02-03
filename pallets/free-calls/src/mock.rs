@@ -169,7 +169,7 @@ impl TestUtils {
         <frame_system::Pallet<Test>>::events()
     }
 
-    pub fn get_stats_storage() -> Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)> {
+    pub fn capture_stats_storage() -> Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)> {
         <WindowStatsByConsumer<Test>>::iter().collect()
     }
 }
