@@ -172,6 +172,23 @@ impl TestUtils {
     pub fn capture_stats_storage() -> Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)> {
         <WindowStatsByConsumer<Test>>::iter().collect()
     }
+
+    pub fn set_stats_for_consumer(consumer: AccountId, stats: Vec<(BlockNumber, NumberOfCalls)>) {
+        for (window_type, (timeline_index, used_calls)) in stats.iter().enumerate() {
+            <WindowStatsByConsumer<Test>>::insert(consumer.clone(), window_type as WindowType, ConsumerStats::<BlockNumber> {
+                timeline_index: timeline_index.clone(),
+                used_calls: used_calls.clone(),
+            });
+        }
+        TestUtils::assert_stats_equal(consumer.clone(), stats);
+    }
+
+    pub fn assert_stats_equal(consumer: AccountId, expected_stats: Vec<(BlockNumber, NumberOfCalls)>) {
+        let mut  found_stats: Vec<(WindowType, ConsumerStats<BlockNumber>)> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer.clone()).collect();
+        found_stats.sort_by_key(|x| x.0);
+        let found_stats: Vec<_> = found_stats.iter().map(|x| (x.1.timeline_index, x.1.used_calls)).collect();
+        assert_eq!(found_stats, expected_stats);
+    }
 }
 
 pub struct ExtBuilder {

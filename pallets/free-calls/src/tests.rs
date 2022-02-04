@@ -460,3 +460,128 @@ fn consumer_with_quota_and_have_previous_usages() {
 
         });
 }
+
+
+#[test]
+fn testing_scenario_1() {
+    ExtBuilder::default()
+        .quota_calculation(|_,_| Some(55))
+        .windows_config(vec![
+            WindowConfig::new(100, QuotaToWindowRatio::new(1)),
+            WindowConfig::new(20, QuotaToWindowRatio::new(3)),
+            WindowConfig::new(10, QuotaToWindowRatio::new(2)),
+        ])
+        .build()
+        .execute_with(|| {
+            let consumer: AccountId = account("Consumer", 0, 0);
+
+            TestUtils::set_block_number(70);
+            TestUtils::set_stats_for_consumer(
+                consumer.clone(),
+                vec![(0, 34), (3, 17), (7, 17)],
+            );
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true);
+
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(0, 35), (3, 18), (7, 18)],
+            );
+
+            ///////
+
+            TestUtils::set_block_number(71);
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, false, "2nd window config allows only 18 calls, consumer must wait until the window have passed");
+
+            // nothing should change since the call have failed
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(0, 35), (3, 18), (7, 18)],
+            );
+
+            //////
+
+            TestUtils::set_block_number(79);
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, false, "2nd window config allows only 18 calls, consumer must wait until the window have passed");
+
+            // nothing should change since the call have failed
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(0, 35), (3, 18), (7, 18)],
+            );
+
+            /////
+
+            TestUtils::set_block_number(80);
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true, "we have entered a new 2nd/3rd windows, so the call should be granted");
+
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(0, 36), (4, 1), (8, 1)],
+            );
+
+            ///////
+
+            TestUtils::set_block_number(80);
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true, "we have entered a new 2nd/3rd windows, so the call should be granted");
+
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(0, 37), (4, 2), (8, 2)],
+            );
+
+            ///////
+
+            TestUtils::set_block_number(90);
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true);
+
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(0, 38), (4, 3), (9, 1)],
+            );
+
+            ///////
+
+            TestUtils::set_block_number(101);
+
+            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+                &consumer,
+                ShouldUpdateConsumerStats::YES,
+            );
+            assert_eq!(can_have_free_call, true);
+
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(1, 1), (5, 1), (10, 1)],
+            );
+        });
+}
