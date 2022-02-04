@@ -17,6 +17,7 @@ use frame_support::{
 use frame_support::traits::{Contains, Everything};
 use frame_system as system;
 use frame_system::{EnsureRoot, EventRecord};
+use rand::Rng;
 use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoOf};
 
 pub(crate) type AccountId = u64;
@@ -24,6 +25,7 @@ pub(crate) type BlockNumber = u64;
 
 use crate::mock::time::*;
 use crate::{ConsumerStats, NumberOfCalls, QuotaToWindowRatio, WindowConfig, WindowStatsByConsumer, WindowType};
+use crate::tests::TestUtils;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -157,38 +159,6 @@ impl pallet_free_calls::Config for Test {
     type CallFilter = TestCallFilter;
     type WeightInfo = ();
     type QuotaCalculationStrategy = TestQuotaCalculation;
-}
-
-pub struct TestUtils;
-impl TestUtils {
-    pub fn set_block_number(n: BlockNumber) {
-        <frame_system::Pallet<Test>>::set_block_number(n)
-    }
-
-    pub fn system_events() -> Vec<EventRecord<Event, H256>> {
-        <frame_system::Pallet<Test>>::events()
-    }
-
-    pub fn capture_stats_storage() -> Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)> {
-        <WindowStatsByConsumer<Test>>::iter().collect()
-    }
-
-    pub fn set_stats_for_consumer(consumer: AccountId, stats: Vec<(BlockNumber, NumberOfCalls)>) {
-        for (window_type, (timeline_index, used_calls)) in stats.iter().enumerate() {
-            <WindowStatsByConsumer<Test>>::insert(consumer.clone(), window_type as WindowType, ConsumerStats::<BlockNumber> {
-                timeline_index: timeline_index.clone(),
-                used_calls: used_calls.clone(),
-            });
-        }
-        TestUtils::assert_stats_equal(consumer.clone(), stats);
-    }
-
-    pub fn assert_stats_equal(consumer: AccountId, expected_stats: Vec<(BlockNumber, NumberOfCalls)>) {
-        let mut  found_stats: Vec<(WindowType, ConsumerStats<BlockNumber>)> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer.clone()).collect();
-        found_stats.sort_by_key(|x| x.0);
-        let found_stats: Vec<_> = found_stats.iter().map(|x| (x.1.timeline_index, x.1.used_calls)).collect();
-        assert_eq!(found_stats, expected_stats);
-    }
 }
 
 pub struct ExtBuilder {

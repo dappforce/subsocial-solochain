@@ -2,43 +2,79 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use frame_benchmarking::account;
 use frame_support::{assert_err, assert_ok};
+use frame_system::EventRecord;
 use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
 use crate::mock::*;
 use rand::Rng;
+use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
-use crate::{ConsumerStats, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, WindowConfig, WindowType};
+use crate::{ConsumerStats, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, WindowConfig, WindowType};
 use crate::WindowStatsByConsumer;
 
-fn assert_no_new_events() {
-    assert!(TestUtils::system_events().is_empty());
-}
-
-fn assert_storage_have_no_change(old_storage: Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)>) {
-    assert!(compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
-}
-
-fn random_locked_info() -> LockedInfoOf<Test> {
-    let mut rng = rand::thread_rng();
-    LockedInfoOf::<Test> {
-        locked_amount: rng.gen_range(0..BalanceOf::<Test>::max_value()).into(),
-        unlocks_at: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
-        lock_period: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
-    }
-}
-
-fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
-    if a.len() != b.len() {
-        return false;
+pub struct TestUtils;
+impl TestUtils {
+    pub fn set_block_number(n: BlockNumber) {
+        <frame_system::Pallet<Test>>::set_block_number(n)
     }
 
-    for item_a in a {
-        if !b.contains(item_a) {
-            return false;
+    pub fn system_events() -> Vec<EventRecord<Event, H256>> {
+        <frame_system::Pallet<Test>>::events()
+    }
+
+    pub fn capture_stats_storage() -> Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)> {
+        <WindowStatsByConsumer<Test>>::iter().collect()
+    }
+
+    pub fn set_stats_for_consumer(consumer: AccountId, stats: Vec<(BlockNumber, NumberOfCalls)>) {
+        for (window_type, (timeline_index, used_calls)) in stats.iter().enumerate() {
+            <WindowStatsByConsumer<Test>>::insert(consumer.clone(), window_type as WindowType, ConsumerStats::<BlockNumber> {
+                timeline_index: timeline_index.clone(),
+                used_calls: used_calls.clone(),
+            });
+        }
+        TestUtils::assert_stats_equal(consumer.clone(), stats);
+    }
+
+    pub fn assert_stats_equal(consumer: AccountId, expected_stats: Vec<(BlockNumber, NumberOfCalls)>) {
+        let mut  found_stats: Vec<(WindowType, ConsumerStats<BlockNumber>)> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer.clone()).collect();
+        found_stats.sort_by_key(|x| x.0);
+        let found_stats: Vec<_> = found_stats.iter().map(|x| (x.1.timeline_index, x.1.used_calls)).collect();
+        assert_eq!(found_stats, expected_stats);
+    }
+
+    pub fn random_locked_info() -> LockedInfoOf<Test> {
+        let mut rng = rand::thread_rng();
+        LockedInfoOf::<Test> {
+            locked_amount: rng.gen_range(0..BalanceOf::<Test>::max_value()).into(),
+            unlocks_at: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
+            lock_period: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
         }
     }
 
-    return true;
+    pub fn assert_storage_have_no_change(old_storage: Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)>) {
+        assert!(TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
+    }
+
+    pub fn assert_no_new_events() {
+        assert!(TestUtils::system_events().is_empty());
+    }
+
+    pub fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
+        if a.len() != b.len() {
+            return false;
+        }
+
+        for item_a in a {
+            if !b.contains(item_a) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
+
+
 
 #[test]
 fn dummy() {
@@ -86,7 +122,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
             );
 
             assert_eq!(can_have_free_call, false);
-            assert_no_new_events();
+            TestUtils::assert_no_new_events();
 
             assert_eq!(get_captured_locked_tokens(), None);
             assert_eq!(get_captured_current_block(), Some(11));
@@ -94,7 +130,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
 
             ///// try again but
 
-            let locked_info = random_locked_info();
+            let locked_info = TestUtils::random_locked_info();
             <LockedInfoByAccount<Test>>::insert(consumer.clone(), locked_info.clone());
 
             TestUtils::set_block_number(55);
@@ -105,7 +141,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
             );
 
             assert_eq!(can_have_free_call, true);
-            assert_no_new_events();
+            TestUtils::assert_no_new_events();
 
             assert_eq!(get_captured_locked_tokens(), Some(locked_info.clone()));
             assert_eq!(get_captured_current_block(), Some(55));
@@ -113,7 +149,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
 
             //// change locked info and try again
 
-            let new_locked_info = random_locked_info();
+            let new_locked_info = TestUtils::random_locked_info();
             <LockedInfoByAccount<Test>>::insert(consumer.clone(), new_locked_info.clone());
 
             let can_have_free_call = <Pallet<Test>>::can_make_free_call(
@@ -122,7 +158,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
             );
 
             assert_eq!(can_have_free_call, false, "Block number is still 55 and quota is 1");
-            assert_no_new_events();
+            TestUtils::assert_no_new_events();
 
             assert_eq!(get_captured_locked_tokens(), Some(new_locked_info));
             assert_ne!(get_captured_locked_tokens(), Some(locked_info));
@@ -147,8 +183,8 @@ fn denied_if_configs_are_empty() {
             );
 
             assert_eq!(can_have_free_call, false);
-            assert_no_new_events();
-            assert_storage_have_no_change(storage);
+            TestUtils::assert_no_new_events();
+            TestUtils::assert_storage_have_no_change(storage);
         });
 }
 
@@ -173,8 +209,8 @@ fn denied_if_configs_have_one_zero_period() {
             );
 
             assert_eq!(can_have_free_call, false);
-            assert_no_new_events();
-            assert_storage_have_no_change(storage);
+            TestUtils::assert_no_new_events();
+            TestUtils::assert_storage_have_no_change(storage);
         });
 }
 
@@ -200,8 +236,8 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
             );
 
             assert_eq!(can_have_free_call, false);
-            assert_no_new_events();
-            assert_storage_have_no_change(storage);
+            TestUtils::assert_no_new_events();
+            TestUtils::assert_storage_have_no_change(storage);
         });
 
 
@@ -224,8 +260,8 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
             );
 
             assert_eq!(can_have_free_call, false);
-            assert_no_new_events();
-            assert_storage_have_no_change(storage);
+            TestUtils::assert_no_new_events();
+            TestUtils::assert_storage_have_no_change(storage);
         });
 
 
@@ -248,8 +284,8 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
             );
 
             assert_eq!(can_have_free_call, false);
-            assert_no_new_events();
-            assert_storage_have_no_change(storage);
+            TestUtils::assert_no_new_events();
+            TestUtils::assert_storage_have_no_change(storage);
         });
 }
 
@@ -293,10 +329,10 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
                 );
                 assert_eq!(can_have_free_call, false);
             }
-            assert_storage_have_no_change(storage);
+            TestUtils::assert_storage_have_no_change(storage);
 
 
-            assert_no_new_events();
+            TestUtils::assert_no_new_events();
         });
 }
 
