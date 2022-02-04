@@ -74,7 +74,7 @@ impl TestUtils {
     }
 }
 
-
+////////////////// Begin Testing ///////////////////////
 
 #[test]
 fn dummy() {
@@ -357,15 +357,11 @@ fn consumer_with_quota_but_no_previous_usages() {
 
             assert_eq!(can_have_free_call, true);
 
-            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
-            assert_eq!(consumer_stats.len(), 1, "We only have one window");
 
-            let consumer_stats = consumer_stats.pop().unwrap();
-            let expected_usage = ConsumerStats::<BlockNumber> {
-                timeline_index: 3, // 315 / 100,
-                used_calls: 1,
-            };
-            assert_eq!(consumer_stats, (0, expected_usage));
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(3 /*315 / 100*/, 1)],
+            );
 
             ///////
 
@@ -377,15 +373,10 @@ fn consumer_with_quota_but_no_previous_usages() {
             );
             assert_eq!(can_have_free_call, true);
 
-            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
-            assert_eq!(consumer_stats.len(), 1, "We only have one window");
-
-            let consumer_stats = consumer_stats.pop().unwrap();
-            let expected_usage = ConsumerStats::<BlockNumber> {
-                timeline_index: 3, // 330 / 100,
-                used_calls: 2,
-            };
-            assert_eq!(consumer_stats, (0, expected_usage));
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(3 /*330 / 100*/, 2)],
+            );
 
 
             ////////
@@ -398,15 +389,10 @@ fn consumer_with_quota_but_no_previous_usages() {
             );
             assert_eq!(can_have_free_call, true);
 
-            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
-            assert_eq!(consumer_stats.len(), 1, "We only have one window");
-
-            let consumer_stats = consumer_stats.pop().unwrap();
-            let expected_usage = ConsumerStats::<BlockNumber> {
-                timeline_index: 7, // 780 / 100,
-                used_calls: 1,
-            };
-            assert_eq!(consumer_stats, (0, expected_usage));
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(7 /*780 / 100*/, 1)],
+            );
         });
 }
 
@@ -433,12 +419,10 @@ fn consumer_with_quota_and_have_previous_usages() {
             );
             assert_eq!(can_have_free_call, false, "The consumer is out of quota");
 
-            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
-            assert_eq!(consumer_stats.len(), 1, "We only have one window");
-            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
-                timeline_index: 0,
-                used_calls: 34,
-            }));
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(0, 34)],
+            );
 
             ////////
 
@@ -450,12 +434,10 @@ fn consumer_with_quota_and_have_previous_usages() {
             );
             assert_eq!(can_have_free_call, true, "We have entered a new window");
 
-            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
-            assert_eq!(consumer_stats.len(), 1, "We only have one window");
-            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
-                timeline_index: 1,
-                used_calls: 1,
-            }));
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(1, 1)],
+            );
 
             ////////
 
@@ -468,12 +450,10 @@ fn consumer_with_quota_and_have_previous_usages() {
             );
             assert_eq!(can_have_free_call, true, "We still have quota to spend");
 
-            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
-            assert_eq!(consumer_stats.len(), 1, "We only have one window");
-            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
-                timeline_index: 1,
-                used_calls: 2,
-            }));
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(1, 2)],
+            );
 
 
             /////
@@ -487,12 +467,10 @@ fn consumer_with_quota_and_have_previous_usages() {
             );
             assert_eq!(can_have_free_call, true);
 
-            let mut consumer_stats: Vec<_> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer).collect();
-            assert_eq!(consumer_stats.len(), 1, "We only have one window");
-            assert_eq!(consumer_stats.pop().unwrap(), (0, ConsumerStats::<BlockNumber> {
-                timeline_index: 2,
-                used_calls: 1,
-            }));
+            TestUtils::assert_stats_equal(
+                consumer.clone(),
+                vec![(2, 1)],
+            );
 
         });
 }
