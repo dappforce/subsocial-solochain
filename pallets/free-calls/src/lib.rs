@@ -223,57 +223,6 @@ pub mod pallet {
         }
     }
 
-    struct Window<T: Config> {
-        consumer: T::AccountId,
-        config_index: WindowType,
-        config: WindowConfig<T::BlockNumber>,
-        timeline_index: T::BlockNumber,
-        stats: ConsumerStats<T::BlockNumber>,
-        can_have_free_call: bool,
-    }
-
-    impl<T: Config> Window<T> {
-        // TODO: refactor this into more lightweight version??
-        fn build(
-            consumer: T::AccountId,
-            quota: NumberOfCalls,
-            current_block: T::BlockNumber,
-            config_index: WindowType,
-            config: WindowConfig<T::BlockNumber>,
-            window_stats: Option<ConsumerStats<T::BlockNumber>>,
-        ) -> Self {
-            let timeline_index = current_block / config.period;
-
-            let reset_stats = || ConsumerStats::new(timeline_index);
-
-            let mut stats = window_stats.unwrap_or_else(reset_stats);
-
-            if stats.timeline_index < timeline_index {
-                stats = reset_stats();
-            }
-
-            let can_be_called = stats.used_calls < max(1, quota / config.quota_ratio);
-
-            Window {
-                consumer: consumer.clone(),
-                config_index,
-                config,
-                timeline_index,
-                stats,
-                can_have_free_call: can_be_called,
-            }
-        }
-
-        fn increment_window_stats(&mut self) {
-            self.stats.used_calls = self.stats.used_calls.saturating_add(1);
-            <WindowStatsByConsumer<T>>::insert(
-                self.consumer.clone(),
-                self.config_index,
-                self.stats.clone(),
-            );
-        }
-    }
-
     pub enum ShouldUpdateConsumerStats {
         YES,
         NO,
@@ -299,40 +248,43 @@ pub mod pallet {
                 _ => return false,
             };
 
-            let mut windows: Vec<Window<T>> = Vec::new();
             let mut can_call = false;
+            let mut new_stats: Vec<ConsumerStats<T::BlockNumber>> = Vec::new();
 
             for (config_index, config) in windows_config.into_iter().enumerate() {
                 let config_index = config_index as WindowType;
 
-                if config.period.is_zero() {
-                    can_call = false;
-                    break;
-                }
-
-                let window = Window::build(
-                    consumer.clone(),
-                    quota,
+                let new_window_stats = Self::check_window(
                     current_block,
-                    config_index,
-                    config.clone(),
+                    quota,
+                    config,
                     Self::window_stats_by_consumer(consumer.clone(), config_index),
                 );
 
-                can_call = window.can_have_free_call;
-                if !can_call {
-                    break;
-                }
-
-                windows.push(window);
+                match new_window_stats {
+                    None => {
+                        can_call = false;
+                        break;
+                    },
+                    Some(window_stats) => {
+                        can_call = true;
+                        new_stats.push(window_stats);
+                    }
+                };
             }
 
             if can_call {
                 log::info!("{:?} can have this free call", consumer);
                 if let ShouldUpdateConsumerStats::YES = should_update_consumer_stats {
                     log::info!("{:?} updating window stats", consumer);
-                    for window in &mut windows {
-                        window.increment_window_stats();
+                    for (config_index, stats) in new_stats.into_iter().enumerate() {
+                        let config_index = config_index as WindowType;
+
+                        <WindowStatsByConsumer<T>>::insert(
+                            consumer.clone(),
+                            config_index,
+                            stats,
+                        );
                     }
                 }
             } else {
@@ -340,6 +292,40 @@ pub mod pallet {
             }
 
             can_call
+        }
+
+        /// Checks if a window can allow one more call given its config and the last stored stats for
+        /// the consumer.
+        ///
+        /// If the window can allow one more call, the new stats object is returned, otherwise `None`
+        /// is returned.
+        fn check_window(
+            current_block: T::BlockNumber,
+            quota: NumberOfCalls,
+            config: WindowConfig<T::BlockNumber>,
+            window_stats: Option<ConsumerStats<T::BlockNumber>>,
+        ) -> Option<ConsumerStats<T::BlockNumber>> {
+
+            if config.period.is_zero() {
+                return None;
+            }
+
+            let timeline_index = current_block / config.period;
+
+            let reset_stats = || ConsumerStats::new(timeline_index);
+
+            let mut stats = window_stats.unwrap_or_else(reset_stats);
+
+            if stats.timeline_index < timeline_index {
+                stats = reset_stats();
+            }
+
+            let can_be_called = stats.used_calls < max(1, quota / config.quota_ratio);
+
+            can_be_called.then(|| {
+                stats.used_calls = stats.used_calls.saturating_add(1);
+                stats
+            })
         }
     }
 
