@@ -330,6 +330,7 @@ impl pallet_utils::Config for Runtime {
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
+use crate::constants::currency;
 
 impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
@@ -462,7 +463,7 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
             } else {
                 // TODO: add more sophisticated calculation
                 // TODO: think if we should make NumberOfCalls -> u32 instead of u16
-                Some((locked_info.locked_amount / 11 /*decimals*/) as NumberOfCalls)
+                Some((locked_info.locked_amount / currency::DOLLARS) as NumberOfCalls)
             }
         })
     }
