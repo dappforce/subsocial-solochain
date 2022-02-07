@@ -1,14 +1,16 @@
 use std::borrow::Borrow;
 use std::cell::RefCell;
+use std::convert::TryInto;
 use frame_benchmarking::account;
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_ok, BoundedVec};
 use frame_system::EventRecord;
 use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
 use crate::mock::*;
 use rand::Rng;
+use sp_core::crypto::UncheckedInto;
 use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
-use crate::{ConsumerStats, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, WindowConfig, WindowType};
+use crate::{ConsumerStats, ConsumerStatsVec, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, WindowConfig};
 use crate::WindowStatsByConsumer;
 
 pub struct TestUtils;
@@ -21,24 +23,33 @@ impl TestUtils {
         <frame_system::Pallet<Test>>::events()
     }
 
-    pub fn capture_stats_storage() -> Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)> {
-        <WindowStatsByConsumer<Test>>::iter().collect()
+    pub fn capture_stats_storage() -> Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)> {
+        <WindowStatsByConsumer<Test>>::iter().map(|x| (x.0, x.1.into_inner())).collect()
     }
 
     pub fn set_stats_for_consumer(consumer: AccountId, stats: Vec<(BlockNumber, NumberOfCalls)>) {
-        for (window_type, (timeline_index, used_calls)) in stats.iter().enumerate() {
-            <WindowStatsByConsumer<Test>>::insert(consumer.clone(), window_type as WindowType, ConsumerStats::<BlockNumber> {
+        let mapped_stats: Vec<_> = stats.iter().map(|(timeline_index, used_calls)| {
+            ConsumerStats::<BlockNumber> {
                 timeline_index: timeline_index.clone(),
                 used_calls: used_calls.clone(),
-            });
-        }
+            }
+        }).collect();
+
+        let mapped_stats: ConsumerStatsVec<Test> = mapped_stats.try_into().unwrap();
+
+        <WindowStatsByConsumer<Test>>::insert(
+            consumer.clone(),
+            mapped_stats,
+        );
+
         TestUtils::assert_stats_equal(consumer.clone(), stats);
     }
 
     pub fn assert_stats_equal(consumer: AccountId, expected_stats: Vec<(BlockNumber, NumberOfCalls)>) {
-        let mut  found_stats: Vec<(WindowType, ConsumerStats<BlockNumber>)> = <WindowStatsByConsumer<Test>>::iter_prefix(consumer.clone()).collect();
-        found_stats.sort_by_key(|x| x.0);
-        let found_stats: Vec<_> = found_stats.iter().map(|x| (x.1.timeline_index, x.1.used_calls)).collect();
+        let found_stats = <WindowStatsByConsumer<Test>>::get(consumer.clone());
+
+        let found_stats: Vec<_> = found_stats.iter().map(|x| (x.timeline_index, x.used_calls)).collect();
+
         assert_eq!(found_stats, expected_stats);
     }
 
@@ -51,7 +62,7 @@ impl TestUtils {
         }
     }
 
-    pub fn assert_storage_have_no_change(old_storage: Vec<(AccountId, WindowType, ConsumerStats<BlockNumber>)>) {
+    pub fn assert_storage_have_no_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
         assert!(TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
     }
 
@@ -408,10 +419,12 @@ fn consumer_with_quota_and_have_previous_usages() {
 
             TestUtils::set_block_number(10);
 
-            <WindowStatsByConsumer<Test>>::insert(consumer, 0, ConsumerStats::<BlockNumber> {
+            let stats: ConsumerStatsVec<Test> = vec![ConsumerStats::<BlockNumber> {
                 timeline_index: 0,
                 used_calls: 34,
-            });
+            }].try_into().unwrap();
+            
+            <WindowStatsByConsumer<Test>>::insert(consumer, stats);
 
             let can_have_free_call = <Pallet<Test>>::can_make_free_call(
                 &consumer,

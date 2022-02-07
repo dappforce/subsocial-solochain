@@ -24,7 +24,7 @@ pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 
 use crate::mock::time::*;
-use crate::{ConsumerStats, NumberOfCalls, QuotaToWindowRatio, WindowConfig, WindowStatsByConsumer, WindowType};
+use crate::{NumberOfCalls, QuotaToWindowRatio, WindowConfig, WindowStatsByConsumer};
 use crate::tests::TestUtils;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;

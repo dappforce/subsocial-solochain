@@ -39,19 +39,20 @@ use sp_runtime::traits::Zero;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use sp_std::num::{NonZeroIsize, NonZeroU128, NonZeroU32};
+    use sp_std::convert::TryInto;
     use sp_std::num::NonZeroU16;
     use frame_support::weights::GetDispatchInfo;
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
+    use sp_std::default::Default;
     use frame_support::traits::{Contains, IsSubType};
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, Dispatchable};
+    use sp_runtime::traits::{Dispatchable};
     use sp_runtime::traits::Zero;
     use sp_std::boxed::Box;
     use sp_std::cmp::max;
     use sp_std::vec::Vec;
-    use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoByAccount, LockedInfoOf};
+    use pallet_locker_mirror::{LockedInfoByAccount, LockedInfoOf};
     use crate::WeightInfo;
 
     /// The ratio between the quota and a particular window.
@@ -64,20 +65,8 @@ pub mod pallet {
     /// Type to keep track of how many calls is in quota or used in a particular window.
     pub type NumberOfCalls = u16;
 
-    /// Defines the type that will be used to describe configs size and config index.
-    /// 3~4 windows should be sufficient (1 block, 3 mins, 1 hour, 1 day).
-    ///
-    /// ## Example:
-    /// WindowConfigs = [1 day, 1 hour, 5 minutes, 10 blocks]
-    /// ```text
-    /// | WindowType | Window    |
-    /// |------------|-----------|
-    /// |      0     | 1 day     |
-    /// |      1     | 1 hour    |
-    /// |      2     | 5 minutes |
-    /// |      3     | 10 blocks |
-    /// ```
-    pub type WindowType = u8;
+    /// A `BoundedVec` that can hold a list of `ConsumerStats` objects bounded by the size of WindowConfigs.
+    pub type ConsumerStatsVec<T> = BoundedVec<ConsumerStats<<T as frame_system::Config>::BlockNumber>, WindowsConfigSize<T>>;
 
     /// Keeps track of the executed number of calls per window per consumer.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
@@ -154,17 +143,30 @@ pub mod pallet {
         type QuotaCalculationStrategy: QuotaCalculationStrategy<Self>;
     }
 
+    /// Retrieves the size of `T::WindowsConfig` to be used for `BoundedVec` declaration.
+    pub struct WindowsConfigSize<T: Config>(PhantomData<T>);
+
+    impl<T: Config> Default for WindowsConfigSize<T> {
+        fn default() -> Self {
+            Self(PhantomData)
+        }
+    }
+
+    impl<T: Config> Get<u32> for WindowsConfigSize<T> {
+        fn get() -> u32 {
+            T::WindowsConfig::get().len().try_into().unwrap()
+        }
+    }
+
     /// Keeps track of each windows usage for each consumer.
     #[pallet::storage]
     #[pallet::getter(fn window_stats_by_consumer)]
-    pub(super) type WindowStatsByConsumer<T: Config> = StorageDoubleMap<
+    pub(super) type WindowStatsByConsumer<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
         T::AccountId,
-        Twox64Concat,
-        // Index of the window in the list of window configurations.
-        WindowType,
-        ConsumerStats<T::BlockNumber>,
+        ConsumerStatsVec<T>,
+        ValueQuery,
     >;
 
     #[pallet::event]
@@ -248,50 +250,38 @@ pub mod pallet {
                 _ => return false,
             };
 
-            let mut can_call = false;
-            let mut new_stats: Vec<ConsumerStats<T::BlockNumber>> = Vec::new();
+            let old_stats: ConsumerStatsVec<T> = Self::window_stats_by_consumer(consumer.clone());
+            let mut new_stats: ConsumerStatsVec<T> = Default::default();
 
             for (config_index, config) in windows_config.into_iter().enumerate() {
-                let config_index = config_index as WindowType;
-
                 let new_window_stats = Self::check_window(
                     current_block,
                     quota,
                     config,
-                    Self::window_stats_by_consumer(consumer.clone(), config_index),
+                    old_stats.get(config_index),
                 );
 
                 match new_window_stats {
                     None => {
-                        can_call = false;
-                        break;
+                        return false;
                     },
                     Some(window_stats) => {
-                        can_call = true;
-                        new_stats.push(window_stats);
+                        if matches!(new_stats.try_push(window_stats), Err(_)) {
+                            return false;
+                        }
                     }
                 };
             }
 
-            if can_call {
-                log::info!("{:?} can have this free call", consumer);
-                if let ShouldUpdateConsumerStats::YES = should_update_consumer_stats {
-                    log::info!("{:?} updating window stats", consumer);
-                    for (config_index, stats) in new_stats.into_iter().enumerate() {
-                        let config_index = config_index as WindowType;
-
-                        <WindowStatsByConsumer<T>>::insert(
-                            consumer.clone(),
-                            config_index,
-                            stats,
-                        );
-                    }
-                }
-            } else {
-                log::info!("{:?} doesn't have free calls", consumer);
+            if let ShouldUpdateConsumerStats::YES = should_update_consumer_stats {
+                log::info!("{:?} updating window stats", consumer);
+                <WindowStatsByConsumer<T>>::insert(
+                    consumer.clone(),
+                    new_stats,
+                );
             }
 
-            can_call
+            return true;
         }
 
         /// Checks if a window can allow one more call given its config and the last stored stats for
@@ -303,7 +293,7 @@ pub mod pallet {
             current_block: T::BlockNumber,
             quota: NumberOfCalls,
             config: WindowConfig<T::BlockNumber>,
-            window_stats: Option<ConsumerStats<T::BlockNumber>>,
+            window_stats: Option<&ConsumerStats<T::BlockNumber>>,
         ) -> Option<ConsumerStats<T::BlockNumber>> {
 
             if config.period.is_zero() {
@@ -314,7 +304,9 @@ pub mod pallet {
 
             let reset_stats = || ConsumerStats::new(timeline_index);
 
-            let mut stats = window_stats.unwrap_or_else(reset_stats);
+            let mut stats = window_stats
+                .map(|r| r.clone())
+                .unwrap_or_else(reset_stats);
 
             if stats.timeline_index < timeline_index {
                 stats = reset_stats();
