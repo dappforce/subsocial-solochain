@@ -41,7 +41,7 @@ use sp_runtime::traits::Zero;
 pub mod pallet {
     use sp_std::convert::TryInto;
     use sp_std::num::NonZeroU16;
-    use frame_support::weights::GetDispatchInfo;
+    use frame_support::weights::{extract_actual_weight, GetDispatchInfo};
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
     use sp_std::default::Default;
@@ -205,11 +205,14 @@ pub mod pallet {
 
             if T::CallFilter::contains(&call) &&
                 Self::can_make_free_call(&sender, ShouldUpdateConsumerStats::YES) {
-                // Add the current weight for the boxed call
-                actual_weight = actual_weight.saturating_add(call.get_dispatch_info().weight);
+
+                let info = call.get_dispatch_info();
 
                 // Dispatch the call
                 let result = call.dispatch(origin);
+
+                // Add the current weight for the boxed call
+                actual_weight = actual_weight.saturating_add(extract_actual_weight(&result, &info));
 
                 // Deposit an event with the result
                 Self::deposit_event(Event::FreeCallResult(
