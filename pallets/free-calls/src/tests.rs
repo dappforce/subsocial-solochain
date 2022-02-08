@@ -2,16 +2,25 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use frame_benchmarking::account;
-use frame_support::{assert_err, assert_ok, BoundedVec};
-use frame_system::EventRecord;
+use frame_support::{assert_err, assert_noop, assert_ok, assert_storage_noop, BoundedVec, debug};
+use frame_support::log::info;
+use frame_support::weights::{extract_actual_weight, Pays, PostDispatchInfo};
+use frame_system::{EventRecord, Events};
 use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
 use crate::mock::*;
 use rand::Rng;
 use sp_core::crypto::UncheckedInto;
 use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
-use crate::{ConsumerStats, ConsumerStatsVec, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, WindowConfig};
+use crate::{ConsumerStats, ConsumerStatsVec, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, test_pallet, WindowConfig};
 use crate::WindowStatsByConsumer;
+use frame_support::weights::GetDispatchInfo;
+use crate::test_pallet::Something;
+use crate::weights::WeightInfo;
+pub use sp_io::{self, storage::root as storage_root};
+use test_pallet::Call as TestPalletCall;
+use frame_system::Call as SystemCall;
+use sp_runtime::traits::{Dispatchable};
 
 pub struct TestUtils;
 impl TestUtils {
@@ -20,7 +29,28 @@ impl TestUtils {
     }
 
     pub fn system_events() -> Vec<EventRecord<Event, H256>> {
-        <frame_system::Pallet<Test>>::events()
+        <Events<Test>>::get()
+    }
+
+    pub fn clear_system_events() {
+        <Events<Test>>::kill();
+        assert!(TestUtils::system_events().is_empty());
+    }
+
+    pub fn take_n_system_events(n: usize) -> Vec<Event> {
+        assert!(TestUtils::system_events().len() >= n);
+
+        let mut v: Vec<Event> = vec![];
+        <Events<Test>>::mutate(|events| {
+            for _ in 0..n {
+                v.push(events.pop().unwrap().event);
+            }
+        });
+
+        // restore order
+        v.reverse();
+
+        v
     }
 
     pub fn capture_stats_storage() -> Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)> {
@@ -66,6 +96,10 @@ impl TestUtils {
         assert!(TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
     }
 
+    pub fn assert_storage_have_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
+        assert!(!TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
+    }
+
     pub fn assert_no_new_events() {
         assert!(TestUtils::system_events().is_empty());
     }
@@ -83,6 +117,131 @@ impl TestUtils {
 
         return true;
     }
+
+    pub fn assert_try_free_call_granted_and_succeed(consumer: <Test as frame_system::Config>::AccountId) {
+        let something = 121;
+
+        // just a dummy call that should succeed
+        let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
+
+        TestUtils::clear_system_events();
+
+        let stats_storage = TestUtils::capture_stats_storage();
+
+        let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer), call.clone());
+
+        TestUtils::assert_storage_have_change(stats_storage);
+
+        // The free call should not return any error
+        assert_ok!(result);
+
+        let result: PostDispatchInfo = result.unwrap();
+
+        assert_eq!(
+            result.pays_fee,
+            Pays::No,
+            "The caller should not pay",
+        );
+
+        // check that storage mutation is applied
+        assert_eq!(
+            <Something<Test>>::get(),
+            Some(something),
+            "Something storage should have mutated to have {}", something,
+        );
+
+        let mut events: Vec<Event> = TestUtils::take_n_system_events(2);
+        assert!(TestUtils::system_events().is_empty(), "Only 2 events should be emitted");
+
+        assert_eq!(
+            events.pop().unwrap(),
+            Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Ok(()))),
+        );
+
+        assert_eq!(
+            events.pop().unwrap(),
+            Event::from(test_pallet::Event::ValueStored(something, consumer.clone())),
+        );
+    }
+
+
+    pub fn assert_try_free_call_granted_and_failed(consumer: <Test as frame_system::Config>::AccountId) {
+        let old_something = <Something<Test>>::get();
+        let something = 0;
+
+        // just a dummy call that should succeed
+        let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
+
+        TestUtils::clear_system_events();
+
+        let stats_storage = TestUtils::capture_stats_storage();
+
+        let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer), call.clone());
+
+        TestUtils::assert_storage_have_change(stats_storage);
+
+        // The free call should not return any error
+        assert_ok!(result);
+
+        let result: PostDispatchInfo = result.unwrap();
+
+        assert_eq!(
+            result.pays_fee,
+            Pays::No,
+            "The caller should not pay",
+        );
+
+        // check that storage mutation is not applied
+        assert_eq!(
+            <Something<Test>>::get(),
+            old_something,
+            "nothing should be changed",
+        );
+
+        let mut events: Vec<Event> = TestUtils::take_n_system_events(1);
+        assert!(TestUtils::system_events().is_empty(), "Only 1 events should be emitted");
+
+        assert_eq!(
+            events.pop().unwrap(),
+            Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Err(test_pallet::Error::<Test>::DoNotSendZero.into()))),
+        );
+    }
+
+
+    pub fn assert_try_free_call_declined(consumer: <Test as frame_system::Config>::AccountId) {
+        let old_something = <Something<Test>>::get();
+        let something = 234;
+
+        // just a dummy call that should succeed
+        let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
+
+        TestUtils::clear_system_events();
+
+
+        assert_storage_noop!({
+            let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer), call.clone());
+            assert_ok!(result);
+
+            // The free call should not return any error
+
+            let result: PostDispatchInfo = result.unwrap();
+
+            assert_eq!(
+                result.pays_fee,
+                Pays::No,
+                "The caller should not pay",
+            );
+
+            // check that storage mutation is not applied
+            assert_eq!(
+                <Something<Test>>::get(),
+                old_something,
+                "nothing should be changed",
+            );
+
+            assert!(TestUtils::system_events().is_empty(), "No events should be emitted");
+        });
+    }
 }
 
 ////////////////// Begin Testing ///////////////////////
@@ -91,11 +250,47 @@ impl TestUtils {
 fn dummy() {
     // just make sure everything is okay
     ExtBuilder::default()
-        .build().execute_with(|| {
-        assert_eq!(1 + 1, 2);
+        .build()
+        .execute_with(|| {
+            assert_eq!(1 + 1, 2);
 
-        // events are empty at the start
-        assert!(TestUtils::system_events().is_empty());
+            // events are empty at the start
+            assert!(TestUtils::system_events().is_empty());
+        });
+
+    ExtBuilder::default()
+        .windows_config(vec![
+            WindowConfig::new(1, QuotaToWindowRatio::new(1)),
+        ])
+        .quota_calculation(|_, _| 100.into())
+        .build().execute_with(|| {
+        let consumer: AccountId = account("Consumer", 2, 1);
+
+        let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+            &consumer,
+            ShouldUpdateConsumerStats::NO,
+        );
+        assert!(can_have_free_call);
+
+        TestUtils::assert_try_free_call_granted_and_succeed(consumer.clone());
+        TestUtils::assert_try_free_call_granted_and_failed(consumer.clone());
+    });
+
+    ExtBuilder::default()
+        .windows_config(vec![
+            WindowConfig::new(1, QuotaToWindowRatio::new(1)),
+        ])
+        .quota_calculation(|_, _| None)
+        .build().execute_with(|| {
+        let consumer: AccountId = account("Consumer", 2, 1);
+
+        let can_have_free_call = <Pallet<Test>>::can_make_free_call(
+            &consumer,
+            ShouldUpdateConsumerStats::NO,
+        );
+        assert_eq!(can_have_free_call, false);
+
+        TestUtils::assert_try_free_call_declined(consumer.clone());
     });
 }
 

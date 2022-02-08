@@ -7,7 +7,9 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header, Storage
 };
 
-use crate as pallet_free_calls;
+pub use crate as pallet_free_calls;
+
+use crate::test_pallet;
 
 use frame_support::{
     parameter_types,
@@ -52,6 +54,7 @@ frame_support::construct_runtime!(
         FreeCalls: pallet_free_calls::{Pallet, Call, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         LockerMirror: pallet_locker_mirror::{Pallet, Call, Storage, Event<T>},
+        TestPallet: test_pallet::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -60,8 +63,22 @@ parameter_types! {
     pub const SS58Prefix: u8 = 28;
 }
 
+pub struct TestBaseCallFilter;
+impl Contains<Call> for TestBaseCallFilter {
+    fn contains(c: &Call) -> bool {
+        match *c {
+            Call::FreeCalls(_) => true,
+            // For benchmarking, this acts as a noop call
+            Call::System(frame_system::Call::remark { .. }) => true,
+            // For tests
+            Call::TestPallet(_) => true,
+            _ => false,
+        }
+    }
+}
+
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = TestBaseCallFilter;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -108,6 +125,10 @@ impl pallet_locker_mirror::Config for Test {
     type Currency = Balances;
     type OracleOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
+}
+
+impl test_pallet::Config for Test {
+    type Event = Event;
 }
 
 ////// Free Call Dependencies

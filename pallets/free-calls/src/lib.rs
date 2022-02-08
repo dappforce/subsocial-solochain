@@ -14,6 +14,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::ensure;
+use frame_support::log::info;
 use frame_support::traits::IsSubType;
 use sp_runtime::{
     traits::{DispatchInfoOf, SignedExtension, Saturating},
@@ -28,6 +29,9 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod test_pallet;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
