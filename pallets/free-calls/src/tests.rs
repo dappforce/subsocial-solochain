@@ -8,7 +8,7 @@ use frame_support::weights::{extract_actual_weight, Pays, PostDispatchInfo};
 use frame_system::{EventRecord, Events};
 use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
 use crate::mock::*;
-use rand::Rng;
+use rand::{Rng, thread_rng};
 use sp_core::crypto::UncheckedInto;
 use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
@@ -21,6 +21,24 @@ pub use sp_io::{self, storage::root as storage_root};
 use test_pallet::Call as TestPalletCall;
 use frame_system::Call as SystemCall;
 use sp_runtime::traits::{Dispatchable};
+use GrantedOutcome::*;
+use FreeCallOutcome::*;
+
+#[derive(Debug)]
+pub enum GrantedOutcome {
+    /// The granted call errored out
+    Errored,
+    /// The granted call did succeed
+    Succeeded
+}
+
+#[derive(Debug)]
+pub enum FreeCallOutcome {
+    /// The free call have been granted.
+    Granted(GrantedOutcome),
+    /// The consumer cannot have this free call
+    Declined,
+}
 
 pub struct TestUtils;
 impl TestUtils {
@@ -32,9 +50,12 @@ impl TestUtils {
         <Events<Test>>::get()
     }
 
-    pub fn clear_system_events() {
+    pub fn clear_system_events() -> Vec<Event> {
+        let res = TestUtils::take_n_system_events(<Events<Test>>::get().len());
         <Events<Test>>::kill();
         assert!(TestUtils::system_events().is_empty());
+
+        res
     }
 
     pub fn take_n_system_events(n: usize) -> Vec<Event> {
@@ -92,11 +113,11 @@ impl TestUtils {
         }
     }
 
-    pub fn assert_storage_have_no_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
+    pub fn assert_stats_storage_have_no_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
         assert!(TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
     }
 
-    pub fn assert_storage_have_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
+    pub fn assert_stats_storage_have_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
         assert!(!TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
     }
 
@@ -118,21 +139,36 @@ impl TestUtils {
         return true;
     }
 
-    pub fn assert_try_free_call_granted_and_succeed(consumer: <Test as frame_system::Config>::AccountId) {
-        let something = 121;
+    /// Run multiple assertion on try_free_call using the TestPallet call.
+    ///
+    /// if expected_outcome is Granted(Errored), we will try a call that is granted to fail, so we can
+    /// test how try_free_call will behave when the boxed call errors out.
+    pub fn assert_try_free_call_works(
+        consumer: <Test as frame_system::Config>::AccountId,
+        expected_outcome: FreeCallOutcome,
+    ) {
+        let old_something = <Something<Test>>::get();
+        let something = match expected_outcome {
+            Granted(Errored) => 0, // zero should cause an error
+            _ => rand::thread_rng().gen_range(1..1024), // other values should be okay
+        };
 
-        // just a dummy call that should succeed
+        println!(
+            "Block number: {}, expected_outcome: {:?}",
+            <frame_system::Pallet<Test>>::block_number(),
+            expected_outcome,
+        );
+
         let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
 
         TestUtils::clear_system_events();
 
         let stats_storage = TestUtils::capture_stats_storage();
+        let storage = storage_root();
 
         let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer), call.clone());
 
-        TestUtils::assert_storage_have_change(stats_storage);
-
-        // The free call should not return any error
+        // The free call should not return any error, regardless of the boxed call result
         assert_ok!(result);
 
         let result: PostDispatchInfo = result.unwrap();
@@ -143,104 +179,55 @@ impl TestUtils {
             "The caller should not pay",
         );
 
-        // check that storage mutation is applied
-        assert_eq!(
-            <Something<Test>>::get(),
-            Some(something),
-            "Something storage should have mutated to have {}", something,
-        );
-
-        let mut events: Vec<Event> = TestUtils::take_n_system_events(2);
-        assert!(TestUtils::system_events().is_empty(), "Only 2 events should be emitted");
-
-        assert_eq!(
-            events.pop().unwrap(),
-            Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Ok(()))),
-        );
-
-        assert_eq!(
-            events.pop().unwrap(),
-            Event::from(test_pallet::Event::ValueStored(something, consumer.clone())),
-        );
-    }
-
-
-    pub fn assert_try_free_call_granted_and_failed(consumer: <Test as frame_system::Config>::AccountId) {
-        let old_something = <Something<Test>>::get();
-        let something = 0;
-
-        // just a dummy call that should succeed
-        let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
-
-        TestUtils::clear_system_events();
-
-        let stats_storage = TestUtils::capture_stats_storage();
-
-        let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer), call.clone());
-
-        TestUtils::assert_storage_have_change(stats_storage);
-
-        // The free call should not return any error
-        assert_ok!(result);
-
-        let result: PostDispatchInfo = result.unwrap();
-
-        assert_eq!(
-            result.pays_fee,
-            Pays::No,
-            "The caller should not pay",
-        );
-
-        // check that storage mutation is not applied
-        assert_eq!(
-            <Something<Test>>::get(),
-            old_something,
-            "nothing should be changed",
-        );
-
-        let mut events: Vec<Event> = TestUtils::take_n_system_events(1);
-        assert!(TestUtils::system_events().is_empty(), "Only 1 events should be emitted");
-
-        assert_eq!(
-            events.pop().unwrap(),
-            Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Err(test_pallet::Error::<Test>::DoNotSendZero.into()))),
-        );
-    }
-
-
-    pub fn assert_try_free_call_declined(consumer: <Test as frame_system::Config>::AccountId) {
-        let old_something = <Something<Test>>::get();
-        let something = 234;
-
-        // just a dummy call that should succeed
-        let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
-
-        TestUtils::clear_system_events();
-
-
-        assert_storage_noop!({
-            let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer), call.clone());
-            assert_ok!(result);
-
-            // The free call should not return any error
-
-            let result: PostDispatchInfo = result.unwrap();
-
-            assert_eq!(
-                result.pays_fee,
-                Pays::No,
-                "The caller should not pay",
-            );
-
-            // check that storage mutation is not applied
-            assert_eq!(
+        // storage should only change if call is granted and it did succeed
+        match expected_outcome {
+            Granted(Succeeded) => assert_eq!(
+                <Something<Test>>::get(),
+                Some(something),
+                "Something storage should have mutated to have {}", something,
+            ),
+            _ => assert_eq!(
                 <Something<Test>>::get(),
                 old_something,
                 "nothing should be changed",
-            );
+            ),
+        };
 
-            assert!(TestUtils::system_events().is_empty(), "No events should be emitted");
-        });
+        match expected_outcome {
+            Granted(Succeeded) => {
+                let events: Vec<Event> = TestUtils::clear_system_events();
+                assert!(TestUtils::system_events().is_empty(), "Only 2 events should be emitted");
+
+                assert_eq!(
+                    events,
+                    vec![
+                        Event::from(test_pallet::Event::ValueStored(something, consumer.clone())),
+                        Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Ok(()))),
+                    ],
+                );
+
+                assert_ne!(storage, storage_root());
+                TestUtils::assert_stats_storage_have_change(stats_storage)
+            },
+            Granted(Errored) => {
+                let events: Vec<Event> = TestUtils::clear_system_events();
+
+                assert_eq!(
+                    events,
+                    vec![
+                        Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Err(test_pallet::Error::<Test>::DoNotSendZero.into()))),
+                    ],
+                );
+
+                assert_ne!(storage, storage_root());
+                TestUtils::assert_stats_storage_have_change(stats_storage);
+            },
+            Declined => {
+                assert!(TestUtils::system_events().is_empty(), "No events should be emitted");
+                TestUtils::assert_stats_storage_have_no_change(stats_storage);
+                assert_eq!(storage, storage_root(), "if call is declined there should be noop storage");
+            }
+        };
     }
 }
 
@@ -272,8 +259,8 @@ fn dummy() {
         );
         assert!(can_have_free_call);
 
-        TestUtils::assert_try_free_call_granted_and_succeed(consumer.clone());
-        TestUtils::assert_try_free_call_granted_and_failed(consumer.clone());
+        TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
+        TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
     });
 
     ExtBuilder::default()
@@ -290,7 +277,7 @@ fn dummy() {
         );
         assert_eq!(can_have_free_call, false);
 
-        TestUtils::assert_try_free_call_declined(consumer.clone());
+        TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
     });
 }
 
@@ -322,13 +309,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
 
             TestUtils::set_block_number(11);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, false);
-            TestUtils::assert_no_new_events();
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
 
             assert_eq!(get_captured_locked_tokens(), None);
             assert_eq!(get_captured_current_block(), Some(11));
@@ -341,13 +322,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
 
             TestUtils::set_block_number(55);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, true);
-            TestUtils::assert_no_new_events();
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
             assert_eq!(get_captured_locked_tokens(), Some(locked_info.clone()));
             assert_eq!(get_captured_current_block(), Some(55));
@@ -358,13 +333,8 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
             let new_locked_info = TestUtils::random_locked_info();
             <LockedInfoByAccount<Test>>::insert(consumer.clone(), new_locked_info.clone());
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, false, "Block number is still 55 and quota is 1");
-            TestUtils::assert_no_new_events();
+            // Block number is still 55 and quota is 1
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
 
             assert_eq!(get_captured_locked_tokens(), Some(new_locked_info));
             assert_ne!(get_captured_locked_tokens(), Some(locked_info));
@@ -379,18 +349,9 @@ fn denied_if_configs_are_empty() {
         .windows_config(vec![])
         .build()
         .execute_with(|| {
-            let storage = TestUtils::capture_stats_storage();
-
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, false);
-            TestUtils::assert_no_new_events();
-            TestUtils::assert_storage_have_no_change(storage);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
         });
 }
 
@@ -409,14 +370,7 @@ fn denied_if_configs_have_one_zero_period() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, false);
-            TestUtils::assert_no_new_events();
-            TestUtils::assert_storage_have_no_change(storage);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
         });
 }
 
@@ -436,14 +390,7 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, false);
-            TestUtils::assert_no_new_events();
-            TestUtils::assert_storage_have_no_change(storage);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
         });
 
 
@@ -460,14 +407,7 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, false);
-            TestUtils::assert_no_new_events();
-            TestUtils::assert_storage_have_no_change(storage);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
         });
 
 
@@ -484,14 +424,7 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, false);
-            TestUtils::assert_no_new_events();
-            TestUtils::assert_storage_have_no_change(storage);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
         });
 }
 
@@ -516,29 +449,27 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
             // 5 blocks can be granted
             for i in 1..=5 {
                 TestUtils::set_block_number(i);
-                let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                    &consumer,
-                    ShouldUpdateConsumerStats::YES,
-                );
-                assert_eq!(can_have_free_call, true);
+                TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
             }
-
-            let storage = TestUtils::capture_stats_storage();
 
             // consumer is now out of quota and trying to get free calls until
             // block number 19 will fail
             for i in 5..20 {
                 TestUtils::set_block_number(i);
-                let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                    &consumer,
-                    ShouldUpdateConsumerStats::YES,
-                );
-                assert_eq!(can_have_free_call, false);
+                TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
             }
-            TestUtils::assert_storage_have_no_change(storage);
 
 
-            TestUtils::assert_no_new_events();
+            // from block number 30 to 34 user can have more 5 calls since we are at a new window
+            for i in 30..35 {
+                TestUtils::set_block_number(i);
+                let granted_outcome = if i % 2 == 0 {
+                    Succeeded
+                } else {
+                    Errored
+                };
+                TestUtils::assert_try_free_call_works(consumer.clone(), Granted(granted_outcome));
+            }
         });
 }
 
@@ -556,13 +487,7 @@ fn consumer_with_quota_but_no_previous_usages() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-
-            assert_eq!(can_have_free_call, true);
-
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -573,11 +498,7 @@ fn consumer_with_quota_but_no_previous_usages() {
 
             TestUtils::set_block_number(330);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -589,11 +510,7 @@ fn consumer_with_quota_but_no_previous_usages() {
 
             TestUtils::set_block_number(780);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -621,11 +538,8 @@ fn consumer_with_quota_and_have_previous_usages() {
             
             <WindowStatsByConsumer<Test>>::insert(consumer, stats);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, false, "The consumer is out of quota");
+            // The consumer is out of quota
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -636,11 +550,8 @@ fn consumer_with_quota_and_have_previous_usages() {
 
             TestUtils::set_block_number(55);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true, "We have entered a new window");
+            // We have entered a new window
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -652,11 +563,8 @@ fn consumer_with_quota_and_have_previous_usages() {
             TestUtils::set_block_number(80);
 
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true, "We still have quota to spend");
+            // We still have quota to spend
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -668,12 +576,7 @@ fn consumer_with_quota_and_have_previous_usages() {
 
             TestUtils::set_block_number(100);
 
-
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -703,11 +606,7 @@ fn testing_scenario_1() {
                 vec![(0, 34), (3, 17), (7, 17)],
             );
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -718,11 +617,8 @@ fn testing_scenario_1() {
 
             TestUtils::set_block_number(71);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, false, "2nd window config allows only 18 calls, consumer must wait until the window have passed");
+            // 2nd window config allows only 18 calls, consumer must wait until the window have passed
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
 
             // nothing should change since the call have failed
             TestUtils::assert_stats_equal(
@@ -734,11 +630,8 @@ fn testing_scenario_1() {
 
             TestUtils::set_block_number(79);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, false, "2nd window config allows only 18 calls, consumer must wait until the window have passed");
+            // 2nd window config allows only 18 calls, consumer must wait until the window have passed
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
 
             // nothing should change since the call have failed
             TestUtils::assert_stats_equal(
@@ -750,11 +643,8 @@ fn testing_scenario_1() {
 
             TestUtils::set_block_number(80);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true, "we have entered a new 2nd/3rd windows, so the call should be granted");
+            // we have entered a new 2nd/3rd windows, so the call should be granted
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -765,11 +655,8 @@ fn testing_scenario_1() {
 
             TestUtils::set_block_number(80);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true, "we have entered a new 2nd/3rd windows, so the call should be granted");
+            // we have entered a new 2nd/3rd windows, so the call should be granted
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -780,11 +667,7 @@ fn testing_scenario_1() {
 
             TestUtils::set_block_number(90);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -795,11 +678,7 @@ fn testing_scenario_1() {
 
             TestUtils::set_block_number(101);
 
-            let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-                &consumer,
-                ShouldUpdateConsumerStats::YES,
-            );
-            assert_eq!(can_have_free_call, true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
