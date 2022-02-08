@@ -207,12 +207,15 @@ pub mod pallet {
             origin: OriginFor<T>,
             call: Box<<T as Config>::Call>,
         ) -> DispatchResultWithPostInfo {
-            let sender = ensure_signed(origin.clone())?;
+            let consumer = ensure_signed(origin.clone())?;
 
             let mut actual_weight = <T as Config>::WeightInfo::try_free_call();
 
-            if T::CallFilter::contains(&call) &&
-                Self::can_make_free_call(&sender, ShouldUpdateConsumerStats::YES) {
+            if let Some(new_stats) = T::CallFilter::contains(&call)
+                .then(|| ())
+                .and_then(|_| Self::can_make_free_call(&consumer)) {
+
+                Self::update_consumer_stats(consumer.clone(), new_stats);
 
                 let info = call.get_dispatch_info();
 
@@ -224,7 +227,7 @@ pub mod pallet {
 
                 // Deposit an event with the result
                 Self::deposit_event(Event::FreeCallResult(
-                    sender,
+                    consumer,
                     result.map(|_| ()).map_err(|e| e.error),
                 ));
             }
@@ -236,29 +239,24 @@ pub mod pallet {
         }
     }
 
-    pub enum ShouldUpdateConsumerStats {
-        YES,
-        NO,
-    }
-
     impl<T: Config> Pallet<T> {
-        /// Determine if `consumer` can have a free call and optionally update its window usage.
+        /// Determine if `consumer` can have a free call.
         ///
-        /// Window usage for the caller `consumer` will only update if there is a quota and all of the
-        /// previous window usages doesn't exceed the defined windows config.
-        pub fn can_make_free_call(consumer: &T::AccountId, should_update_consumer_stats: ShouldUpdateConsumerStats) -> bool {
+        /// If the consumer can have a free call the new stats that should be applied will be returned,
+        /// otherwise None is returned.
+        pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStatsVec<T>> {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
             let windows_config = T::WindowsConfig::get();
 
             if windows_config.is_empty() {
-                return false;
+                return None;
             }
 
             let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
             let quota = match T::QuotaCalculationStrategy::calculate(current_block, locked_info) {
                 Some(quota) if quota > 0 => quota,
-                _ => return false,
+                _ => return None,
             };
 
             let old_stats: ConsumerStatsVec<T> = Self::window_stats_by_consumer(consumer.clone());
@@ -274,25 +272,17 @@ pub mod pallet {
 
                 match new_window_stats {
                     None => {
-                        return false;
+                        return None;
                     },
                     Some(window_stats) => {
                         if matches!(new_stats.try_push(window_stats), Err(_)) {
-                            return false;
+                            return None;
                         }
                     }
                 };
             }
 
-            if let ShouldUpdateConsumerStats::YES = should_update_consumer_stats {
-                log::info!("{:?} updating window stats", consumer);
-                <WindowStatsByConsumer<T>>::insert(
-                    consumer.clone(),
-                    new_stats,
-                );
-            }
-
-            return true;
+            return Some(new_stats);
         }
 
         /// Checks if a window can allow one more call given its config and the last stored stats for
@@ -329,6 +319,14 @@ pub mod pallet {
                 stats.used_calls = stats.used_calls.saturating_add(1);
                 stats
             })
+        }
+
+        pub fn update_consumer_stats(consumer: T::AccountId, new_stats: ConsumerStatsVec<T>) {
+            log::info!("{:?} updating consumer stats", consumer);
+            <WindowStatsByConsumer<T>>::insert(
+                consumer,
+                new_stats,
+            );
         }
     }
 
@@ -411,7 +409,7 @@ impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
         if let Some(local_call) = call.is_sub_type() {
             if let Call::try_free_call(boxed_call) = local_call {
                 ensure!(T::CallFilter::contains(boxed_call), InvalidTransaction::Custom(FreeCallsValidityError::CallCannotBeFree.into()));
-                ensure!(Pallet::<T>::can_make_free_call(who, ShouldUpdateConsumerStats::NO), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
+                ensure!(Pallet::<T>::can_make_free_call(who).is_some(), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
             }
         }
         Ok(ValidTransaction::default())

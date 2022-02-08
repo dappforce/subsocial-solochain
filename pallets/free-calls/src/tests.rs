@@ -12,7 +12,7 @@ use rand::{Rng, thread_rng};
 use sp_core::crypto::UncheckedInto;
 use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
-use crate::{ConsumerStats, ConsumerStatsVec, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, ShouldUpdateConsumerStats, test_pallet, WindowConfig};
+use crate::{ConsumerStats, ConsumerStatsVec, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, test_pallet, WindowConfig};
 use crate::WindowStatsByConsumer;
 use frame_support::weights::GetDispatchInfo;
 use crate::test_pallet::Something;
@@ -253,10 +253,7 @@ fn dummy() {
         .build().execute_with(|| {
         let consumer: AccountId = account("Consumer", 2, 1);
 
-        let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-            &consumer,
-            ShouldUpdateConsumerStats::NO,
-        );
+        let can_have_free_call = <Pallet<Test>>::can_make_free_call(&consumer).is_some();
         assert!(can_have_free_call);
 
         TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
@@ -271,10 +268,7 @@ fn dummy() {
         .build().execute_with(|| {
         let consumer: AccountId = account("Consumer", 2, 1);
 
-        let can_have_free_call = <Pallet<Test>>::can_make_free_call(
-            &consumer,
-            ShouldUpdateConsumerStats::NO,
-        );
+        let can_have_free_call = <Pallet<Test>>::can_make_free_call(&consumer).is_some();
         assert_eq!(can_have_free_call, false);
 
         TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
