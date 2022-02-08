@@ -396,6 +396,48 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
 }
 
 #[test]
+fn denied_if_call_filter_returns_false() {
+    thread_local! {
+        static ALLOW_CALLS: RefCell<bool> = RefCell::new(false);
+    }
+
+    let set_filter = |allow| ALLOW_CALLS.with(|x| *x.borrow_mut() = allow);
+
+    ExtBuilder::default()
+        .windows_config(vec![WindowConfig::new(1, QuotaToWindowRatio::new(1))])
+        .call_filter(|_| ALLOW_CALLS.with(|b| b.borrow().clone()))
+        .quota_calculation(|_,_| Some(1000))
+        .build()
+        .execute_with(|| {
+            let consumer: AccountId = account("Consumer", 0, 0);
+
+            set_filter(false);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+
+            set_filter(true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
+
+            set_filter(false);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+
+            set_filter(true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
+
+            set_filter(false);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+
+            set_filter(true);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
+            TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
+        });
+}
+
+
+#[test]
 fn denied_if_configs_are_empty() {
     ExtBuilder::default()
         .windows_config(vec![])
