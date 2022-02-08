@@ -66,5 +66,26 @@ pub mod pallet {
 
             Ok(())
         }
+
+        #[pallet::weight(12_345)]
+        pub fn call_a(origin: OriginFor<T>) -> DispatchResult {
+            let _who = ensure_signed(origin)?;
+
+            Ok(())
+        }
+
+        #[pallet::weight(12_345)]
+        pub fn call_b(origin: OriginFor<T>) -> DispatchResult {
+            let _who = ensure_signed(origin)?;
+
+            Ok(())
+        }
+
+        #[pallet::weight(12_345)]
+        pub fn call_c(origin: OriginFor<T>) -> DispatchResult {
+            let _who = ensure_signed(origin)?;
+
+            Ok(())
+        }
     }
 }

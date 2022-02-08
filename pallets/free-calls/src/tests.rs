@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::convert::TryInto;
 use frame_benchmarking::account;
@@ -336,6 +336,64 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
         });
 }
 
+
+#[test]
+fn boxed_call_will_be_passed_to_the_call_filter() {
+    thread_local! {
+        static CAPTURED_CALL: RefCell<Option<Call>> = RefCell::new(None);
+    }
+
+    let get_captured_call = || CAPTURED_CALL.with(|x| x.borrow().clone());
+
+    ExtBuilder::default()
+        .windows_config(vec![WindowConfig::new(1, QuotaToWindowRatio::new(1))])
+        .quota_calculation(|_, _| Some(10))
+        .call_filter(|call| {
+            CAPTURED_CALL.with(|x| *x.borrow_mut() = call.clone().into());
+            true
+        })
+        .build()
+        .execute_with(|| {
+            let consumer: AccountId = account("Consumer", 0, 0);
+
+            assert_eq!(get_captured_call(), None);
+
+            assert_ok!(<Pallet<Test>>::try_free_call(
+                Origin::signed(consumer),
+                Box::new(TestPalletCall::<Test>::call_a().into()),
+            ));
+
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::call_a().into()));
+
+            //////////
+
+            assert_ok!(<Pallet<Test>>::try_free_call(
+                Origin::signed(consumer),
+                Box::new(TestPalletCall::<Test>::cause_error().into()),
+            ));
+
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::cause_error().into()));
+
+            //////////
+
+            assert_ok!(<Pallet<Test>>::try_free_call(
+                Origin::signed(consumer),
+                Box::new(TestPalletCall::<Test>::call_b().into()),
+            ));
+
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::call_b().into()));
+
+            //////////
+
+            assert_ok!(<Pallet<Test>>::try_free_call(
+                Origin::signed(consumer),
+                Box::new(TestPalletCall::<Test>::store_value(12).into()),
+            ));
+
+            assert_ne!(get_captured_call(), Some(TestPalletCall::<Test>::store_value(21).into()));
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::store_value(12).into()));
+        });
+}
 
 #[test]
 fn denied_if_configs_are_empty() {
