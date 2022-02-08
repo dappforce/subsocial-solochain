@@ -21,11 +21,11 @@ pub use sp_io::{self, storage::root as storage_root};
 use test_pallet::Call as TestPalletCall;
 use frame_system::Call as SystemCall;
 use sp_runtime::traits::{Dispatchable};
-use GrantedOutcome::*;
-use FreeCallOutcome::*;
+use GrantedScenario::*;
+use FreeCallScenario::*;
 
 #[derive(Debug)]
-pub enum GrantedOutcome {
+pub enum GrantedScenario {
     /// The granted call errored out
     Errored,
     /// The granted call did succeed
@@ -33,9 +33,9 @@ pub enum GrantedOutcome {
 }
 
 #[derive(Debug)]
-pub enum FreeCallOutcome {
+pub enum FreeCallScenario {
     /// The free call have been granted.
-    Granted(GrantedOutcome),
+    Granted(GrantedScenario),
     /// The consumer cannot have this free call
     Declined,
 }
@@ -139,24 +139,24 @@ impl TestUtils {
         return true;
     }
 
-    /// Run multiple assertion on try_free_call using the TestPallet call.
+    /// Run multiple assertion on the result of try_free_call using the TestPallet call.
     ///
-    /// if expected_outcome is Granted(Errored), we will try a call that is granted to fail, so we can
+    /// if scenario is Granted(Errored), we will try a call that is granted to fail, so we can
     /// test how try_free_call will behave when the boxed call errors out.
     pub fn assert_try_free_call_works(
         consumer: <Test as frame_system::Config>::AccountId,
-        expected_outcome: FreeCallOutcome,
+        scenario: FreeCallScenario,
     ) {
         let old_something = <Something<Test>>::get();
-        let something = match expected_outcome {
+        let something = match scenario {
             Granted(Errored) => 0, // zero should cause an error
             _ => rand::thread_rng().gen_range(1..1024), // other values should be okay
         };
 
         println!(
-            "Block number: {}, expected_outcome: {:?}",
+            "Block number: {}, scenario: {:?}",
             <frame_system::Pallet<Test>>::block_number(),
-            expected_outcome,
+            scenario,
         );
 
         let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
@@ -180,7 +180,7 @@ impl TestUtils {
         );
 
         // storage should only change if call is granted and it did succeed
-        match expected_outcome {
+        match scenario {
             Granted(Succeeded) => assert_eq!(
                 <Something<Test>>::get(),
                 Some(something),
@@ -193,7 +193,7 @@ impl TestUtils {
             ),
         };
 
-        match expected_outcome {
+        match scenario {
             Granted(Succeeded) => {
                 let events: Vec<Event> = TestUtils::clear_system_events();
                 assert!(TestUtils::system_events().is_empty(), "Only 2 events should be emitted");
@@ -557,12 +557,12 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
             // from block number 30 to 34 user can have more 5 calls since we are at a new window
             for i in 30..35 {
                 TestUtils::set_block_number(i);
-                let granted_outcome = if i % 2 == 0 {
+                let granted_scenario = if i % 2 == 0 {
                     Succeeded
                 } else {
                     Errored
                 };
-                TestUtils::assert_try_free_call_works(consumer.clone(), Granted(granted_outcome));
+                TestUtils::assert_try_free_call_works(consumer.clone(), Granted(granted_scenario));
             }
         });
 }
