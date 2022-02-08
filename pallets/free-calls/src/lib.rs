@@ -187,6 +187,10 @@ pub mod pallet {
         /// one of the following reasons:
         ///  * Caller has no free quota set.
         ///  * The caller has used all the allowed quota for at least one window config.
+        ///
+        /// Pre-validation:
+        /// This call is pre validated using `FreeCallsPrevalidation` signed extension and will only
+        /// be valid if the consumer can have a free call.
         #[pallet::weight({
             let boxed_call_info = call.get_dispatch_info();
             let boxed_call_weight = boxed_call_info.weight;
