@@ -8,6 +8,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use sp_std::cmp::{max, min};
 use sp_std::{
     prelude::*,
     collections::btree_map::BTreeMap,
@@ -68,6 +69,9 @@ use pallet_spaces::rpc::FlatSpace;
 use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
 
 pub mod constants;
+#[cfg(test)]
+mod tests;
+
 use constants::{free_calls::*, currency::*, time::*};
 use pallet_free_calls::{NumberOfCalls, WindowConfig};
 use pallet_locker_mirror::{LockedInfo, LockedInfoOf};
@@ -458,15 +462,43 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
         current_block: <Runtime as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Runtime>>
     ) -> Option<NumberOfCalls> {
-        locked_info.and_then(|locked_info| {
-            if current_block >= locked_info.unlocks_at {
-                None
-            } else {
-                // TODO: add more sophisticated calculation
-                // TODO: think if we should make NumberOfCalls -> u32 instead of u16
-                Some((locked_info.locked_amount / currency::DOLLARS) as NumberOfCalls)
+        fn get_multiplier(lock_period: BlockNumber) -> u16 {
+            if lock_period < 1 * WEEKS {
+                return 0;
             }
-        })
+            if lock_period < 1 * MONTHS {
+                let num_of_weeks = min(3, lock_period / (1 * WEEKS));
+                return (5 + num_of_weeks) as u16;
+            }
+
+            let num_of_months = min(12, lock_period / (1 * MONTHS));
+            return (8 + num_of_months) as u16;
+        }
+
+        let LockedInfoOf::<Runtime>{
+            unlocks_at,
+            locked_amount,
+            lock_period,
+        } = match locked_info {
+            Some(locked_info) => locked_info,
+            None => return None,
+        };
+
+        if current_block >= unlocks_at {
+            return None;
+        }
+
+        let multiplier = get_multiplier(lock_period);
+        if multiplier == 0 {
+            return None;
+        }
+
+        let num_of_tokens = (locked_amount.saturating_div(currency::DOLLARS)) as u16;
+        if num_of_tokens == 0 {
+            return None
+        }
+
+        Some((num_of_tokens.saturating_mul(multiplier)) as NumberOfCalls)
     }
 }
 
