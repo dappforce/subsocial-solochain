@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use frame_benchmarking::account;
-use crate::{mock::*, LockedInfoByAccount, BalanceOf, LockedInfo, Config, LockedInfoOf};
+use crate::{mock::*, LockedInfoByAccount, BalanceOf, LockedInfo, Config, LockedInfoOf, ParachainEvent, LastProcessedParachainEvent};
 use frame_support::{assert_ok, assert_noop, assert_err, assert_err_with_weight};
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::weights::{Pays, PostDispatchInfo};
@@ -44,6 +44,124 @@ fn random_locked_info() -> LockedInfoOf<Test> {
     }
 }
 
+
+fn random_parachain_event() -> ParachainEvent {
+    let mut rng = rand::thread_rng();
+    ParachainEvent {
+        event_index: rng.gen(),
+        block_number: rng.gen(),
+    }
+}
+
+////////////////
+
+#[test]
+fn set_last_processed_parachain_event__should_fail_when_unsigned() {
+    ExtBuilder::default()
+        .build().execute_with(|| {
+        assert_err!(
+            LockerMirror::set_locked_info(
+                Origin::none(),
+                subject_account::<Test>(),
+                random_locked_info(),
+            ),
+            BadOrigin,
+        );
+    });
+}
+
+#[test]
+fn set_last_processed_parachain_event__should_fail_when_not_oracle_origin() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
+        assert_err!(
+            LockerMirror::set_last_processed_parachain_event(
+                Origin::signed(non_oracle.clone()),
+                random_parachain_event(),
+            ),
+            BadOrigin,
+        );
+    });
+}
+
+#[test]
+fn set_last_processed_parachain_event__should_ok_when_caller_is_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
+        assert_ok!(
+            LockerMirror::set_last_processed_parachain_event(
+                Origin::signed(oracle.clone()),
+                random_parachain_event(),
+            ),
+        );
+    });
+}
+
+#[test]
+fn set_last_processed_parachain_event__should_pay_when_caller_is_not_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
+        let res = LockerMirror::set_last_processed_parachain_event(
+            Origin::signed(non_oracle.clone()),
+            random_parachain_event(),
+        );
+        assert_err!(
+            res,
+            BadOrigin,
+        );
+
+        assert!(extract_post_info(res).pays_fee == Pays::Yes);
+    });
+}
+
+
+#[test]
+fn set_last_processed_parachain_event__should_not_pay_when_caller_is_oracle() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
+        let res = LockerMirror::set_last_processed_parachain_event(
+            Origin::signed(oracle.clone()),
+            random_parachain_event(),
+        );
+        assert_ok!(res);
+
+        assert!(extract_post_info(res).pays_fee == Pays::No);
+    });
+}
+
+#[test]
+fn set_last_processed_parachain_event__should_change_storage() {
+    let oracle = subject_account_n::<Test>(1);
+    let non_oracle = subject_account_n::<Test>(2);
+    ExtBuilder::default()
+        .oracle_account_id(oracle.clone())
+        .build().execute_with(|| {
+        assert_eq!(<LastProcessedParachainEvent<Test>>::get(), None);
+        let expected_event_info = random_parachain_event();
+        assert_ok!(
+            LockerMirror::set_last_processed_parachain_event(
+                Origin::signed(oracle.clone()),
+                expected_event_info.clone(),
+            ),
+        );
+        assert_eq!(<LastProcessedParachainEvent<Test>>::get().unwrap(), expected_event_info);
+    });
+}
+
+
+///////////////
 
 #[test]
 fn set_locked_info__should_fail_when_unsigned() {

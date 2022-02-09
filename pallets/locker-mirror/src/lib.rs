@@ -22,6 +22,12 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use crate::weights::WeightInfo;
 
+    /// The type used to represent block numbers on the parachain.
+    type ParachainBlockNumber = u32;
+
+    /// The type used to represent event index on the parachain.
+    type ParachainEventIndex = u32;
+
     pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
     pub type LockedInfoOf<T> = LockedInfo<<T as frame_system::Config>::BlockNumber, BalanceOf<T>>;
@@ -37,6 +43,16 @@ pub mod pallet {
 
         /// How many blocks the tokens will be locked for.
         pub lock_period: BlockNumber,
+    }
+
+    /// Information about a parachain event.
+    #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+    pub struct ParachainEvent {
+        /// The parachain block number at which the event was found.
+        pub block_number: ParachainBlockNumber,
+
+        /// The index of the parachain event.
+        pub event_index: ParachainEventIndex,
     }
 
     #[pallet::pallet]
@@ -69,6 +85,11 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// Stores information about last processed event on the parachain.
+    #[pallet::storage]
+    #[pallet::getter(fn last_processed_parachain_event)]
+    pub type LastProcessedParachainEvent<T: Config> = StorageValue<_, ParachainEvent>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -77,10 +98,31 @@ pub mod pallet {
 
         /// Locked information is cleared for an account. [who]
         LockedInfoCleared(T::AccountId),
+
+        /// Last processed event have been set.
+        LastProcessedEventSet(ParachainEvent),
     }
     
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+
+        #[pallet::weight((
+            <T as Config>::WeightInfo::set_last_processed_parachain_event(),
+            DispatchClass::Operational,
+            Pays::Yes,
+        ))]
+        pub fn set_last_processed_parachain_event(
+            origin: OriginFor<T>,
+            last_processed_event_info: ParachainEvent,
+        ) -> DispatchResultWithPostInfo {
+            let _ = T::OracleOrigin::ensure_origin(origin)?;
+
+            <LastProcessedParachainEvent<T>>::put(last_processed_event_info.clone());
+
+            Self::deposit_event(Event::LastProcessedEventSet(last_processed_event_info));
+
+            Ok(Pays::No.into())
+        }
 
         /// Sets the locked information for an account.
         #[pallet::weight((
