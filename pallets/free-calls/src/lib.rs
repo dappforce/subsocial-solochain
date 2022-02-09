@@ -57,6 +57,7 @@ pub mod pallet {
     use sp_std::cmp::max;
     use sp_std::vec::Vec;
     use pallet_locker_mirror::{LockedInfoByAccount, LockedInfoOf};
+    use pallet_utils::bool_to_option;
     use crate::WeightInfo;
 
     /// The ratio between the quota and a particular window.
@@ -211,9 +212,10 @@ pub mod pallet {
 
             let mut actual_weight = <T as Config>::WeightInfo::try_free_call();
 
-            if let Some(new_stats) = T::CallFilter::contains(&call)
-                .then(|| ())
-                .and_then(|_| Self::can_make_free_call(&consumer)) {
+            let maybe_new_stats = bool_to_option(T::CallFilter::contains(&call))
+                .and_then(|_| Self::can_make_free_call(&consumer));
+
+            if let Some(new_stats) = maybe_new_stats {
 
                 Self::update_consumer_stats(consumer.clone(), new_stats);
 
