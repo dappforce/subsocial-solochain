@@ -433,6 +433,7 @@ impl Contains<Call> for BaseFilter {
 }
 
 /// Filter the calls that can be used as free calls.
+// TODO: add more calls to this filter. or maybe allow all calls???
 pub struct FreeCallsFilter;
 impl Default for FreeCallsFilter { fn default() -> Self { Self } }
 impl Contains<Call> for FreeCallsFilter {
