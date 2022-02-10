@@ -476,17 +476,23 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
         }
 
         let LockedInfoOf::<Runtime>{
-            unlocks_at,
+            locked_at,
             locked_amount,
-            lock_period,
+            expires_at,
         } = match locked_info {
             Some(locked_info) => locked_info,
             None => return None,
         };
 
-        if current_block >= unlocks_at {
+        if locked_at <= current_block {
             return None;
         }
+
+        if matches!(expires_at, Some(expires_at) if current_block >= expires_at) {
+            return None;
+        }
+
+        let lock_period = current_block - locked_at;
 
         let multiplier = get_multiplier(lock_period);
         if multiplier == 0 {

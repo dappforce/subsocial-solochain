@@ -13,8 +13,8 @@ use sp_runtime::traits::Bounded;
 fn _mock_lock_info<T: Config>() -> LockedInfoOf<T> {
     LockedInfo::<T::BlockNumber, BalanceOf<T>> {
         locked_amount: BalanceOf::<T>::max_value(),
-        lock_period: T::BlockNumber::from(11u32),
-        unlocks_at: T::BlockNumber::from(102u32),
+        expires_at: Some(T::BlockNumber::from(11u32)),
+        locked_at: T::BlockNumber::from(102u32),
     }
 }
 
@@ -42,11 +42,7 @@ benchmarks!{
         let locked_amount = BalanceOf::<T>::max_value();
         let lock_period = T::BlockNumber::from(1223u32);
         let unlocks_at = T::BlockNumber::from(101323u32);
-        <LockedInfoByAccount<T>>::insert(account.clone(), LockedInfo {
-            locked_amount,
-            lock_period,
-            unlocks_at,
-        });
+        <LockedInfoByAccount<T>>::insert(account.clone(), _mock_lock_info::<T>());
         let origin = if cfg!(test) {
             RawOrigin::Signed(caller)
         } else {

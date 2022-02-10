@@ -39,8 +39,8 @@ fn random_locked_info() -> LockedInfoOf<Test> {
     let mut rng = rand::thread_rng();
     LockedInfoOf::<Test> {
         locked_amount: rng.gen_range(0..BalanceOf::<Test>::max_value()).into(),
-        unlocks_at: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
-        lock_period: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
+        locked_at: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
+        expires_at: Some(rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into()),
     }
 }
 

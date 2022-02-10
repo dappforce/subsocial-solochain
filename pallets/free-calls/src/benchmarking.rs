@@ -30,9 +30,9 @@ benchmarks!{
 		let call = Box::new(frame_system::Call::<T>::remark(vec![]).into());
         let current_block = <frame_system::Pallet<T>>::block_number();
         <LockedInfoByAccount<T>>::insert(caller.clone(), LockedInfo {
-            lock_period: 1000u32.into(),
+            expires_at: None,
             locked_amount: BalanceOf::<T>::max_value(),
-            unlocks_at: current_block + 1000u32.into(),
+            locked_at: current_block + 1000u32.into(),
         });
     }: try_free_call(RawOrigin::Signed(caller.clone()), call)
     verify {

@@ -38,11 +38,11 @@ pub mod pallet {
         /// How many tokens are locked.
         pub locked_amount: Balance,
 
-        /// At what block the tokens will be unlocked.
-        pub unlocks_at: BlockNumber,
+        /// At what block that tokens did get locked.
+        pub locked_at: BlockNumber,
 
-        /// How many blocks the tokens will be locked for.
-        pub lock_period: BlockNumber,
+        /// At what block the locked info will be expired. or None if it doesn't expires.
+        pub expires_at: Option<BlockNumber>,
     }
 
     /// Information about a parachain event.
