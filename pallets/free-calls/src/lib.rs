@@ -371,7 +371,7 @@ impl<T: Config + Send + Sync> FreeCallsPrevalidation<T>
 }
 
 #[repr(u8)]
-enum FreeCallsValidityError {
+pub enum FreeCallsValidityError {
     /// The caller is out of quota.
     OutOfQuota = 0,
 

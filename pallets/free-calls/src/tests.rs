@@ -12,7 +12,7 @@ use rand::{Rng, thread_rng};
 use sp_core::crypto::UncheckedInto;
 use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
-use crate::{ConsumerStats, ConsumerStatsVec, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, test_pallet, WindowConfig};
+use crate::{ConsumerStats, ConsumerStatsVec, FreeCallsPrevalidation, FreeCallsValidityError, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, test_pallet, WindowConfig};
 use crate::WindowStatsByConsumer;
 use frame_support::weights::GetDispatchInfo;
 use crate::test_pallet::Something;
@@ -20,9 +20,11 @@ use crate::weights::WeightInfo;
 pub use sp_io::{self, storage::root as storage_root};
 use test_pallet::Call as TestPalletCall;
 use frame_system::Call as SystemCall;
-use sp_runtime::traits::{Dispatchable};
+use sp_runtime::traits::{Dispatchable, SignedExtension};
+use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction};
 use GrantedScenario::*;
 use FreeCallScenario::*;
+use DeclinedScenario::*;
 
 #[derive(Debug)]
 pub enum GrantedScenario {
@@ -33,11 +35,19 @@ pub enum GrantedScenario {
 }
 
 #[derive(Debug)]
+pub enum DeclinedScenario {
+    /// declined because user don't have quota
+    OutOfQuota,
+    /// declined from the filter
+    CallCannotBeFree,
+}
+
+#[derive(Debug)]
 pub enum FreeCallScenario {
     /// The free call have been granted.
     Granted(GrantedScenario),
     /// The consumer cannot have this free call
-    Declined,
+    Declined(DeclinedScenario),
 }
 
 pub struct TestUtils;
@@ -161,6 +171,28 @@ impl TestUtils {
 
         let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
 
+        // test signed extension
+        match &scenario {
+            Granted(_) => {
+                TestUtils::assert_signed_extension_works(
+                    consumer.clone(),
+                    call.clone(),
+                    None,
+                );
+            },
+            Declined(declined_scenario) => {
+                TestUtils::assert_signed_extension_works(
+                    consumer.clone(),
+                    call.clone(),
+                    Some(match declined_scenario {
+                        OutOfQuota => FreeCallsValidityError::OutOfQuota,
+                        CallCannotBeFree => FreeCallsValidityError::CallCannotBeFree,
+                    }),
+                );
+            }
+        }
+
+
         TestUtils::clear_system_events();
 
         let stats_storage = TestUtils::capture_stats_storage();
@@ -180,7 +212,7 @@ impl TestUtils {
         );
 
         // storage should only change if call is granted and it did succeed
-        match scenario {
+        match &scenario {
             Granted(Succeeded) => assert_eq!(
                 <Something<Test>>::get(),
                 Some(something),
@@ -222,12 +254,36 @@ impl TestUtils {
                 assert_ne!(storage, storage_root());
                 TestUtils::assert_stats_storage_have_change(stats_storage);
             },
-            Declined => {
+            Declined(_) => {
                 assert!(TestUtils::system_events().is_empty(), "No events should be emitted");
                 TestUtils::assert_stats_storage_have_no_change(stats_storage);
                 assert_eq!(storage, storage_root(), "if call is declined there should be noop storage");
             }
         };
+    }
+
+    fn assert_signed_extension_works(
+        consumer: <Test as frame_system::Config>::AccountId,
+        boxed_call: Box<Call>,
+        expected_error: Option<FreeCallsValidityError>,
+    ) {
+        let validator = FreeCallsPrevalidation::<Test>::new();
+        let call: <Test as frame_system::Config>::Call = free_calls::Call::<Test>::try_free_call(boxed_call).into();
+        let di = call.get_dispatch_info();
+        assert_eq!(di.pays_fee, Pays::No);
+        let res = validator.validate(
+            &consumer,
+            &call,
+            &di,
+            20,
+        );
+        assert_eq!(
+            res,
+            match expected_error {
+                Some(error) => TransactionValidity::Err(TransactionValidityError::Invalid(InvalidTransaction::Custom(error.into()))),
+                None => TransactionValidity::Ok(ValidTransaction::default()),
+            },
+        );
     }
 }
 
@@ -271,7 +327,7 @@ fn dummy() {
         let can_have_free_call = <Pallet<Test>>::can_make_free_call(&consumer).is_some();
         assert_eq!(can_have_free_call, false);
 
-        TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+        TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
     });
 }
 
@@ -303,7 +359,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
 
             TestUtils::set_block_number(11);
 
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
 
             assert_eq!(get_captured_locked_tokens(), None);
             assert_eq!(get_captured_current_block(), Some(11));
@@ -328,7 +384,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
             <LockedInfoByAccount<Test>>::insert(consumer.clone(), new_locked_info.clone());
 
             // Block number is still 55 and quota is 1
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
 
             assert_eq!(get_captured_locked_tokens(), Some(new_locked_info));
             assert_ne!(get_captured_locked_tokens(), Some(locked_info));
@@ -412,8 +468,8 @@ fn denied_if_call_filter_returns_false() {
             let consumer: AccountId = account("Consumer", 0, 0);
 
             set_filter(false);
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(CallCannotBeFree));
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(CallCannotBeFree));
 
             set_filter(true);
             TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
@@ -422,13 +478,13 @@ fn denied_if_call_filter_returns_false() {
             TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
             set_filter(false);
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(CallCannotBeFree));
 
             set_filter(true);
             TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Errored));
 
             set_filter(false);
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(CallCannotBeFree));
 
             set_filter(true);
             TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
@@ -445,7 +501,7 @@ fn denied_if_configs_are_empty() {
         .execute_with(|| {
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
         });
 }
 
@@ -464,7 +520,7 @@ fn denied_if_configs_have_one_zero_period() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
         });
 }
 
@@ -484,7 +540,7 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
         });
 
 
@@ -501,7 +557,7 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
         });
 
 
@@ -518,7 +574,7 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
             let consumer: AccountId = account("Consumer", 0, 0);
 
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
         });
 }
 
@@ -550,7 +606,7 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
             // block number 19 will fail
             for i in 5..20 {
                 TestUtils::set_block_number(i);
-                TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+                TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
             }
 
 
@@ -633,7 +689,7 @@ fn consumer_with_quota_and_have_previous_usages() {
             <WindowStatsByConsumer<Test>>::insert(consumer, stats);
 
             // The consumer is out of quota
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
 
             TestUtils::assert_stats_equal(
                 consumer.clone(),
@@ -712,7 +768,7 @@ fn testing_scenario_1() {
             TestUtils::set_block_number(71);
 
             // 2nd window config allows only 18 calls, consumer must wait until the window have passed
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
 
             // nothing should change since the call have failed
             TestUtils::assert_stats_equal(
@@ -725,7 +781,7 @@ fn testing_scenario_1() {
             TestUtils::set_block_number(79);
 
             // 2nd window config allows only 18 calls, consumer must wait until the window have passed
-            TestUtils::assert_try_free_call_works(consumer.clone(), Declined);
+            TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
 
             // nothing should change since the call have failed
             TestUtils::assert_stats_equal(
