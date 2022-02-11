@@ -16,13 +16,8 @@ use sp_std::{
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 pub use subsocial_primitives::{AccountId, Signature, Balance, Index};
 use subsocial_primitives::{BlockNumber, Hash, Moment};
-use sp_runtime::{
-    ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys,
-    transaction_validity::{TransactionValidity, TransactionSource},
-};
-use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, NumberFor, AccountIdLookup
-};
+use sp_runtime::{ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys, transaction_validity::{TransactionValidity, TransactionSource}, SaturatedConversion};
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT, NumberFor, AccountIdLookup, Saturating};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
@@ -462,17 +457,17 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
         current_block: <Runtime as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Runtime>>
     ) -> Option<NumberOfCalls> {
-        fn get_multiplier(lock_period: BlockNumber) -> u16 {
+        fn get_utilization_percent(lock_period: BlockNumber) -> u16 {
             if lock_period < 1 * WEEKS {
-                return 0;
+                return 15;
             }
             if lock_period < 1 * MONTHS {
-                let num_of_weeks = min(3, lock_period / (1 * WEEKS));
-                return (5 + num_of_weeks) as u16;
+                let num_of_weeks = min(3, lock_period / (1 * WEEKS)) as u16;
+                return (num_of_weeks * 5) + 25;
             }
 
-            let num_of_months = min(12, lock_period / (1 * MONTHS));
-            return (8 + num_of_months) as u16;
+            let num_of_months = min(12, lock_period / (1 * MONTHS)) as u16;
+            return (num_of_months * 5) + 40;
         }
 
         let LockedInfoOf::<Runtime>{
@@ -484,7 +479,7 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
             None => return None,
         };
 
-        if locked_at <= current_block {
+        if locked_at >= current_block {
             return None;
         }
 
@@ -494,17 +489,16 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
 
         let lock_period = current_block - locked_at;
 
-        let multiplier = get_multiplier(lock_period);
-        if multiplier == 0 {
-            return None;
-        }
+        let utilization_percent = get_utilization_percent(lock_period);
 
-        let num_of_tokens = (locked_amount.saturating_div(currency::DOLLARS)) as u16;
-        if num_of_tokens == 0 {
-            return None
-        }
+        let num_of_tokens = locked_amount.saturating_div(currency::DOLLARS) as NumberOfCalls;
 
-        Some((num_of_tokens.saturating_mul(multiplier)) as NumberOfCalls)
+        let num_of_free_calls = num_of_tokens
+            .saturating_mul(FREE_CALLS_PER_SUB)
+            .saturating_mul(utilization_percent)
+            .saturating_div(100);
+
+        Some(num_of_free_calls)
     }
 }
 

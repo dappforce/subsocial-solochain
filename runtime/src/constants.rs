@@ -31,6 +31,8 @@ pub mod free_calls {
     use crate::BlockNumber;
     use super::time::*;
 
+	pub const FREE_CALLS_PER_SUB: u16 = 10;
+
 	/// Make sure that every next period is equal or smaller and ratio is equal or bigger.
     pub const FREE_CALLS_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 3] = [
         /// Window that lasts a day and has 100% of the allocated quota.
