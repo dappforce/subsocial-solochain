@@ -5,9 +5,9 @@ use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 
-use pallet_utils::{PostId, rpc::FlatWhoAndWhen};
+use pallet_utils::{rpc::FlatWhoAndWhen, PostId};
 
-use crate::{Module, Reaction, ReactionId, ReactionKind, Config};
+use crate::{Config, Pallet, Reaction, ReactionId, ReactionKind};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -21,21 +21,27 @@ pub struct FlatReaction<AccountId, BlockNumber> {
 
 #[cfg(feature = "std")]
 impl Serialize for ReactionKind {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
         let reaction_kind_bytes: &[u8; 1] = match self {
             ReactionKind::Upvote => b"U",
-            ReactionKind::Downvote => b"D"
+            ReactionKind::Downvote => b"D",
         };
 
-        serializer.serialize_str(
-            std::str::from_utf8(reaction_kind_bytes).unwrap_or_default()
-        )
+        serializer.serialize_str(std::str::from_utf8(reaction_kind_bytes).unwrap_or_default())
     }
 }
 
 impl<T: Config> From<Reaction<T>> for FlatReaction<T::AccountId, T::BlockNumber> {
     fn from(from: Reaction<T>) -> Self {
-        let Reaction { id, created, updated, kind } = from;
+        let Reaction {
+            id,
+            created,
+            updated,
+            kind,
+        } = from;
 
         Self {
             id,
@@ -45,14 +51,15 @@ impl<T: Config> From<Reaction<T>> for FlatReaction<T::AccountId, T::BlockNumber>
     }
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn get_reactions_by_ids(
-        reaction_ids: Vec<ReactionId>
+        reaction_ids: Vec<ReactionId>,
     ) -> Vec<FlatReaction<T::AccountId, T::BlockNumber>> {
-        reaction_ids.iter()
-                    .filter_map(|id| Self::require_reaction(*id).ok())
-                    .map(|reaction| reaction.into())
-                    .collect()
+        reaction_ids
+            .iter()
+            .filter_map(|id| Self::require_reaction(*id).ok())
+            .map(|reaction| reaction.into())
+            .collect()
     }
 
     pub fn get_reactions_by_post_id(
@@ -72,7 +79,9 @@ impl<T: Config> Module<T> {
                 }
             }
 
-            if i.is_zero() { break; }
+            if i.is_zero() {
+                break;
+            }
 
             i = i.saturating_sub(1);
         }
@@ -84,15 +93,19 @@ impl<T: Config> Module<T> {
         post_ids: Vec<PostId>,
         reactor: T::AccountId,
     ) -> BTreeMap<PostId, ReactionKind> {
-        let res = post_ids.iter()
-            .filter_map(|post_id| Some(*post_id).zip(
+        let res = post_ids.iter().filter_map(|post_id| {
+            Some(*post_id).zip(
                 Option::from(Self::post_reaction_id_by_account((&reactor, post_id)))
                     .filter(|v| *v != 0)
-                    .and_then(|reaction_id|
-                        Self::require_reaction(reaction_id).ok().map(|reaction| reaction.kind)
-                    )
-            ));
+                    .and_then(|reaction_id| {
+                        Self::require_reaction(reaction_id)
+                            .ok()
+                            .map(|reaction| reaction.kind)
+                    }),
+            )
+        });
 
         res.clone().collect()
     }
 }
+
