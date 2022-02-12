@@ -13,3 +13,6 @@
 **/.vscode
 
 .DS_Store
+
+# Subsoical Runtime WASM binary
+subsocial_runtime.wasm

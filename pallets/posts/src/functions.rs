@@ -1,17 +1,16 @@
 use frame_support::dispatch::DispatchResult;
 
-use pallet_utils::{SpaceId, remove_from_vec};
+use pallet_utils::{remove_from_vec, SpaceId};
 
 use super::*;
 
 impl<T: Config> Post<T> {
-
     pub fn new(
         id: PostId,
         created_by: T::AccountId,
         space_id_opt: Option<SpaceId>,
         extension: PostExtension,
-        content: Content
+        content: Content,
     ) -> Self {
         Post {
             id,
@@ -27,7 +26,7 @@ impl<T: Config> Post<T> {
             shares_count: 0,
             upvotes_count: 0,
             downvotes_count: 0,
-            score: 0
+            score: 0,
         }
     }
 
@@ -59,23 +58,21 @@ impl<T: Config> Post<T> {
     pub fn get_comment_ext(&self) -> Result<Comment, DispatchError> {
         match self.extension {
             PostExtension::Comment(comment_ext) => Ok(comment_ext),
-            _ => Err(Error::<T>::NotComment.into())
+            _ => Err(Error::<T>::NotComment.into()),
         }
     }
 
     pub fn get_shared_post_id(&self) -> Result<PostId, DispatchError> {
         match self.extension {
             PostExtension::SharedPost(post_id) => Ok(post_id),
-            _ => Err(Error::<T>::NotASharingPost.into())
+            _ => Err(Error::<T>::NotASharingPost.into()),
         }
     }
 
     pub fn get_root_post(&self) -> Result<Post<T>, DispatchError> {
         match self.extension {
-            PostExtension::RegularPost | PostExtension::SharedPost(_) =>
-                Ok(self.clone()),
-            PostExtension::Comment(comment) =>
-                Module::require_post(comment.root_post_id),
+            PostExtension::RegularPost | PostExtension::SharedPost(_) => Ok(self.clone()),
+            PostExtension::Comment(comment) => Pallet::<T>::require_post(comment.root_post_id),
         }
     }
 
@@ -99,7 +96,9 @@ impl<T: Config> Post<T> {
 
     pub fn try_get_space(&self) -> Option<Space<T>> {
         if let Ok(root_post) = self.get_root_post() {
-            return root_post.space_id.and_then(|space_id| Spaces::require_space(space_id).ok());
+            return root_post
+                .space_id
+                .and_then(|space_id| Spaces::require_space(space_id).ok());
         }
 
         None
@@ -161,55 +160,57 @@ impl Default for PostUpdate {
         PostUpdate {
             space_id: None,
             content: None,
-            hidden: None
+            hidden: None,
         }
     }
 }
 
-impl<T: Config> Module<T> {
-
+impl<T: Config> Pallet<T> {
     pub fn ensure_account_can_update_post(
         editor: &T::AccountId,
         post: &Post<T>,
-        space: &Space<T>
+        space: &Space<T>,
     ) -> DispatchResult {
-        let is_owner = post.is_owner(&editor);
+        let is_owner = post.is_owner(editor);
         let is_comment = post.is_comment();
 
         let permission_to_check: SpacePermission;
         let permission_error: DispatchError;
 
         if is_comment {
-          if is_owner {
-            permission_to_check = SpacePermission::UpdateOwnComments;
-            permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
-          } else {
-            return Err(Error::<T>::NotACommentAuthor.into());
-          }
+            if is_owner {
+                permission_to_check = SpacePermission::UpdateOwnComments;
+                permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
+            } else {
+                return Err(Error::<T>::NotACommentAuthor.into());
+            }
         } else {
-          // Not a comment
+            // Not a comment
 
-          if is_owner {
-            permission_to_check = SpacePermission::UpdateOwnPosts;
-            permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
-          } else {
-            permission_to_check = SpacePermission::UpdateAnyPost;
-            permission_error = Error::<T>::NoPermissionToUpdateAnyPost.into();
-          }
+            if is_owner {
+                permission_to_check = SpacePermission::UpdateOwnPosts;
+                permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
+            } else {
+                permission_to_check = SpacePermission::UpdateAnyPost;
+                permission_error = Error::<T>::NoPermissionToUpdateAnyPost.into();
+            }
         }
 
         Spaces::ensure_account_has_space_permission(
-          editor.clone(),
-          space,
-          permission_to_check,
-          permission_error
+            editor.clone(),
+            space,
+            permission_to_check,
+            permission_error,
         )
     }
 
     /// Check that there is a `Post` with such `post_id` in the storage
     /// or return`PostNotFound` error.
     pub fn ensure_post_exists(post_id: PostId) -> DispatchResult {
-        ensure!(<PostById<T>>::contains_key(post_id), Error::<T>::PostNotFound);
+        ensure!(
+            <PostById<T>>::contains_key(post_id),
+            Error::<T>::PostNotFound
+        );
         Ok(())
     }
 
@@ -221,15 +222,17 @@ impl<T: Config> Module<T> {
     fn share_post(
         account: T::AccountId,
         original_post: &mut Post<T>,
-        shared_post_id: PostId
+        shared_post_id: PostId,
     ) -> DispatchResult {
         original_post.inc_shares();
 
         let original_post_id = original_post.id;
         PostById::insert(original_post_id, original_post.clone());
-        SharedPostIdsByOriginalPostId::mutate(original_post_id, |ids| ids.push(shared_post_id));
+        SharedPostIdsByOriginalPostId::<T>::mutate(original_post_id, |ids| {
+            ids.push(shared_post_id)
+        });
 
-        Self::deposit_event(RawEvent::PostShared(account, original_post_id));
+        Self::deposit_event(Event::PostShared(account, original_post_id));
 
         Ok(())
     }
@@ -244,9 +247,9 @@ impl<T: Config> Module<T> {
         Self::is_root_post_hidden(post_id).map(|v| !v)
     }
 
-    pub fn mutate_post_by_id<F: FnOnce(&mut Post<T>)> (
+    pub fn mutate_post_by_id<F: FnOnce(&mut Post<T>)>(
         post_id: PostId,
-        f: F
+        f: F,
     ) -> Result<Post<T>, DispatchError> {
         <PostById<T>>::mutate(post_id, |post_opt| {
             if let Some(ref mut post) = post_opt.clone() {
@@ -276,9 +279,9 @@ impl<T: Config> Module<T> {
     }
 
     /// Applies function to all post ancestors (parent_id) including this post
-    pub fn for_each_post_ancestor<F: FnMut(&mut Post<T>) + Copy> (
+    pub fn for_each_post_ancestor<F: FnMut(&mut Post<T>) + Copy>(
         post_id: PostId,
-        f: F
+        f: F,
     ) -> DispatchResult {
         let post = Self::mutate_post_by_id(post_id, f)?;
 
@@ -320,16 +323,23 @@ impl<T: Config> Module<T> {
     pub(crate) fn create_comment(
         new_post_id: PostId,
         comment_ext: Comment,
-        root_post: &mut Post<T>
+        root_post: &mut Post<T>,
     ) -> DispatchResult {
         let mut commented_post_id = root_post.id;
 
         if let Some(parent_id) = comment_ext.parent_id {
-            let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
-            ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
+            let parent_comment =
+                Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+            ensure!(
+                parent_comment.is_comment(),
+                Error::<T>::NotACommentByParentId
+            );
 
             let ancestors = Self::get_post_ancestors(parent_id);
-            ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
+            ensure!(
+                ancestors.len() < T::MaxCommentDepth::get() as usize,
+                Error::<T>::MaxCommentDepthReached
+            );
 
             commented_post_id = parent_id;
         }
@@ -338,7 +348,7 @@ impl<T: Config> Module<T> {
 
         Self::for_each_post_ancestor(commented_post_id, |post| post.inc_replies())?;
         PostById::insert(root_post.id, root_post);
-        ReplyIdsByPostId::mutate(commented_post_id, |reply_ids| reply_ids.push(new_post_id));
+        ReplyIdsByPostId::<T>::mutate(commented_post_id, |reply_ids| reply_ids.push(new_post_id));
 
         Ok(())
     }
@@ -347,19 +357,22 @@ impl<T: Config> Module<T> {
         creator: &T::AccountId,
         new_post_id: PostId,
         original_post_id: PostId,
-        space: &mut Space<T>
+        space: &mut Space<T>,
     ) -> DispatchResult {
-        let original_post = &mut Self::post_by_id(original_post_id)
-            .ok_or(Error::<T>::OriginalPostNotFound)?;
+        let original_post =
+            &mut Self::post_by_id(original_post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
 
-        ensure!(!original_post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
+        ensure!(
+            !original_post.is_sharing_post(),
+            Error::<T>::CannotShareSharingPost
+        );
 
         // Check if it's allowed to share a post from the space of original post.
         Spaces::ensure_account_has_space_permission(
             creator.clone(),
             &original_post.get_space()?,
             SpacePermission::Share,
-            Error::<T>::NoPermissionToShare.into()
+            Error::<T>::NoPermissionToShare.into(),
         )?;
 
         space.inc_posts();
@@ -367,23 +380,24 @@ impl<T: Config> Module<T> {
         Self::share_post(creator.clone(), original_post, new_post_id)
     }
 
-    fn mutate_posts_count_on_space<F: FnMut(&mut u32) + Copy> (
+    fn mutate_posts_count_on_space<F: FnMut(&mut u32) + Copy>(
         space_id: SpaceId,
         post: &Post<T>,
-        mut f: F
+        mut f: F,
     ) -> DispatchResult {
         Spaces::<T>::mutate_space_by_id(space_id, |space: &mut Space<T>| {
             f(&mut space.posts_count);
             if post.hidden {
                 f(&mut space.hidden_posts_count);
             }
-        }).map(|_| ())
+        })
+        .map(|_| ())
     }
 
     pub(crate) fn move_post_to_space(
         editor: T::AccountId,
         post: &mut Post<T>,
-        new_space_id: SpaceId
+        new_space_id: SpaceId,
     ) -> DispatchResult {
         let old_space_id_opt = post.try_get_space_id();
         let new_space = Spaces::<T>::require_space(new_space_id)?;
@@ -396,7 +410,7 @@ impl<T: Config> Module<T> {
             editor,
             &new_space,
             SpacePermission::CreatePosts,
-            Error::<T>::NoPermissionToCreatePosts.into()
+            Error::<T>::NoPermissionToCreatePosts.into(),
         )?;
         ensure!(
             T::IsPostBlocked::is_allowed_post(post.id, new_space_id),
@@ -409,33 +423,29 @@ impl<T: Config> Module<T> {
 
         match post.extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => {
-
                 if let Some(old_space_id) = old_space_id_opt {
-
                     // Decrease the number of posts on the old space
-                    Self::mutate_posts_count_on_space(
-                        old_space_id,
-                        post,
-                        |counter| *counter = counter.saturating_sub(1)
-                    )?;
+                    Self::mutate_posts_count_on_space(old_space_id, post, |counter| {
+                        *counter = counter.saturating_sub(1)
+                    })?;
 
-                    PostIdsBySpaceId::mutate(old_space_id, |post_ids| remove_from_vec(post_ids, post.id));
+                    PostIdsBySpaceId::<T>::mutate(old_space_id, |post_ids| {
+                        remove_from_vec(post_ids, post.id)
+                    });
                 }
 
                 // Increase the number of posts on the new space
-                Self::mutate_posts_count_on_space(
-                    new_space_id,
-                    post,
-                    |counter| *counter = counter.saturating_add(1)
-                )?;
+                Self::mutate_posts_count_on_space(new_space_id, post, |counter| {
+                    *counter = counter.saturating_add(1)
+                })?;
 
-                PostIdsBySpaceId::mutate(new_space_id, |post_ids| post_ids.push(post.id));
+                PostIdsBySpaceId::<T>::mutate(new_space_id, |post_ids| post_ids.push(post.id));
 
                 post.space_id = Some(new_space_id);
                 PostById::<T>::insert(post.id, post);
 
                 Ok(())
-            },
+            }
             _ => fail!(Error::<T>::CannotUpdateSpaceIdOnComment),
         }
     }
@@ -465,14 +475,12 @@ impl<T: Config> Module<T> {
             let space_id = post.get_space_id()?;
 
             // Decrease the number of posts on the space
-            Self::mutate_posts_count_on_space(
-                space_id,
-                &post,
-                |counter| *counter = counter.saturating_sub(1)
-            )?;
+            Self::mutate_posts_count_on_space(space_id, &post, |counter| {
+                *counter = counter.saturating_sub(1)
+            })?;
 
             post.space_id = None;
-            PostIdsBySpaceId::mutate(space_id, |post_ids| remove_from_vec(post_ids, post_id));
+            PostIdsBySpaceId::<T>::mutate(space_id, |post_ids| remove_from_vec(post_ids, post_id));
         }
 
         PostById::<T>::insert(post.id, post);
@@ -484,7 +492,7 @@ impl<T: Config> Module<T> {
     /// Warning: This will affect storage state!
     pub(crate) fn update_counters_on_comment_hidden_change(
         comment_ext: &Comment,
-        becomes_hidden: bool
+        becomes_hidden: bool,
     ) -> DispatchResult {
         let root_post = &mut Self::require_post(comment_ext.root_post_id)?;
         let commented_post_id = comment_ext.parent_id.unwrap_or(root_post.id);
@@ -494,7 +502,7 @@ impl<T: Config> Module<T> {
             update_hidden_replies = Post::dec_hidden_replies;
         }
 
-        Self::for_each_post_ancestor(commented_post_id, |post| update_hidden_replies(post))?;
+        Self::for_each_post_ancestor(commented_post_id, update_hidden_replies)?;
 
         update_hidden_replies(root_post);
         PostById::insert(root_post.id, root_post);
