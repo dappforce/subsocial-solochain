@@ -6,6 +6,9 @@
 pub use pallet::*;
 
 #[cfg(test)]
+mod tests;
+
+#[cfg(test)]
 mod mock;
 
 #[cfg(feature = "runtime-benchmarks")]
