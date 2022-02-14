@@ -27,6 +27,7 @@ scale-info = { version = "1.0", default-features = false, features = ["derive"] 
 pallet-dotsama-claims = { default-features = false, path = '../pallets/dotsama-claims' }
 
 pallet-faucets = { default-features = false, path = '../pallets/faucets' }
+pallet-free-calls = { default-features = false, path = '../pallets/free-calls' }
 
 pallet-locker-mirror = { default-features = false, path = '../pallets/locker-mirror' }
 
@@ -105,6 +106,7 @@ runtime-benchmarks = [
     'pallet-timestamp/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks',
     'pallet-dotsama-claims/runtime-benchmarks',
+    'pallet-free-calls/runtime-benchmarks',
     'pallet-locker-mirror/runtime-benchmarks',
 ]
 std = [
@@ -140,6 +142,7 @@ std = [
     'subsocial-primitives/std',
     'pallet-dotsama-claims/std',
     'pallet-faucets/std',
+    'pallet-free-calls/std',
     'pallet-locker-mirror/std',
 #    'pallet-moderation/std',
     'pallet-permissions/std',
