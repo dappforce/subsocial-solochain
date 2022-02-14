@@ -428,6 +428,13 @@ impl Contains<Call> for BaseFilter {
     }
 }
 
+impl pallet_locker_mirror::Config for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type OracleOrigin = EnsureRoot<AccountId>;
+    type WeightInfo = ();
+}
+
 /*parameter_types! {
     pub const DefaultAutoblockThreshold: u16 = 20;
 }
@@ -474,6 +481,8 @@ construct_runtime!(
 		SpaceOwnership: pallet_space_ownership::{Pallet, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Pallet, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Pallet, Storage, Event<T>, Config<T>},
+        LockerMirror: pallet_locker_mirror::{Pallet, Call, Storage, Event<T>},
+
 
 		// New experimental pallets. Not recommended to use in production yet.
 
