@@ -28,6 +28,12 @@ pub use pallet::*;
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod test_pallet;
+
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod weights;
