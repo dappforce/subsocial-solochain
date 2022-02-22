@@ -26,6 +26,9 @@ static_assertions = "1.1.0"
 pallet-dotsama-claims = { default-features = false, path = '../pallets/dotsama-claims' }
 
 pallet-faucets = { default-features = false, path = '../pallets/faucets' }
+
+pallet-locker-mirror = { default-features = false, path = '../pallets/locker-mirror' }
+
 #pallet-moderation = { default-features = false, path = '../pallets/moderation' }
 pallet-permissions = { default-features = false, path = '../pallets/permissions' }
 
@@ -101,6 +104,7 @@ runtime-benchmarks = [
     'pallet-timestamp/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks',
     'pallet-dotsama-claims/runtime-benchmarks',
+    'pallet-locker-mirror/runtime-benchmarks',
 ]
 std = [
     'codec/std',
@@ -134,6 +138,7 @@ std = [
     'subsocial-primitives/std',
     'pallet-dotsama-claims/std',
     'pallet-faucets/std',
+    'pallet-locker-mirror/std',
 #    'pallet-moderation/std',
     'pallet-permissions/std',
     'pallet-post-history/std',
