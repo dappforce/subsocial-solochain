@@ -13,10 +13,8 @@ use frame_support::traits::{Everything, SortedMembers};
 use frame_system as system;
 use frame_system::EnsureSignedBy;
 
-
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
-
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
