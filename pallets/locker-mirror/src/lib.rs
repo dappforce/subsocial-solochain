@@ -94,14 +94,14 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Locked information changed for an account. [who]
-        LockedInfoSet(T::AccountId),
+        /// Locked information changed for an account.
+        LockedInfoSet { who: T::AccountId },
 
-        /// Locked information is cleared for an account. [who]
-        LockedInfoCleared(T::AccountId),
+        /// Locked information is cleared for an account.
+        LockedInfoCleared { who: T::AccountId },
 
         /// Last processed event have been set.
-        LastProcessedEventSet(ProcessedEventInfo),
+        LastProcessedEventSet { event: ProcessedEventInfo },
     }
     
     #[pallet::call]
@@ -120,7 +120,7 @@ pub mod pallet {
 
             <LastProcessedParachainEvent<T>>::put(last_processed_event_info.clone());
 
-            Self::deposit_event(Event::LastProcessedEventSet(last_processed_event_info));
+            Self::deposit_event(Event::LastProcessedEventSet { event: last_processed_event_info });
 
             Ok(Pays::No.into())
         }
@@ -140,7 +140,7 @@ pub mod pallet {
 
             <LockedInfoByAccount<T>>::insert(account.clone(), locked_info);
 
-            Self::deposit_event(Event::LockedInfoSet(account));
+            Self::deposit_event(Event::LockedInfoSet { who: account });
 
             // If the call did succeed, don't charge the caller
             Ok(Pays::No.into())
@@ -160,7 +160,7 @@ pub mod pallet {
 
             <LockedInfoByAccount<T>>::remove(account.clone());
 
-            Self::deposit_event(Event::LockedInfoCleared(account));
+            Self::deposit_event(Event::LockedInfoCleared { who: account });
 
             // If the call did succeed, don't charge the caller
             Ok(Pays::No.into())
