@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use frame_benchmarking::account;
-use crate::{mock::*, LockedInfoByAccount, BalanceOf, Config, LockedInfoOf, ParachainEvent, LastProcessedParachainEvent};
+use crate::{mock::*, LockedInfoByAccount, BalanceOf, Config, LockedInfoOf, ProcessedEventInfo, LastProcessedParachainEvent};
 use frame_support::{assert_ok, assert_err};
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::weights::{Pays, PostDispatchInfo};
@@ -42,9 +42,9 @@ fn random_locked_info() -> LockedInfoOf<Test> {
 }
 
 
-fn random_parachain_event() -> ParachainEvent {
+fn random_parachain_event() -> ProcessedEventInfo {
     let mut rng = rand::thread_rng();
-    ParachainEvent {
+    ProcessedEventInfo {
         event_index: rng.gen(),
         block_number: rng.gen(),
     }

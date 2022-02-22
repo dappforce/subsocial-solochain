@@ -52,7 +52,7 @@ benchmarks!{
 
     set_last_processed_parachain_event {
         let caller: T::AccountId = whitelisted_caller();
-        let last_event_info = ParachainEvent {
+        let last_event_info = ProcessedEventInfo {
             block_number: 125,
             event_index: 568,
         };
