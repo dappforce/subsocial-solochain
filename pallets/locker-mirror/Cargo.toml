@@ -7,7 +7,13 @@ license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/subsocial-node'
 description = 'Pallet that mirrors locked tokens and period from the parachain.'
-keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+keywords = [
+    'blockchain',
+    'cryptocurrency',
+    'social-network',
+    'news-feed',
+    'marketplace',
+]
 categories = ['cryptography::cryptocurrencies']
 
 [features]
@@ -64,3 +70,4 @@ sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v
 sp-core = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 sp-io = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 rand = "0.8.4"
+rstest = "0.12.0"

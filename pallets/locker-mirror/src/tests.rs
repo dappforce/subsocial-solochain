@@ -1,12 +1,13 @@
 #![allow(non_snake_case)]
 use frame_benchmarking::account;
-use crate::{mock::*, LockedInfoByAccount, BalanceOf, Config, LockedInfoOf, ProcessedEventInfo, LastProcessedParachainEvent};
-use frame_support::{assert_ok, assert_err};
+use crate::{mock::*, LockedInfoByAccount, BalanceOf, Config, LockedInfoOf, ProcessedEventInfo, LastProcessedParachainEvent, LockedInfo};
+use frame_support::{assert_ok, assert_err, assert_noop, assert_storage_noop};
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::weights::{Pays, PostDispatchInfo};
 use rand::Rng;
 use sp_runtime::DispatchError::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
+use rstest::*;
 
 
 fn extract_post_info(result: DispatchResultWithPostInfo) -> PostDispatchInfo {
@@ -16,20 +17,6 @@ fn extract_post_info(result: DispatchResultWithPostInfo) -> PostDispatchInfo {
     };
 
     post_info
-}
-
-fn subject_account<T: Config>() -> T::AccountId {
-    account("Subject", 0, 0)
-}
-
-fn subject_account_n<T: Config>(n: u32) -> T::AccountId {
-    assert_ne!(n, 0);
-    account("Subject N", n, n)
-}
-
-fn random_subject_account<T: Config>() -> T::AccountId {
-    let mut rng = rand::thread_rng();
-    subject_account_n::<T>(rng.gen_range(1..1024))
 }
 
 fn random_locked_info() -> LockedInfoOf<Test> {
@@ -42,363 +29,236 @@ fn random_locked_info() -> LockedInfoOf<Test> {
 }
 
 
-fn random_parachain_event() -> ProcessedEventInfo {
-    let mut rng = rand::thread_rng();
-    ProcessedEventInfo {
-        event_index: rng.gen(),
-        block_number: rng.gen(),
+fn subject_account_n(n: u32) -> <Test as frame_system::Config>::AccountId {
+    account("Subject N", n, n)
+}
+
+macro_rules! CallFixtureType {
+    () => {
+        (
+            impl FnOnce(), // initialization
+            impl FnOnce(Origin) -> DispatchResultWithPostInfo,
+            impl FnOnce(), // assertion
+        )
     }
+}
+
+macro_rules! CallFixture {
+    {
+        initialization: $initialization:expr,
+        call: $call:expr,
+        assertion: $assertion:expr,
+
+    } => {
+        ($initialization, $call, $assertion)
+    };
+}
+
+#[fixture]
+fn set_locked_info_call_with_origin_fixture() -> CallFixtureType!() {
+    static LOCKED_INFO: LockedInfoOf<Test> = LockedInfoOf::<Test> {
+        locked_amount: 12231232u64,
+        locked_at: 34222u64,
+        expires_at: Some(132u64),
+    };
+    CallFixture!(
+        initialization: || {
+            assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
+        },
+        call: |o| {
+            LockerMirror::set_locked_info(
+                o,
+                subject_account_n(23),
+                LOCKED_INFO.clone(),
+            )
+        },
+        assertion: || {
+            assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
+            assert_eq!(
+                <LockedInfoByAccount<Test>>::get(subject_account_n(23)).unwrap(),
+                LOCKED_INFO.clone(),
+            );
+        },
+    )
+}
+
+#[fixture]
+fn clear_locked_info_call_with_origin_fixture() -> CallFixtureType!() {
+    CallFixture!(
+        initialization: || {
+            assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
+            <LockedInfoByAccount<Test>>::insert(
+                subject_account_n(32),
+                LockedInfoOf::<Test> {
+                    locked_amount: 2132u64,
+                    locked_at: 3232u64,
+                    expires_at: Some(112234u64),
+                },
+            );
+            assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
+        },
+        call: |o| {
+            LockerMirror::clear_locked_info(
+                o,
+                subject_account_n(32),
+            )
+        },
+        assertion: || {
+            assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
+        },
+    )
+}
+
+#[fixture]
+fn set_last_processed_parachain_event_call_with_origin_fixture() -> CallFixtureType!() {
+    static EVENT: ProcessedEventInfo = ProcessedEventInfo {
+        block_number: 11u32,
+        event_index: 34u32,
+    };
+    CallFixture!(
+        initialization: || {
+            assert_eq!(<LastProcessedParachainEvent<Test>>::get(), None);
+        },
+        call: |o| {
+            LockerMirror::set_last_processed_parachain_event(
+                o,
+                EVENT.clone(),
+            )
+        },
+        assertion: || {
+            assert_eq!(<LastProcessedParachainEvent<Test>>::get().unwrap(), EVENT.clone());
+        },
+    )
 }
 
 ////////////////
 
-#[test]
-fn set_last_processed_parachain_event__should_fail_when_unsigned() {
-    ExtBuilder::default()
-        .build().execute_with(|| {
-        assert_err!(
-            LockerMirror::set_locked_info(
-                Origin::none(),
-                subject_account::<Test>(),
-                random_locked_info(),
-            ),
-            BadOrigin,
-        );
+
+#[rstest]
+#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
+#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
+#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+fn should_fail_noop_when_unsigned(
+    #[case]
+    call_fixture: CallFixtureType!(),
+) {
+    let (_, call, _) = call_fixture;
+    ExtBuilder::default().build().execute_with(|| {
+        assert_noop!(call(Origin::none()), BadOrigin);
     });
 }
 
-#[test]
-fn set_last_processed_parachain_event__should_fail_when_not_oracle_origin() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
+#[rstest]
+#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
+#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
+#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+fn should_fail_noop_when_non_oracle(
+    #[case]
+    call_fixture: CallFixtureType!(),
+) {
+    let (_, call, _) = call_fixture;
+
+    let oracle = subject_account_n(1);
+    let non_oracle = subject_account_n(2);
+
     ExtBuilder::default()
         .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_err!(
-            LockerMirror::set_last_processed_parachain_event(
-                Origin::signed(non_oracle.clone()),
-                random_parachain_event(),
-            ),
-            BadOrigin,
-        );
-    });
+        .build()
+        .execute_with(|| {
+            assert_noop!(call(Origin::signed(non_oracle)), BadOrigin);
+        });
 }
 
-#[test]
-fn set_last_processed_parachain_event__should_ok_when_caller_is_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
+#[rstest]
+#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
+#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
+#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+fn should_ok_if_when_oracle(
+    #[case]
+    call_fixture: CallFixtureType!(),
+) {
+    let (_, call, _) = call_fixture;
+
+    let oracle = subject_account_n(1);
+
     ExtBuilder::default()
         .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_ok!(
-            LockerMirror::set_last_processed_parachain_event(
-                Origin::signed(oracle.clone()),
-                random_parachain_event(),
-            ),
-        );
-    });
+        .build()
+        .execute_with(|| {
+            assert_ok!(call(Origin::signed(oracle)));
+        });
 }
 
-#[test]
-fn set_last_processed_parachain_event__should_pay_when_caller_is_not_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
+#[rstest]
+#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
+#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
+#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+fn should_pay_when_caller_is_not_oracle(
+    #[case]
+    call_fixture: CallFixtureType!(),
+) {
+    let (_, call, _) = call_fixture;
+
+    let oracle = subject_account_n(1);
+    let non_oracle = subject_account_n(2);
+
     ExtBuilder::default()
         .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        let res = LockerMirror::set_last_processed_parachain_event(
-            Origin::signed(non_oracle.clone()),
-            random_parachain_event(),
-        );
-        assert_err!(
-            res,
-            BadOrigin,
-        );
-
-        assert!(extract_post_info(res).pays_fee == Pays::Yes);
-    });
+        .build()
+        .execute_with(|| {
+            assert_storage_noop!({
+                let res = call(Origin::signed(non_oracle));
+                assert_err!(res, BadOrigin);
+                assert_eq!(extract_post_info(res).pays_fee, Pays::Yes);
+            });
+        });
 }
 
 
-#[test]
-fn set_last_processed_parachain_event__should_not_pay_when_caller_is_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
+#[rstest]
+#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
+#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
+#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+fn should_not_pay_when_caller_is_oracle(
+    #[case]
+    call_fixture: CallFixtureType!(),
+) {
+    let (_, call, _) = call_fixture;
+
+    let oracle = subject_account_n(1);
+
     ExtBuilder::default()
         .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        let res = LockerMirror::set_last_processed_parachain_event(
-            Origin::signed(oracle.clone()),
-            random_parachain_event(),
-        );
-        assert_ok!(res);
-
-        assert!(extract_post_info(res).pays_fee == Pays::No);
-    });
+        .build()
+        .execute_with(|| {
+            let res = call(Origin::signed(oracle));
+            assert_ok!(res);
+            assert_eq!(extract_post_info(res).pays_fee, Pays::No);
+        });
 }
 
-#[test]
-fn set_last_processed_parachain_event__should_change_storage() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
+#[rstest]
+#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
+#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
+#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+fn check_storage_is_mutated_correctly(
+    #[case]
+    call_fixture: CallFixtureType!(),
+) {
+    let (initialization, call, assertion) = call_fixture;
+
+    let oracle = subject_account_n(1);
+
     ExtBuilder::default()
         .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_eq!(<LastProcessedParachainEvent<Test>>::get(), None);
-        let expected_event_info = random_parachain_event();
-        assert_ok!(
-            LockerMirror::set_last_processed_parachain_event(
-                Origin::signed(oracle.clone()),
-                expected_event_info.clone(),
-            ),
-        );
-        assert_eq!(<LastProcessedParachainEvent<Test>>::get().unwrap(), expected_event_info);
-    });
-}
-
-
-///////////////
-
-#[test]
-fn set_locked_info__should_fail_when_unsigned() {
-    ExtBuilder::default()
-        .build().execute_with(|| {
-        assert_err!(
-            LockerMirror::set_locked_info(
-                Origin::none(),
-                subject_account::<Test>(),
-                random_locked_info(),
-            ),
-            BadOrigin,
-        );
-    });
-}
-
-#[test]
-fn set_locked_info__should_fail_when_not_oracle_origin() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_err!(
-            LockerMirror::set_locked_info(
-                Origin::signed(non_oracle.clone()),
-                subject_account::<Test>(),
-                random_locked_info(),
-            ),
-            BadOrigin,
-        );
-    });
-}
-
-#[test]
-fn set_locked_info__should_ok_when_caller_is_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_ok!(
-            LockerMirror::set_locked_info(
-                Origin::signed(oracle.clone()),
-                subject_account::<Test>(),
-                random_locked_info(),
-            ),
-        );
-    });
-}
-
-#[test]
-fn set_locked_info__should_pay_when_caller_is_not_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        let res = LockerMirror::set_locked_info(
-            Origin::signed(non_oracle.clone()),
-            subject_account::<Test>(),
-            random_locked_info(),
-        );
-        assert_err!(
-            res,
-            BadOrigin,
-        );
-
-        assert!(extract_post_info(res).pays_fee == Pays::Yes);
-    });
-}
-
-
-#[test]
-fn set_locked_info__should_not_pay_when_caller_is_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        let res = LockerMirror::set_locked_info(
-            Origin::signed(oracle.clone()),
-            subject_account::<Test>(),
-            random_locked_info(),
-        );
-        assert_ok!(res);
-
-        assert!(extract_post_info(res).pays_fee == Pays::No);
-    });
-}
-
-#[test]
-fn set_locked_info__should_change_storage_for_the_subject_account() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
-        let expected_locked_info = random_locked_info();
-        assert_ok!(
-            LockerMirror::set_locked_info(
-                Origin::signed(oracle.clone()),
-                subject_account::<Test>(),
-                expected_locked_info.clone(),
-            ),
-        );
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
-        let (_,found_locked_info) = <LockedInfoByAccount<Test>>::iter().next().unwrap();
-        assert_eq!(found_locked_info, expected_locked_info);
-    });
-}
-
-#[test]
-fn clear_locked_info__should_fail_when_unsigned() {
-    ExtBuilder::default()
-        .build().execute_with(|| {
-        assert_err!(
-            LockerMirror::clear_locked_info(
-                Origin::none(),
-                subject_account::<Test>(),
-            ),
-            BadOrigin,
-        );
-    });
-}
-
-#[test]
-fn clear_locked_info__should_fail_when_not_oracle_origin() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_err!(
-            LockerMirror::clear_locked_info(
-                Origin::signed(non_oracle.clone()),
-                subject_account::<Test>(),
-            ),
-            BadOrigin,
-        );
-    });
-}
-
-#[test]
-fn clear_locked_info__should_ok_when_caller_is_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_ok!(
-            LockerMirror::clear_locked_info(
-                Origin::signed(oracle.clone()),
-                subject_account::<Test>(),
-            ),
-        );
-    });
-}
-
-#[test]
-fn clear_locked_info__should_pay_when_caller_is_not_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        let res = LockerMirror::clear_locked_info(
-            Origin::signed(non_oracle.clone()),
-            subject_account::<Test>(),
-        );
-        assert_err!(
-            res,
-            BadOrigin,
-        );
-
-        assert!(extract_post_info(res).pays_fee == Pays::Yes);
-    });
-}
-
-
-#[test]
-fn clear_locked_info__should_not_pay_when_caller_is_oracle() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        let res = LockerMirror::clear_locked_info(
-            Origin::signed(oracle.clone()),
-            subject_account::<Test>(),
-        );
-        assert_ok!(res);
-
-        assert!(extract_post_info(res).pays_fee == Pays::No);
-    });
-}
-
-#[test]
-fn clear_locked_info__should_clear_storage() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
-    ExtBuilder::default()
-        .oracle_account_id(oracle.clone())
-        .build().execute_with(|| {
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
-
-        assert_ok!(
-            LockerMirror::clear_locked_info(
-                Origin::signed(oracle.clone()),
-                subject_account_n::<Test>(11),
-            ),
-        );
-        // nothing is changed
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
-
-        let account = subject_account::<Test>();
-        let info = random_locked_info();
-
-        <LockedInfoByAccount<Test>>::insert(account.clone(), info.clone());
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
-
-        assert_ok!(
-            LockerMirror::clear_locked_info(
-                Origin::signed(oracle.clone()),
-                subject_account_n::<Test>(12),
-            ),
-        );
-        // nothing will change
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
-
-        assert_ok!(
-            LockerMirror::clear_locked_info(
-                Origin::signed(oracle.clone()),
-                subject_account::<Test>(),
-            ),
-        );
-        // now since the account is found, the storage is cleared
-        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
-    });
+        .build()
+        .execute_with(|| {
+            initialization();
+            
+            assert_ok!(call(Origin::signed(oracle.clone())));
+            
+            assertion();
+        });
 }
 
 fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
@@ -417,18 +277,25 @@ fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
 
 #[test]
 fn sequence_of_set_clear() {
-    let oracle = subject_account_n::<Test>(1);
-    let non_oracle = subject_account_n::<Test>(2);
+    let oracle = subject_account_n(1);
     ExtBuilder::default()
         .oracle_account_id(oracle.clone())
         .build().execute_with(|| {
         assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
 
+        assert_ok!(LockerMirror::clear_locked_info(
+            Origin::signed(oracle.clone()),
+            subject_account_n(23)
+        ));
+
+        // no change because account 23 not found
+        assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
+
         let mut expected = vec![
-            (subject_account_n::<Test>(1), random_locked_info()),
-            (subject_account_n::<Test>(2), random_locked_info()),
-            (subject_account_n::<Test>(3), random_locked_info()),
-            (subject_account_n::<Test>(4), random_locked_info()),
+            (subject_account_n(1), random_locked_info()),
+            (subject_account_n(2), random_locked_info()),
+            (subject_account_n(3), random_locked_info()),
+            (subject_account_n(4), random_locked_info()),
         ];
 
         for (account, info) in expected.iter() {
@@ -452,7 +319,7 @@ fn sequence_of_set_clear() {
         assert_ok!(
             LockerMirror::clear_locked_info(
                 Origin::signed(oracle.clone()),
-                subject_account_n::<Test>(55),
+                subject_account_n(55),
             ),
         );
         let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
@@ -464,19 +331,19 @@ fn sequence_of_set_clear() {
         assert_ok!(
             LockerMirror::clear_locked_info(
                 Origin::signed(oracle.clone()),
-                subject_account_n::<Test>(4),
+                subject_account_n(4),
             ),
         );
         let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
         assert!(!compare_ignore_order(&infos, &expected));
-        expected.retain(|(account, _)| account != &subject_account_n::<Test>(4));
+        expected.retain(|(account, _)| account != &subject_account_n(4));
         assert!(compare_ignore_order(&infos, &expected));
 
         // nothing should happen since account 1312 don't have any locked_info
         assert_ok!(
             LockerMirror::clear_locked_info(
                 Origin::signed(oracle.clone()),
-                subject_account_n::<Test>(1312),
+                subject_account_n(1312),
             ),
         );
         let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
@@ -487,17 +354,17 @@ fn sequence_of_set_clear() {
         assert_ok!(
             LockerMirror::clear_locked_info(
                 Origin::signed(oracle.clone()),
-                subject_account_n::<Test>(1),
+                subject_account_n(1),
             ),
         );
         let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
         assert!(!compare_ignore_order(&infos, &expected));
-        expected.retain(|(account, _)| account != &subject_account_n::<Test>(1));
+        expected.retain(|(account, _)| account != &subject_account_n(1));
         assert!(compare_ignore_order(&infos, &expected));
 
 
         // Add a new account
-        let acc_221122 = subject_account_n::<Test>(221122);
+        let acc_221122 = subject_account_n(221122);
         let acc_221122_info = random_locked_info();
         expected.push((acc_221122.clone(), acc_221122_info.clone()));
         assert_ok!(
@@ -515,12 +382,12 @@ fn sequence_of_set_clear() {
         assert_ok!(
             LockerMirror::clear_locked_info(
                 Origin::signed(oracle.clone()),
-                subject_account_n::<Test>(221122),
+                subject_account_n(221122),
             ),
         );
         let infos: Vec<_> = <LockedInfoByAccount<Test>>::iter().collect();
         assert!(!compare_ignore_order(&infos, &expected));
-        expected.retain(|(account, _)| account != &subject_account_n::<Test>(221122));
+        expected.retain(|(account, _)| account != &subject_account_n(221122));
         assert!(compare_ignore_order(&infos, &expected));
     });
 }
