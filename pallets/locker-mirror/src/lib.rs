@@ -11,6 +11,9 @@ mod tests;
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+use rstest_reuse;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod weights;

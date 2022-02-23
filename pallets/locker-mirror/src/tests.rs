@@ -8,7 +8,8 @@ use rand::Rng;
 use sp_runtime::DispatchError::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
 use rstest::*;
-
+use rstest::rstest;
+use rstest_reuse::{self, *};
 
 fn extract_post_info(result: DispatchResultWithPostInfo) -> PostDispatchInfo {
     let post_info = match result {
@@ -131,13 +132,20 @@ fn set_last_processed_parachain_event_call_with_origin_fixture() -> CallFixtureT
     )
 }
 
-////////////////
-
-
+#[template]
 #[rstest]
 #[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
 #[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
 #[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+fn call_cases(
+    #[case]
+    call_fixture: CallFixtureType!(),
+) {}
+
+////////////////
+
+
+#[apply(call_cases)]
 fn should_fail_noop_when_unsigned(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -148,10 +156,7 @@ fn should_fail_noop_when_unsigned(
     });
 }
 
-#[rstest]
-#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
-#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
-#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+#[apply(call_cases)]
 fn should_fail_noop_when_non_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -169,10 +174,7 @@ fn should_fail_noop_when_non_oracle(
         });
 }
 
-#[rstest]
-#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
-#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
-#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+#[apply(call_cases)]
 fn should_ok_if_when_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -189,10 +191,7 @@ fn should_ok_if_when_oracle(
         });
 }
 
-#[rstest]
-#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
-#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
-#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+#[apply(call_cases)]
 fn should_pay_when_caller_is_not_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -215,10 +214,7 @@ fn should_pay_when_caller_is_not_oracle(
 }
 
 
-#[rstest]
-#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
-#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
-#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+#[apply(call_cases)]
 fn should_not_pay_when_caller_is_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -237,10 +233,7 @@ fn should_not_pay_when_caller_is_oracle(
         });
 }
 
-#[rstest]
-#[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
-#[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
-#[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
+#[apply(call_cases)]
 fn check_storage_is_mutated_correctly(
     #[case]
     call_fixture: CallFixtureType!(),

@@ -71,3 +71,4 @@ sp-core = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-
 sp-io = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 rand = "0.8.4"
 rstest = "0.12.0"
+rstest_reuse = "0.1.3"
