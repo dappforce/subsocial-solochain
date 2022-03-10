@@ -6,7 +6,7 @@ use super::*;
 use sp_std::vec;
 use crate::Pallet as Pallet;
 use frame_system::{RawOrigin};
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::{account, benchmarks};
 use frame_support::{
     ensure, traits::{Currency, Get},
 };
@@ -68,10 +68,10 @@ benchmarks! {
     verify {
         ensure!(EligibleAccounts::<T>::iter().count() as u32 == a, "Eligible accounts not added");
     }
-}
 
-impl_benchmark_test_suite!(
-    Pallet,
-    crate::mock::ExtBuilder::build(),
-    crate::mock::Test,
-);
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::build(),
+        crate::mock::Test,
+    );
+}
