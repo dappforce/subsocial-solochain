@@ -1,0 +1,27 @@
+name: Run integration and pallets tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ master ]
+    paths: [ 'pallets/**' ]
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set-Up
+        run: sudo apt install -y git clang curl libssl-dev llvm libudev-dev
+
+      - name: Install Rustup
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          source ~/.cargo/env
+          ./scripts/init.sh
+
+      - name: Run tests
+        run: |
+          cargo test --release --all

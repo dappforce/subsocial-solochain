@@ -1,0 +1,31 @@
+name: Check Set-Up & Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: [ 'node/**', 'pallets/**', 'runtime/**', 'primitives/**' ]
+
+jobs:
+  check-build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set-Up
+        run: sudo apt install -y git clang curl libssl-dev llvm libudev-dev
+
+      - name: Install Rustup
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          source ~/.cargo/env
+          ./scripts/init.sh
+
+      - name: Check Build
+        run: |
+          SKIP_WASM_BUILD=1 cargo check --release
+
+      - name: Check Build for Benchmarking
+        run: >
+          pushd node &&
+          cargo check --features=runtime-benchmarks --release
