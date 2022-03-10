@@ -31,7 +31,7 @@ package = 'parity-scale-codec'
 version = '2.0.0'
 
 [dependencies]
-serde = { features = ['derive'], optional = true, version = '1.0.126' }
+serde = { features = ['derive'], optional = true, version = '1.0.119' }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
 jsonrpc-core = '18.0.0'

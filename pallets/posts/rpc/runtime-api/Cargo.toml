@@ -12,7 +12,7 @@ categories = ['cryptography::cryptocurrencies']
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
-serde = { features = ['derive'], optional = true, version = '1.0.126' }
+serde = { features = ['derive'], optional = true, version = '1.0.119' }
 
 # Local dependencies
 pallet-posts = { default-features = false, path = '../..' }

@@ -47,5 +47,5 @@ sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v
 pallet-utils = { default-features = false, path = '../utils' }
 
 [dev-dependencies]
-serde = { version = '1.0.126' }
+serde = { version = '1.0.119' }
 sp-core = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }

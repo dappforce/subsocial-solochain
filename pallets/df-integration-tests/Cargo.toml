@@ -51,7 +51,7 @@ sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkad
 sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 
 [dev-dependencies]
-serde = { version = '1.0.126' }
+serde = { version = '1.0.119' }
 
 pallet-moderation = { default-features = false, path = '../moderation' }
 pallet-permissions = { default-features = false, path = '../permissions' }
