@@ -4,7 +4,7 @@ Subsocial is a set of Substrate pallets with web UI that allows anyone to launch
 
 You can think of this as decentralized versions of Reddit, Stack Exchange or Medium, where subreddits or communities of Stack Exchange or blogs on Medium run on their own chain. At the same time, users of these decentralized communities should be able to share their reputation or transfer coins and other values from one community to another via Polkadot relay chain.
 
-To learn more about Subsocial, please visit [Subsocial Network](http://subsocial.network)
+To learn more about Subsocial, please visit [Subsocial Network](http://subsocial.network).
 
 ## Build
 
