@@ -95,7 +95,7 @@ cargo run -- \
   --validator
 ```
 
-Additional CLI usage options are available and may be shown by running `cargo run -- --help`.
+Additional CLI usage options are available and may be shown by running `cargo run -- --help`
 
 ## License
 
