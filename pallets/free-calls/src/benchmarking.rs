@@ -2,7 +2,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::*;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
 use frame_benchmarking::Box;
 use frame_benchmarking::vec;
@@ -13,7 +13,7 @@ benchmarks!{
     // Individual benchmarks are placed here
     try_free_call {
         let caller: T::AccountId = whitelisted_caller();
-		let call = Box::new(frame_system::Call::<T>::remark(vec![]).into());
+		let call = Box::new(frame_system::Call::<T>::remark { remark: vec![] }.into());
         let current_block = <frame_system::Pallet<T>>::block_number();
         <LockedInfoByAccount<T>>::insert(caller.clone(), LockedInfo {
             expires_at: None,
@@ -26,10 +26,10 @@ benchmarks!{
         ensure!(found_stats, "Stats should be recorded after the call");
         <WindowStatsByConsumer<T>>::remove(caller.clone());
     }
-}
 
-impl_benchmark_test_suite!(
-    Pallet,
-    crate::mock::ExtBuilder::default().build(),
-    crate::mock::Test,
-);
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::default().build(),
+        crate::mock::Test,
+    );
+}

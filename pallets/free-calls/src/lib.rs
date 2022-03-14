@@ -34,6 +34,7 @@ mod weights;
 
 pub use weights::WeightInfo;
 use frame_support::traits::Contains;
+use scale_info::TypeInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -52,6 +53,7 @@ pub mod pallet {
     use sp_std::vec::Vec;
     use pallet_locker_mirror::{LockedInfoByAccount, LockedInfoOf};
     use pallet_utils::bool_to_option;
+    use scale_info::TypeInfo;
     use crate::WeightInfo;
 
     /// The ratio between the quota and a particular window.
@@ -68,7 +70,7 @@ pub mod pallet {
     pub type ConsumerStatsVec<T> = BoundedVec<ConsumerStats<<T as frame_system::Config>::BlockNumber>, WindowsConfigSize<T>>;
 
     /// Keeps track of the executed number of calls per window per consumer.
-    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
+    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
     pub struct ConsumerStats<BlockNumber> {
         // TODO: find a better name? maybe `stats_index`
         /// The index of this window in the timeline.
@@ -88,7 +90,7 @@ pub mod pallet {
     }
 
     /// Configuration of a rate limiting window in terms of length and ratio to quota.
-    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
+    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
     pub struct WindowConfig<BlockNumber> {
         /// The length of the window in number of blocks it will last.
         pub period: BlockNumber,
@@ -334,7 +336,8 @@ pub mod pallet {
 
 /// Validate `try_free_call` calls prior to execution. Needed to avoid a DoS attack since they are
 /// otherwise free to be included into blockchain.
-#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct FreeCallsPrevalidation<T: Config + Send + Sync>(sp_std::marker::PhantomData<T>)
     where
         <T as frame_system::Config>::Call: IsSubType<Call<T>>;
@@ -403,7 +406,7 @@ impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
         _len: usize,
     ) -> TransactionValidity {
         if let Some(local_call) = call.is_sub_type() {
-            if let Call::try_free_call(boxed_call) = local_call {
+            if let Call::try_free_call { call: boxed_call } = local_call {
                 ensure!(T::CallFilter::contains(boxed_call), InvalidTransaction::Custom(FreeCallsValidityError::CallCannotBeFree.into()));
                 ensure!(Pallet::<T>::can_make_free_call(who).is_some(), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
             }
