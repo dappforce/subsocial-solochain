@@ -2,7 +2,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::*;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller, account};
+use frame_benchmarking::{benchmarks, whitelisted_caller, account};
 use frame_system::{RawOrigin};
 use frame_support::ensure;
 use sp_runtime::traits::Bounded;
@@ -67,10 +67,11 @@ benchmarks!{
     verify {
         ensure!(matches!(<LastProcessedParachainEvent<T>>::get(), Some(last_event_info)), "The passed value should be stored");
     }
-}
 
-impl_benchmark_test_suite!(
-    Pallet,
-    crate::mock::ExtBuilder::default().build(),
-    crate::mock::Test,
-);
+
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::default().build(),
+        crate::mock::Test,
+    );
+}

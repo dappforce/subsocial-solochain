@@ -9,7 +9,7 @@ use sp_runtime::{
 use crate as pallet_locker_mirror;
 
 use frame_support::parameter_types;
-use frame_support::traits::{SortedMembers};
+use frame_support::traits::{Everything, SortedMembers};
 use frame_system as system;
 use frame_system::EnsureSignedBy;
 
@@ -39,7 +39,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

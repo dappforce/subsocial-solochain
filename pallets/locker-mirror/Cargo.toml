@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-locker-mirror'
-version = '0.7.1'
+version = '0.7.2'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
@@ -15,6 +15,7 @@ default = ['std']
 std = [
     'serde',
     'codec/std',
+    'scale-info/std',
     'sp-runtime/std',
     'frame-support/std',
     'frame-system/std',
@@ -43,6 +44,7 @@ version = '2.0.0'
 [dependencies]
 impl-trait-for-tuples = '0.1.3'
 serde = { features = ['derive'], optional = true, version = '1.0.119' }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
 # Local dependencies
 df-traits = { default-features = false, path = '../traits' }
@@ -51,14 +53,14 @@ pallet-permissions = { default-features = false, path = '../permissions' }
 subsocial-primitives = { default-features = false, path = '../../primitives' }
 
 # Substrate dependencies
-frame-benchmarking = { optional = true, git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-frame-support = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-frame-system = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-pallet-balances = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+frame-benchmarking = { optional = true, git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+frame-support = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+frame-system = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+pallet-balances = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 
 [dev-dependencies]
-sp-core = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
-sp-io = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.10', default-features = false }
+sp-core = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-io = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
 rand = "0.8.4"

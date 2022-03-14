@@ -3856,7 +3856,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-locker-mirror"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -3868,6 +3868,7 @@ dependencies = [
  "pallet-utils",
  "parity-scale-codec",
  "rand 0.8.4",
+ "scale-info",
  "serde",
  "sp-core",
  "sp-io",

@@ -20,6 +20,7 @@ pub mod pallet {
     use frame_support::{pallet_prelude::*};
     use frame_support::traits::{Currency};
     use frame_system::pallet_prelude::*;
+    use scale_info::TypeInfo;
     use crate::weights::WeightInfo;
 
     /// The type used to represent block numbers on the parachain.
@@ -33,7 +34,7 @@ pub mod pallet {
     pub type LockedInfoOf<T> = LockedInfo<<T as frame_system::Config>::BlockNumber, BalanceOf<T>>;
 
     /// Information about the locked tokens on the parachain.
-    #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+    #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
     pub struct LockedInfo<BlockNumber, Balance> {
         /// How many tokens are locked.
         pub locked_amount: Balance,
@@ -46,7 +47,7 @@ pub mod pallet {
     }
 
     /// Information about a parachain event.
-    #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+    #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
     pub struct ParachainEvent {
         /// The parachain block number at which the event was found.
         pub block_number: ParachainBlockNumber,
