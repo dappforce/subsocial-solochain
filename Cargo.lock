@@ -3856,29 +3856,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-free-calls"
-version = "0.7.1"
-dependencies = [
- "df-traits",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "impl-trait-for-tuples 0.1.3",
- "pallet-balances",
- "pallet-locker-mirror",
- "pallet-permissions",
- "pallet-utils",
- "parity-scale-codec",
- "rand 0.8.4",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "subsocial-primitives",
-]
-
-[[package]]
 name = "pallet-grandpa"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.12#d76f39995315ec36980908e4b99709bd14927044"
@@ -5326,18 +5303,6 @@ dependencies = [
  "quote",
  "rustc_version 0.3.3",
  "syn",
-]
-
-[[package]]
-name = "rust-argon2"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b18820d944b33caa75a71378964ac46f58517c92b6ae5f762636247c09e78fb"
-dependencies = [
- "base64 0.13.0",
- "blake2b_simd",
- "constant_time_eq",
- "crossbeam-utils 0.8.2",
 ]
 
 [[package]]
@@ -7589,8 +7554,8 @@ dependencies = [
  "profiles-runtime-api",
  "reactions-runtime-api",
  "roles-runtime-api",
- "scale-info",
  "rstest",
+ "scale-info",
  "serde",
  "sp-api",
  "sp-block-builder",

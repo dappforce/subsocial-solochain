@@ -5,7 +5,7 @@ use frame_benchmarking::account;
 use frame_support::{assert_err, assert_noop, assert_ok, assert_storage_noop, BoundedVec, debug};
 use frame_support::log::info;
 use frame_support::weights::{extract_actual_weight, Pays, PostDispatchInfo};
-use frame_system::{EventRecord, Events};
+use frame_system::{EventRecord};
 use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
 use crate::mock::*;
 use rand::{Rng, thread_rng};
@@ -57,31 +57,13 @@ impl TestUtils {
     }
 
     pub fn system_events() -> Vec<EventRecord<Event, H256>> {
-        <Events<Test>>::get()
+        <frame_system::Pallet<Test>>::events()
     }
 
     pub fn clear_system_events() -> Vec<Event> {
-        let res = TestUtils::take_n_system_events(<Events<Test>>::get().len());
-        <Events<Test>>::kill();
-        assert!(TestUtils::system_events().is_empty());
-
-        res
-    }
-
-    pub fn take_n_system_events(n: usize) -> Vec<Event> {
-        assert!(TestUtils::system_events().len() >= n);
-
-        let mut v: Vec<Event> = vec![];
-        <Events<Test>>::mutate(|events| {
-            for _ in 0..n {
-                v.push(events.pop().unwrap().event);
-            }
-        });
-
-        // restore order
-        v.reverse();
-
-        v
+        let events: Vec<Event> = Self::system_events().into_iter().map(|e| e.event).collect();
+        <frame_system::Pallet<Test>>::reset_events();
+        events
     }
 
     pub fn capture_stats_storage() -> Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)> {
@@ -169,7 +151,7 @@ impl TestUtils {
             scenario,
         );
 
-        let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value(something)));
+        let call: Box<Call> = Box::new(Call::TestPallet(TestPalletCall::<Test>::store_value { something }));
 
         // test signed extension
         match &scenario {
@@ -268,7 +250,7 @@ impl TestUtils {
         expected_error: Option<FreeCallsValidityError>,
     ) {
         let validator = FreeCallsPrevalidation::<Test>::new();
-        let call: <Test as frame_system::Config>::Call = free_calls::Call::<Test>::try_free_call(boxed_call).into();
+        let call: <Test as frame_system::Config>::Call = free_calls::Call::<Test>::try_free_call { call: boxed_call }.into();
         let di = call.get_dispatch_info();
         assert_eq!(di.pays_fee, Pays::No);
         let res = validator.validate(
@@ -416,38 +398,38 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
 
             assert_ok!(<Pallet<Test>>::try_free_call(
                 Origin::signed(consumer),
-                Box::new(TestPalletCall::<Test>::call_a().into()),
+                Box::new(TestPalletCall::<Test>::call_a {}.into()),
             ));
 
-            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::call_a().into()));
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::call_a {}.into()));
 
             //////////
 
             assert_ok!(<Pallet<Test>>::try_free_call(
                 Origin::signed(consumer),
-                Box::new(TestPalletCall::<Test>::cause_error().into()),
+                Box::new(TestPalletCall::<Test>::cause_error {}.into()),
             ));
 
-            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::cause_error().into()));
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::cause_error {}.into()));
 
             //////////
 
             assert_ok!(<Pallet<Test>>::try_free_call(
                 Origin::signed(consumer),
-                Box::new(TestPalletCall::<Test>::call_b().into()),
+                Box::new(TestPalletCall::<Test>::call_b {}.into()),
             ));
 
-            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::call_b().into()));
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::call_b {}.into()));
 
             //////////
 
             assert_ok!(<Pallet<Test>>::try_free_call(
                 Origin::signed(consumer),
-                Box::new(TestPalletCall::<Test>::store_value(12).into()),
+                Box::new(TestPalletCall::<Test>::store_value {something: 12}.into()),
             ));
 
-            assert_ne!(get_captured_call(), Some(TestPalletCall::<Test>::store_value(21).into()));
-            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::store_value(12).into()));
+            assert_ne!(get_captured_call(), Some(TestPalletCall::<Test>::store_value {something: 21}.into()));
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::store_value {something: 12}.into()));
         });
 }
 
