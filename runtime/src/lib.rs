@@ -70,7 +70,7 @@ pub mod constants;
 mod free_calls;
 
 use constants::{currency::*, time::*};
-use pallet_free_calls::WindowConfig;
+use pallet_free_calls::{NumberOfCalls, WindowConfig};
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -445,6 +445,7 @@ impl Contains<Call> for BaseFilter {
 
 parameter_types! {
     pub WindowsConfig: Vec<WindowConfig<BlockNumber>> = FREE_CALLS_WINDOWS_CONFIG.to_vec();
+    pub const FreeQuotaPerEligibleAccount: NumberOfCalls = 100;
 }
 
 impl pallet_free_calls::Config for Runtime {
@@ -453,8 +454,9 @@ impl pallet_free_calls::Config for Runtime {
     type WindowsConfig = WindowsConfig;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
-    type QuotaCalculationStrategy = FreeCallsCalculationStrategy;
+    type QuotaCalculationStrategy = ();
     type AccountsSetLimit = AccountsSetLimit;
+    type FreeQuotaPerEligibleAccount = FreeQuotaPerEligibleAccount;
 }
 
 impl pallet_locker_mirror::Config for Runtime {

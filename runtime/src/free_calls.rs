@@ -85,6 +85,7 @@ pub struct FreeCallsCalculationStrategy;
 impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
 impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculationStrategy {
     fn calculate(
+        consumer: <Runtime as frame_system::Config>::AccountId,
         current_block: <Runtime as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Runtime>>
     ) -> Option<NumberOfCalls> {
@@ -136,6 +137,7 @@ impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculati
 
 #[cfg(test)]
 mod tests {
+    use frame_benchmarking::account;
     use pallet_locker_mirror::LockedInfoOf;
     use pallet_free_calls::{NumberOfCalls, QuotaCalculationStrategy};
     use crate::*;
@@ -228,37 +230,38 @@ mod tests {
         };
 
         ///////////////////////////////////////
+        let consumer = || account("Dummy Consumer", 0, 0);
 
         // no locked_info will returns none
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, None),
+            FreeCallsCalculationStrategy::calculate(consumer(), current_block, None),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(before_current_block, None),
+            FreeCallsCalculationStrategy::calculate(consumer(),before_current_block, None),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(after_current_block, None),
+            FreeCallsCalculationStrategy::calculate(consumer(),after_current_block, None),
             None,
         );
 
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info)),
             expected_quota,
         );
 
         // test expiration
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info_just_expired)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info_just_expired)),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info_expired)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info_expired)),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info_not_yet_expired)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info_not_yet_expired)),
             expected_quota,
         );
 

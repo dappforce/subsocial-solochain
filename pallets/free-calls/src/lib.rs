@@ -153,6 +153,11 @@ pub mod pallet {
         //TODO: remove this after we integrate locking tokens
         #[pallet::constant]
         type AccountsSetLimit: Get<u32>;
+
+        /// Amount of free quota granted to eligible accounts.
+        //TODO: remove this after we integrate locking tokens
+        #[pallet::constant]
+        type FreeQuotaPerEligibleAccount: Get<NumberOfCalls>;
     }
 
     /// Retrieves the size of `T::WindowsConfig` to be used for `BoundedVec` declaration.
@@ -295,7 +300,7 @@ pub mod pallet {
             }
 
             let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
-            let quota = match T::QuotaCalculationStrategy::calculate(current_block, locked_info) {
+            let quota = match T::QuotaCalculationStrategy::calculate(consumer.clone(), current_block, locked_info) {
                 Some(quota) if quota > 0 => quota,
                 _ => return None,
             };
@@ -373,7 +378,26 @@ pub mod pallet {
 
 
     pub trait QuotaCalculationStrategy<T: Config> {
-        fn calculate(current_block: T::BlockNumber, locked_info: Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
+        fn calculate(
+            consumer: T::AccountId,
+            current_block: T::BlockNumber,
+            locked_info: Option<LockedInfoOf<T>>
+        ) -> Option<NumberOfCalls>;
+    }
+
+    //TODO: remove this after we integrate locking tokens
+    impl<T: Config> QuotaCalculationStrategy<T> for () {
+        fn calculate(
+            consumer: T::AccountId,
+            _current_block: T::BlockNumber,
+            _locked_info: Option<LockedInfoOf<T>>
+        ) -> Option<NumberOfCalls> {
+            if EligibleAccounts::<T>::get(consumer) {
+                Some(T::FreeQuotaPerEligibleAccount::get())
+            } else {
+                None
+            }
+        }
     }
 }
 

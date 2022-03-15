@@ -12,6 +12,7 @@ use crate::test_pallet;
 use frame_support::{
     parameter_types,
 };
+use frame_support::pallet_prelude::ConstU32;
 use frame_support::traits::{Contains};
 use frame_system as system;
 use frame_system::{EnsureRoot};
@@ -118,8 +119,8 @@ impl test_pallet::Config for Test {
 type CallFilterFn = fn(&Call) -> bool;
 static DEFAULT_CALL_FILTER_FN: CallFilterFn = |_| true;
 
-type QuotaCalculationFn<T> = fn(<T as frame_system::Config>::BlockNumber, Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
-static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |current_block, locked_info| {
+type QuotaCalculationFn<T> = fn(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::BlockNumber, Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
+static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |consumer, current_block, locked_info| {
     return Some(10);
 };
 
@@ -148,11 +149,16 @@ impl Contains<Call> for TestCallFilter {
 pub struct TestQuotaCalculation;
 impl pallet_free_calls::QuotaCalculationStrategy<Test> for TestQuotaCalculation {
     fn calculate(
+        consumer: <Test as frame_system::Config>::AccountId,
         current_block: <Test as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Test>>
     ) -> Option<NumberOfCalls> {
-        QUOTA_CALCULATION.with(|strategy| strategy.borrow()(current_block, locked_info))
+        QUOTA_CALCULATION.with(|strategy| strategy.borrow()(consumer, current_block, locked_info))
     }
+}
+
+parameter_types! {
+    pub const FreeQuotaPerEligibleAccount: NumberOfCalls = 100;
 }
 
 impl pallet_free_calls::Config for Test {
@@ -163,6 +169,7 @@ impl pallet_free_calls::Config for Test {
     type WeightInfo = ();
     type QuotaCalculationStrategy = TestQuotaCalculation;
     type AccountsSetLimit = AccountsSetLimit;
+    type FreeQuotaPerEligibleAccount = FreeQuotaPerEligibleAccount;
 }
 
 pub struct ExtBuilder {
