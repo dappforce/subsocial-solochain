@@ -130,6 +130,7 @@ pub static DEFAULT_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 1] = [
 
 parameter_types! {
     pub static WindowsConfig: Vec<WindowConfig<BlockNumber>> = DEFAULT_WINDOWS_CONFIG.to_vec();
+    pub const AccountsSetLimit: u32 = 10;
 }
 
 thread_local! {
@@ -161,6 +162,7 @@ impl pallet_free_calls::Config for Test {
     type CallFilter = TestCallFilter;
     type WeightInfo = ();
     type QuotaCalculationStrategy = TestQuotaCalculation;
+    type AccountsSetLimit = AccountsSetLimit;
 }
 
 pub struct ExtBuilder {

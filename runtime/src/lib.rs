@@ -454,6 +454,7 @@ impl pallet_free_calls::Config for Runtime {
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
     type QuotaCalculationStrategy = FreeCallsCalculationStrategy;
+    type AccountsSetLimit = AccountsSetLimit;
 }
 
 impl pallet_locker_mirror::Config for Runtime {
