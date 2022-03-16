@@ -267,7 +267,11 @@ pub mod pallet {
             })
         }
 
-        #[pallet::weight(10_000)]
+        #[pallet::weight(
+            <T as Config>::WeightInfo::add_eligible_accounts(
+                eligible_accounts.len() as u32
+            )
+        )]
         pub fn add_eligible_accounts(
             origin: OriginFor<T>,
             eligible_accounts: BoundedVec<T::AccountId, T::AccountsSetLimit>,

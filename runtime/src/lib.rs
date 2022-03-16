@@ -741,7 +741,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
 
 			list_benchmark!(list, extra, pallet_dotsama_claims, DotsamaClaims);
-			// list_benchmark!(list, extra, pallet_faucets, Faucets);
+			list_benchmark!(list, extra, pallet_free_calls, FreeCalls);
 			// list_benchmark!(list, extra, pallet_posts, Posts);
 			// list_benchmark!(list, extra, pallet_profile_follows, DotsamaClaims);
 			// list_benchmark!(list, extra, pallet_profiles, Profiles);
@@ -808,6 +808,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_dotsama_claims, DotsamaClaims);
+			add_benchmark!(params, batches, pallet_free_calls, FreeCalls);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
