@@ -71,6 +71,10 @@ impl Contains<Call> for FreeCallsFilter {
             Call::ProfileFollows(..) => true,
             Call::Posts(..) => true,
             Call::Reactions(..) => true,
+            Call::Roles(..) => true,
+            Call::SpaceOwnership(..) => true,
+            Call::Profiles(..) => true,
+            // Call::Moderation(..) => true,
             Call::System(..) => cfg!(feature = "runtime-benchmarks"),
             _ => false,
         }
