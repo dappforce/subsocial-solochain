@@ -40,7 +40,7 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
     fn set_locked_info() -> Weight;
     fn clear_locked_info() -> Weight;
-    fn set_last_processed_parachain_event() -> Weight;
+    fn set_last_processed_locker_event() -> Weight;
 }
 
 /// Weights for pallet_locker_mirror using the Substrate node and recommended hardware.
@@ -57,7 +57,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
         }
             // Storage: unknown [0xca15211defb6ae0af15535cfecffe8c134853d48f12e991904ee9a1e3f8bd702] (r:0 w:1)
-        fn set_last_processed_parachain_event() -> Weight {
+        fn set_last_processed_locker_event() -> Weight {
         (23_000_000 as Weight)
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
         }
@@ -76,7 +76,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
             .saturating_add(RocksDbWeight::get().writes(1 as Weight))
         }
             // Storage: unknown [0xca15211defb6ae0af15535cfecffe8c134853d48f12e991904ee9a1e3f8bd702] (r:0 w:1)
-        fn set_last_processed_parachain_event() -> Weight {
+        fn set_last_processed_locker_event() -> Weight {
         (23_000_000 as Weight)
             .saturating_add(RocksDbWeight::get().writes(1 as Weight))
         }

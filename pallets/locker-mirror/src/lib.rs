@@ -49,9 +49,9 @@ pub mod pallet {
         pub expires_at: Option<BlockNumber>,
     }
 
-    /// Information about a parachain event.
+    /// Information about a locker event that was dispatched in the parachain.
     #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
-    pub struct ProcessedEventInfo {
+    pub struct LockerEvent {
         /// The parachain block number at which the event was found.
         pub block_number: ParachainBlockNumber,
 
@@ -91,8 +91,7 @@ pub mod pallet {
 
     /// Stores information about last processed event on the parachain.
     #[pallet::storage]
-    #[pallet::getter(fn last_processed_parachain_event)]
-    pub type LastProcessedParachainEvent<T: Config> = StorageValue<_, ProcessedEventInfo>;
+    pub type LastProcessedLockerEvent<T: Config> = StorageValue<_, LockerEvent>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -103,27 +102,27 @@ pub mod pallet {
         /// Locked information is cleared for an account.
         LockedInfoCleared { who: T::AccountId },
 
-        /// Last processed event have been set.
-        LastProcessedEventSet { event: ProcessedEventInfo },
+        /// Last processed locker event have been set.
+        LastLockerEventSet { event: LockerEvent },
     }
     
     #[pallet::call]
     impl<T: Config> Pallet<T> {
 
         #[pallet::weight((
-            <T as Config>::WeightInfo::set_last_processed_parachain_event(),
+            <T as Config>::WeightInfo::set_last_processed_locker_event(),
             DispatchClass::Operational,
             Pays::Yes,
         ))]
-        pub fn set_last_processed_parachain_event(
+        pub fn set_last_processed_locker_event(
             origin: OriginFor<T>,
-            last_processed_event_info: ProcessedEventInfo,
+            last_processed_locker_event: LockerEvent,
         ) -> DispatchResultWithPostInfo {
             let _ = T::OracleOrigin::ensure_origin(origin)?;
 
-            <LastProcessedParachainEvent<T>>::put(last_processed_event_info.clone());
+            <LastProcessedLockerEvent<T>>::put(last_processed_locker_event.clone());
 
-            Self::deposit_event(Event::LastProcessedEventSet { event: last_processed_event_info });
+            Self::deposit_event(Event::LastLockerEventSet { event: last_processed_locker_event });
 
             Ok(Pays::No.into())
         }

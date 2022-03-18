@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use frame_benchmarking::account;
-use crate::{mock::*, LockedInfoByAccount, BalanceOf, Config, LockedInfoOf, ProcessedEventInfo, LastProcessedParachainEvent, LockedInfo};
+use crate::{mock::*, LockedInfoByAccount, BalanceOf, Config, LockedInfoOf, LockerEvent, LastProcessedLockerEvent, LockedInfo};
 use frame_support::{assert_ok, assert_err, assert_noop, assert_storage_noop};
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::weights::{Pays, PostDispatchInfo};
@@ -66,9 +66,9 @@ fn set_locked_info_call_with_origin_fixture() -> CallFixtureType!() {
         initialization: || {
             assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 0);
         },
-        call: |o| {
+        call: |origin| {
             LockerMirror::set_locked_info(
-                o,
+                origin,
                 subject_account_n(23),
                 LOCKED_INFO.clone(),
             )
@@ -98,9 +98,9 @@ fn clear_locked_info_call_with_origin_fixture() -> CallFixtureType!() {
             );
             assert_eq!(<LockedInfoByAccount<Test>>::iter().count(), 1);
         },
-        call: |o| {
+        call: |origin| {
             LockerMirror::clear_locked_info(
-                o,
+                origin,
                 subject_account_n(32),
             )
         },
@@ -112,22 +112,22 @@ fn clear_locked_info_call_with_origin_fixture() -> CallFixtureType!() {
 
 #[fixture]
 fn set_last_processed_parachain_event_call_with_origin_fixture() -> CallFixtureType!() {
-    static EVENT: ProcessedEventInfo = ProcessedEventInfo {
+    static EVENT: LockerEvent = LockerEvent {
         block_number: 11u32,
         event_index: 34u32,
     };
     CallFixture!(
         initialization: || {
-            assert_eq!(<LastProcessedParachainEvent<Test>>::get(), None);
+            assert_eq!(<LastProcessedLockerEvent<Test>>::get(), None);
         },
-        call: |o| {
+        call: |origin| {
             LockerMirror::set_last_processed_parachain_event(
-                o,
+                origin,
                 EVENT.clone(),
             )
         },
         assertion: || {
-            assert_eq!(<LastProcessedParachainEvent<Test>>::get().unwrap(), EVENT.clone());
+            assert_eq!(<LastProcessedLockerEvent<Test>>::get().unwrap(), EVENT.clone());
         },
     )
 }
@@ -137,7 +137,7 @@ fn set_last_processed_parachain_event_call_with_origin_fixture() -> CallFixtureT
 #[case::set_locked_info(set_locked_info_call_with_origin_fixture())]
 #[case::clear_locked_info(clear_locked_info_call_with_origin_fixture())]
 #[case::set_last_processed_parachain_event(set_last_processed_parachain_event_call_with_origin_fixture())]
-fn call_cases(
+fn common_cases(
     #[case]
     call_fixture: CallFixtureType!(),
 ) {}
@@ -145,7 +145,7 @@ fn call_cases(
 ////////////////
 
 
-#[apply(call_cases)]
+#[apply(common_cases)]
 fn should_fail_noop_when_unsigned(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -156,7 +156,7 @@ fn should_fail_noop_when_unsigned(
     });
 }
 
-#[apply(call_cases)]
+#[apply(common_cases)]
 fn should_fail_noop_when_non_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -174,8 +174,8 @@ fn should_fail_noop_when_non_oracle(
         });
 }
 
-#[apply(call_cases)]
-fn should_ok_if_when_oracle(
+#[apply(common_cases)]
+fn should_ok_when_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
 ) {
@@ -191,7 +191,7 @@ fn should_ok_if_when_oracle(
         });
 }
 
-#[apply(call_cases)]
+#[apply(common_cases)]
 fn should_pay_when_caller_is_not_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -214,7 +214,7 @@ fn should_pay_when_caller_is_not_oracle(
 }
 
 
-#[apply(call_cases)]
+#[apply(common_cases)]
 fn should_not_pay_when_caller_is_oracle(
     #[case]
     call_fixture: CallFixtureType!(),
@@ -233,8 +233,8 @@ fn should_not_pay_when_caller_is_oracle(
         });
 }
 
-#[apply(call_cases)]
-fn check_storage_is_mutated_correctly(
+#[apply(common_cases)]
+fn check_if_storage_is_mutated_correctly(
     #[case]
     call_fixture: CallFixtureType!(),
 ) {
