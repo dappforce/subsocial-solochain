@@ -121,7 +121,7 @@ fn set_last_processed_parachain_event_call_with_origin_fixture() -> CallFixtureT
             assert_eq!(<LastProcessedLockerEvent<Test>>::get(), None);
         },
         call: |origin| {
-            LockerMirror::set_last_processed_parachain_event(
+            LockerMirror::set_last_processed_locker_event(
                 origin,
                 EVENT.clone(),
             )

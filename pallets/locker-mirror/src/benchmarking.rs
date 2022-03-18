@@ -50,13 +50,13 @@ benchmarks!{
         ensure!(matches!(<LockedInfoByAccount<T>>::get(account.clone()), None), "There should be no value for this account");
     }
 
-    set_last_processed_parachain_event {
+    set_last_processed_locker_event {
         let caller: T::AccountId = whitelisted_caller();
-        let last_event_info = ProcessedEventInfo {
+        let last_event_info = LockerEvent {
             block_number: 125,
             event_index: 568,
         };
-        <LastProcessedParachainEvent<T>>::kill();
+        <LastProcessedLockerEvent<T>>::kill();
 
         let origin = if cfg!(test) {
             RawOrigin::Signed(caller)
@@ -65,7 +65,7 @@ benchmarks!{
         };
     }: _(origin, last_event_info)
     verify {
-        ensure!(matches!(<LastProcessedParachainEvent<T>>::get(), Some(last_event_info)), "The passed value should be stored");
+        ensure!(matches!(<LastProcessedLockerEvent<T>>::get(), Some(last_event_info)), "The passed value should be stored");
     }
 
 
