@@ -32,7 +32,7 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
         return false;
     }
     let mut config = &configs[0];
-    // first config must have 1 as ratio
+    // first config cannot have anything but "1" as the ratio
     if config.quota_ratio.get() != 1 {
         return false;
     }
@@ -42,12 +42,12 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
     while i < configs.len() {
         let current_config = &configs[i];
 
-        // current period must be less than the previous period
+        // current period shouldn't be greater than or equal to the previous period
         if current_config.period >= config.period {
             return false;
         }
 
-        // current ratio must be grater than or equal the previous ratio
+        // current ratio shouldn't be smaller than the previous ratio
         if current_config.quota_ratio.get() < config.quota_ratio.get() {
             return false;
         }
