@@ -102,8 +102,8 @@ pub mod pallet {
         /// Locked information is cleared for an account.
         LockedInfoCleared { who: T::AccountId },
 
-        /// Last processed locker event have been set.
-        LastLockerEventSet { event: LockerEvent },
+        /// The last locker event has been processed.
+        LastLockerEventProcessed { event: LockerEvent },
     }
     
     #[pallet::call]
@@ -122,7 +122,7 @@ pub mod pallet {
 
             <LastProcessedLockerEvent<T>>::put(last_processed_locker_event.clone());
 
-            Self::deposit_event(Event::LastLockerEventSet { event: last_processed_locker_event });
+            Self::deposit_event(Event::LastLockerEventProcessed { event: last_processed_locker_event });
 
             Ok(Pays::No.into())
         }
