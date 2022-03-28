@@ -395,8 +395,14 @@ impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
     ) -> TransactionValidity {
         if let Some(local_call) = call.is_sub_type() {
             if let Call::try_free_call { call: boxed_call } = local_call {
-                ensure!(T::CallFilter::contains(boxed_call), InvalidTransaction::Custom(FreeCallsValidityError::CallCannotBeFree.into()));
-                ensure!(Pallet::<T>::can_make_free_call(who).is_some(), InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()));
+                ensure!(
+                    T::CallFilter::contains(boxed_call),
+                    InvalidTransaction::Custom(FreeCallsValidityError::CallCannotBeFree.into()),
+                );
+                ensure!(
+                    Pallet::<T>::can_make_free_call(who).is_some(),
+                    InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()),
+                );
             }
         }
         Ok(ValidTransaction::default())
