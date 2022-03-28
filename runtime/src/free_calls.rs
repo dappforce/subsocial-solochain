@@ -29,9 +29,9 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
     if configs.is_empty() {
         return false;
     }
-    let mut config = &configs[0];
+    let mut prev_config = &configs[0];
     // first config cannot have anything but 100% as the fraction
-    if config.fraction_of_max_quota.get() != MAX_QUOTA_DECIMALS {
+    if prev_config.fraction_of_max_quota.get() != MAX_QUOTA_DECIMALS {
         return false;
     }
 
@@ -41,16 +41,16 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
         let current_config = &configs[i];
 
         // current period shouldn't be greater than or equal to the previous period
-        if current_config.period >= config.period {
+        if current_config.period >= prev_config.period {
             return false;
         }
 
         // current ratio shouldn't be larger than or equal to the previous ratio
-        if current_config.fraction_of_max_quota.get() >= config.fraction_of_max_quota.get() {
+        if current_config.fraction_of_max_quota.get() >= prev_config.fraction_of_max_quota.get() {
             return false;
         }
 
-        config = current_config;
+        prev_config = current_config;
         i = i + 1;
     }
 
