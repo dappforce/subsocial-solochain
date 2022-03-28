@@ -29,6 +29,7 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
     if configs.is_empty() {
         return false;
     }
+
     let mut prev_config = &configs[0];
     // first config cannot have anything but 100% as the fraction
     if prev_config.fraction_of_max_quota.get() != MAX_QUOTA_DECIMALS {
