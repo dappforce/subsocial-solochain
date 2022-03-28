@@ -47,7 +47,7 @@ const_assert!(MAX_QUOTA_DECIMALS != 0);
 ///
 /// Max quota is 10.
 /// Fraction is equal to 1%.
-/// Result will still be 1, since this is the mimuman value it can get.
+/// Result will still be 1, since this is the minimum value it can get.
 pub(crate) fn evaluate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota) -> NumberOfCalls {
     if max_quota == 0 {
         return 0;
