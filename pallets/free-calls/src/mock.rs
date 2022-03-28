@@ -14,7 +14,8 @@ use frame_support::traits::{Contains};
 use frame_system as system;
 use frame_system::{EnsureRoot};
 use pallet_locker_mirror::{LockedInfoOf};
-use crate::{max_quota_percentage, WindowConfig};
+use crate::config::WindowConfig;
+use crate::max_quota_percentage;
 use crate::quota::NumberOfCalls;
 
 pub(crate) type AccountId = u64;

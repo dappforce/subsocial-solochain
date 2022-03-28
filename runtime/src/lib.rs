@@ -70,7 +70,7 @@ pub mod constants;
 mod free_calls;
 
 use constants::{currency::*, time::*};
-use pallet_free_calls::WindowConfig;
+use pallet_free_calls::config::WindowConfig;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats

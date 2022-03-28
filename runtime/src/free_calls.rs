@@ -3,7 +3,8 @@
 use frame_support::traits::Contains;
 use sp_std::cmp::min;
 use static_assertions::const_assert;
-use pallet_free_calls::{max_quota_percentage, WindowConfig};
+use pallet_free_calls::max_quota_percentage;
+use pallet_free_calls::config::WindowConfig;
 use pallet_free_calls::quota::{MAX_QUOTA_DECIMALS, NumberOfCalls};
 use pallet_locker_mirror::LockedInfoOf;
 use crate::BlockNumber;

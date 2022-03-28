@@ -32,6 +32,7 @@ mod mock;
 mod benchmarking;
 mod weights;
 pub mod quota;
+pub mod config;
 
 pub use weights::WeightInfo;
 use frame_support::traits::Contains;
@@ -39,7 +40,6 @@ use scale_info::TypeInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use sp_std::convert::TryInto;
     use frame_support::weights::{extract_actual_weight, GetDispatchInfo};
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
@@ -54,6 +54,7 @@ pub mod pallet {
     use pallet_locker_mirror::{LockedInfoByAccount, LockedInfoOf};
     use pallet_utils::bool_to_option;
     use scale_info::TypeInfo;
+    use crate::config::{WindowConfig, WindowsConfigSize};
     use crate::quota::{evaluate_quota, FractionOfMaxQuota, NumberOfCalls};
     use crate::WeightInfo;
 
@@ -75,26 +76,6 @@ pub mod pallet {
             ConsumerStats {
                 timeline_index,
                 used_calls: 0,
-            }
-        }
-    }
-
-    /// Configuration of a rate limiting window in terms of window length and allocated quota.
-    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
-    pub struct WindowConfig<BlockNumber> {
-        /// The length of the window in number of blocks it will last.
-        pub period: BlockNumber,
-
-        /// The fraction of max quota allocated for this window.
-        pub fraction_of_max_quota: FractionOfMaxQuota,
-    }
-
-    impl<BlockNumber> WindowConfig<BlockNumber> {
-        //TODO: try to also force period to be non zero.
-        pub const fn new(period: BlockNumber, fraction_of_max_quota: FractionOfMaxQuota) -> Self {
-            WindowConfig {
-                period,
-                fraction_of_max_quota,
             }
         }
     }
@@ -129,21 +110,6 @@ pub mod pallet {
 
         /// A calculation strategy to convert locked tokens info to a max quota per largest window.
         type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self>;
-    }
-
-    /// Retrieves the size of `T::WindowsConfig` to be used for `BoundedVec` declaration.
-    pub struct WindowsConfigSize<T: Config>(PhantomData<T>);
-
-    impl<T: Config> Default for WindowsConfigSize<T> {
-        fn default() -> Self {
-            Self(PhantomData)
-        }
-    }
-
-    impl<T: Config> Get<u32> for WindowsConfigSize<T> {
-        fn get() -> u32 {
-            T::WindowsConfig::get().len().try_into().unwrap()
-        }
     }
 
     /// Keeps track of each windows usage for each consumer.
