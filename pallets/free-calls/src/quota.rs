@@ -148,7 +148,6 @@ mod tests {
     #[case(10_000, 33.33, 3_333)]
     #[case(10_000, 55.5, 5_550)]
     #[case(10_000, 100.0, 10_000)]
-    #[trace]
     fn evaluate_quota_should_work_as_expected(
         #[case] max_quota: MaxQuota,
         #[case] percentage: f32,
