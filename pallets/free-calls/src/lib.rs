@@ -31,6 +31,7 @@ mod mock;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod weights;
+pub mod quota;
 
 pub use weights::WeightInfo;
 use frame_support::traits::Contains;
@@ -39,7 +40,6 @@ use scale_info::TypeInfo;
 #[frame_support::pallet]
 pub mod pallet {
     use sp_std::convert::TryInto;
-    use sp_std::num::NonZeroU16;
     use frame_support::weights::{extract_actual_weight, GetDispatchInfo};
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
@@ -54,17 +54,8 @@ pub mod pallet {
     use pallet_locker_mirror::{LockedInfoByAccount, LockedInfoOf};
     use pallet_utils::bool_to_option;
     use scale_info::TypeInfo;
+    use crate::quota::{evaluate_quota, FractionOfMaxQuota, NumberOfCalls};
     use crate::WeightInfo;
-
-    /// The ratio between the quota and a particular window.
-    ///
-    /// ## Example:
-    /// if ratio is 20 and the quota is 100 then each window should have maximum of 5 calls.
-    /// max number of calls per window = quota / ratio.
-    pub type QuotaToWindowRatio = NonZeroU16;
-
-    /// Type to keep track of how many calls is in quota or used in a particular window.
-    pub type NumberOfCalls = u16;
 
     /// A `BoundedVec` that can hold a list of `ConsumerStats` objects bounded by the size of WindowConfigs.
     pub type ConsumerStatsVec<T> = BoundedVec<ConsumerStats<<T as frame_system::Config>::BlockNumber>, WindowsConfigSize<T>>;
@@ -89,25 +80,22 @@ pub mod pallet {
         }
     }
 
-    /// Configuration of a rate limiting window in terms of length and ratio to quota.
+    /// Configuration of a rate limiting window in terms of window length and allocated quota.
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
     pub struct WindowConfig<BlockNumber> {
         /// The length of the window in number of blocks it will last.
         pub period: BlockNumber,
 
-        /// The ratio between the quota and this window.
-        pub quota_ratio: QuotaToWindowRatio,
+        /// The fraction of max quota allocated for this window.
+        pub fraction_of_max_quota: FractionOfMaxQuota,
     }
 
     impl<BlockNumber> WindowConfig<BlockNumber> {
         //TODO: try to also force period to be non zero.
-        pub const fn new(period: BlockNumber, quota_ratio: Option<QuotaToWindowRatio>) -> Self {
+        pub const fn new(period: BlockNumber, fraction_of_max_quota: FractionOfMaxQuota) -> Self {
             WindowConfig {
                 period,
-                quota_ratio: match quota_ratio {
-                    Some(non_zero) => non_zero,
-                    None => panic!("quota_ratio must be non zero"),
-                },
+                fraction_of_max_quota,
             }
         }
     }
@@ -141,7 +129,7 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
 
         /// A calculation strategy to convert locked tokens info to a quota.
-        type QuotaCalculationStrategy: QuotaCalculationStrategy<Self>;
+        type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self>;
     }
 
     /// Retrieves the size of `T::WindowsConfig` to be used for `BoundedVec` declaration.
@@ -252,8 +240,8 @@ pub mod pallet {
             }
 
             let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
-            let quota = match T::QuotaCalculationStrategy::calculate(current_block, locked_info) {
-                Some(quota) if quota > 0 => quota,
+            let max_quota = match T::MaxQuotaCalculationStrategy::calculate(current_block, locked_info) {
+                Some(max_quota) if max_quota > 0 => max_quota,
                 _ => return None,
             };
 
@@ -263,7 +251,7 @@ pub mod pallet {
             for (config_index, config) in windows_config.into_iter().enumerate() {
                 let new_window_stats = Self::check_window(
                     current_block,
-                    quota,
+                    max_quota,
                     config,
                     old_stats.get(config_index),
                 );
@@ -290,7 +278,7 @@ pub mod pallet {
         /// is returned.
         fn check_window(
             current_block: T::BlockNumber,
-            quota: NumberOfCalls,
+            max_quota: NumberOfCalls,
             config: WindowConfig<T::BlockNumber>,
             window_stats: Option<&ConsumerStats<T::BlockNumber>>,
         ) -> Option<ConsumerStats<T::BlockNumber>> {
@@ -311,7 +299,7 @@ pub mod pallet {
                 stats = reset_stats();
             }
 
-            let can_be_called = stats.used_calls < max(1, quota / config.quota_ratio);
+            let can_be_called = stats.used_calls < evaluate_quota(max_quota, config.fraction_of_max_quota);
 
             can_be_called.then(|| {
                 stats.used_calls = stats.used_calls.saturating_add(1);
@@ -329,7 +317,7 @@ pub mod pallet {
     }
 
 
-    pub trait QuotaCalculationStrategy<T: Config> {
+    pub trait MaxQuotaCalculationStrategy<T: Config> {
         fn calculate(current_block: T::BlockNumber, locked_info: Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
     }
 }

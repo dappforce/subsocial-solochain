@@ -3,7 +3,8 @@
 use frame_support::traits::Contains;
 use sp_std::cmp::min;
 use static_assertions::const_assert;
-use pallet_free_calls::{NumberOfCalls, QuotaToWindowRatio, WindowConfig};
+use pallet_free_calls::{max_quota_percentage, WindowConfig};
+use pallet_free_calls::quota::{MAX_QUOTA_DECIMALS, NumberOfCalls};
 use pallet_locker_mirror::LockedInfoOf;
 use crate::BlockNumber;
 use super::constants::time::*;
@@ -14,12 +15,9 @@ use super::{Runtime, Call};
 pub const FREE_CALLS_PER_SUB: u16 = 10;
 
 pub const FREE_CALLS_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 3] = [
-    // Window that lasts a day and has 100% of the allocated quota.
-    WindowConfig::new(1 * DAYS, QuotaToWindowRatio::new(1)),
-    // Window that lasts an hour and has (1/3) of the allocated quota.
-    WindowConfig::new(1 * HOURS, QuotaToWindowRatio::new(3)),
-    // Window that lasts for 5 minutes and has (1/10) of the allocated quota.
-    WindowConfig::new(5 * MINUTES, QuotaToWindowRatio::new(10)),
+    WindowConfig::new(1 * DAYS, max_quota_percentage!(100)),
+    WindowConfig::new(1 * HOURS, max_quota_percentage!(30)),
+    WindowConfig::new(5 * MINUTES, max_quota_percentage!(10)),
 ];
 
 
@@ -32,8 +30,8 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
         return false;
     }
     let mut config = &configs[0];
-    // first config cannot have anything but "1" as the ratio
-    if config.quota_ratio.get() != 1 {
+    // first config cannot have anything but 100% as the fraction
+    if config.fraction_of_max_quota.get() != MAX_QUOTA_DECIMALS {
         return false;
     }
 
@@ -47,8 +45,8 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
             return false;
         }
 
-        // current ratio shouldn't be smaller than the previous ratio
-        if current_config.quota_ratio.get() < config.quota_ratio.get() {
+        // current ratio shouldn't be larger than or equal to the previous ratio
+        if current_config.fraction_of_max_quota.get() >= config.fraction_of_max_quota.get() {
             return false;
         }
 
@@ -84,7 +82,7 @@ impl Contains<Call> for FreeCallsFilter {
 /// A calculation strategy for free calls quota
 pub struct FreeCallsCalculationStrategy;
 impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
-impl pallet_free_calls::QuotaCalculationStrategy<Runtime> for FreeCallsCalculationStrategy {
+impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalculationStrategy {
     fn calculate(
         current_block: <Runtime as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Runtime>>

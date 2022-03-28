@@ -453,7 +453,7 @@ impl pallet_free_calls::Config for Runtime {
     type WindowsConfig = WindowsConfig;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
-    type QuotaCalculationStrategy = FreeCallsCalculationStrategy;
+    type MaxQuotaCalculationStrategy = FreeCallsCalculationStrategy;
 }
 
 impl pallet_locker_mirror::Config for Runtime {

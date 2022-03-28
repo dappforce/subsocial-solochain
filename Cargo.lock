@@ -3846,12 +3846,14 @@ dependencies = [
  "pallet-utils",
  "parity-scale-codec",
  "rand 0.8.4",
+ "rstest",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "static_assertions",
  "subsocial-primitives",
 ]
 

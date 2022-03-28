@@ -14,7 +14,8 @@ use frame_support::traits::{Contains};
 use frame_system as system;
 use frame_system::{EnsureRoot};
 use pallet_locker_mirror::{LockedInfoOf};
-use crate::{NumberOfCalls, QuotaToWindowRatio, WindowConfig};
+use crate::{max_quota_percentage, WindowConfig};
+use crate::quota::NumberOfCalls;
 
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
@@ -116,7 +117,7 @@ static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |current_block, 
 
 
 pub static DEFAULT_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 1] = [
-    WindowConfig::new(10, QuotaToWindowRatio::new(1)),
+    WindowConfig::new(10, max_quota_percentage!(100)),
 ];
 
 parameter_types! {
@@ -136,7 +137,7 @@ impl Contains<Call> for TestCallFilter {
 }
 
 pub struct TestQuotaCalculation;
-impl pallet_free_calls::QuotaCalculationStrategy<Test> for TestQuotaCalculation {
+impl pallet_free_calls::MaxQuotaCalculationStrategy<Test> for TestQuotaCalculation {
     fn calculate(
         current_block: <Test as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Test>>
@@ -151,7 +152,7 @@ impl pallet_free_calls::Config for Test {
     type WindowsConfig = WindowsConfig;
     type CallFilter = TestCallFilter;
     type WeightInfo = ();
-    type QuotaCalculationStrategy = TestQuotaCalculation;
+    type MaxQuotaCalculationStrategy = TestQuotaCalculation;
 }
 
 pub struct ExtBuilder {
