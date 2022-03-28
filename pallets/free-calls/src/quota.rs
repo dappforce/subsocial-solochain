@@ -2,7 +2,7 @@ use sp_std::cmp::max;
 use sp_std::num::NonZeroU16;
 use static_assertions::const_assert;
 
-/// Type used to keep track of how many calls used by the consumer.
+/// Type to keep track of how many calls in the quota were used in a particular window.
 pub type NumberOfCalls = u16;
 
 /// The maximum number of free calls allocated for the consumer for the biggest window.
@@ -36,6 +36,18 @@ pub const MAX_QUOTA_DECIMALS: u16 = 10_000;
 const_assert!(MAX_QUOTA_DECIMALS != 0);
 
 /// Evaluating the fraction of max quota based on the [MAX_QUOTA_DECIMALS].
+///
+/// The minuteman value that will be returned from the function is 1 unless [max_quota] is zero,
+/// then the result is zero.
+///
+/// ## Example
+/// Max quota is 10.
+/// Fraction is equal to 10%.
+/// Result will be 1.
+///
+/// Max quota is 10.
+/// Fraction is equal to 1%.
+/// Result will still be 1, since this is the mimuman value it can get.
 pub(crate) fn evaluate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota) -> NumberOfCalls {
     if max_quota == 0 {
         return 0;

@@ -60,10 +60,9 @@ pub mod pallet {
     /// A `BoundedVec` that can hold a list of `ConsumerStats` objects bounded by the size of WindowConfigs.
     pub type ConsumerStatsVec<T> = BoundedVec<ConsumerStats<<T as frame_system::Config>::BlockNumber>, WindowsConfigSize<T>>;
 
-    /// Keeps track of the executed number of calls per window per consumer.
+    /// Keeps track of the executed number of calls per window per consumer (account).
     #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
     pub struct ConsumerStats<BlockNumber> {
-        // TODO: find a better name? maybe `stats_index`
         /// The index of this window in the timeline.
         pub timeline_index: BlockNumber,
 
@@ -72,9 +71,9 @@ pub mod pallet {
     }
 
     impl<BlockNumber> ConsumerStats<BlockNumber> {
-        fn new(window_index: BlockNumber) -> Self {
+        fn new(timeline_index: BlockNumber) -> Self {
             ConsumerStats {
-                timeline_index: window_index,
+                timeline_index,
                 used_calls: 0,
             }
         }
@@ -128,7 +127,7 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
 
-        /// A calculation strategy to convert locked tokens info to a quota.
+        /// A calculation strategy to convert locked tokens info to a max quota per largest window.
         type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self>;
     }
 
@@ -226,10 +225,10 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Determine if `consumer` can have a free call.
+        /// Determine if the `consumer` can have a free call.
         ///
         /// If the consumer can have a free call the new stats that should be applied will be returned,
-        /// otherwise None is returned.
+        /// otherwise `None` is returned.
         pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStatsVec<T>> {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
@@ -249,23 +248,14 @@ pub mod pallet {
             let mut new_stats: ConsumerStatsVec<T> = Default::default();
 
             for (config_index, config) in windows_config.into_iter().enumerate() {
-                let new_window_stats = Self::check_window(
+                let window_stats = Self::is_call_allowed_in_window(
                     current_block,
                     max_quota,
                     config,
                     old_stats.get(config_index),
-                );
+                )?;
 
-                match new_window_stats {
-                    None => {
-                        return None;
-                    },
-                    Some(window_stats) => {
-                        if matches!(new_stats.try_push(window_stats), Err(_)) {
-                            return None;
-                        }
-                    }
-                };
+                new_stats.try_push(window_stats).ok()?;
             }
 
             return Some(new_stats);
@@ -276,7 +266,7 @@ pub mod pallet {
         ///
         /// If the window can allow one more call, the new stats object is returned, otherwise `None`
         /// is returned.
-        fn check_window(
+        fn is_call_allowed_in_window(
             current_block: T::BlockNumber,
             max_quota: NumberOfCalls,
             config: WindowConfig<T::BlockNumber>,
@@ -287,15 +277,16 @@ pub mod pallet {
                 return None;
             }
 
-            let timeline_index = current_block / config.period;
+            let current_timeline_index = current_block / config.period;
 
-            let reset_stats = || ConsumerStats::new(timeline_index);
+            let reset_stats = || ConsumerStats::new(current_timeline_index);
 
             let mut stats = window_stats
                 .map(|r| r.clone())
                 .unwrap_or_else(reset_stats);
 
-            if stats.timeline_index < timeline_index {
+            // We need to reset stats if we moved to a new window.
+            if stats.timeline_index < current_timeline_index {
                 stats = reset_stats();
             }
 
