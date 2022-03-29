@@ -126,8 +126,8 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Free call was executed. [who, result]
-        FreeCallResult(T::AccountId, DispatchResult),
+        /// Free call was executed.
+        FreeCallResult { who: T::AccountId, result: DispatchResult },
     }
 
     #[pallet::call]
@@ -177,10 +177,10 @@ pub mod pallet {
                 actual_weight = actual_weight.saturating_add(extract_actual_weight(&result, &info));
 
                 // Deposit an event with the result
-                Self::deposit_event(Event::FreeCallResult(
-                    consumer,
-                    result.map(|_| ()).map_err(|e| e.error),
-                ));
+                Self::deposit_event(Event::FreeCallResult {
+                    who: consumer,
+                    result: result.map(|_| ()).map_err(|e| e.error)
+                });
             }
 
             Ok(PostDispatchInfo {
