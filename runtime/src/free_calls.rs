@@ -66,14 +66,14 @@ impl Default for FreeCallsFilter { fn default() -> Self { Self } }
 impl Contains<Call> for FreeCallsFilter {
     fn contains(c: &Call) -> bool {
         match *c {
+            Call::Posts(..) => true,
+            Call::Profiles(..) => true,
+            Call::ProfileFollows(..) => true,
+            Call::Roles(..) => true,
             Call::Spaces(..) => true,
             Call::SpaceFollows(..) => true,
-            Call::ProfileFollows(..) => true,
-            Call::Posts(..) => true,
             Call::Reactions(..) => true,
-            Call::Roles(..) => true,
             Call::SpaceOwnership(..) => true,
-            Call::Profiles(..) => true,
             // Call::Moderation(..) => true,
             Call::System(..) => cfg!(feature = "runtime-benchmarks"),
             _ => false,
