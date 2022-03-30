@@ -61,7 +61,7 @@ const_assert!(QUOTA_PRECISION % 10 == 0);
 /// Max quota is 10.\
 /// Fraction is equal to 1%.\
 /// Result will still be 1, since this is the minimum value it can get.
-pub(crate) fn evaluate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota) -> NumberOfCalls {
+pub(crate) fn calculate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota) -> NumberOfCalls {
     if max_quota == 0 {
         return 0;
     }
@@ -110,7 +110,7 @@ macro_rules! __validate_percentage {
 
 #[cfg(test)]
 mod tests {
-    use crate::quota::{evaluate_quota, MaxQuota, NumberOfCalls, QUOTA_PRECISION};
+    use crate::quota::{calculate_quota, MaxQuota, NumberOfCalls, QUOTA_PRECISION};
     use rstest::rstest;
 
     #[rstest]
@@ -170,7 +170,7 @@ mod tests {
         #[case] expected: NumberOfCalls,
     ) {
         assert_eq!(
-            evaluate_quota(max_quota, max_quota_percentage!(percentage)),
+            calculate_quota(max_quota, max_quota_percentage!(percentage)),
             expected,
             "evaluate_quota({}, {}%) should equal to {}",
             max_quota,

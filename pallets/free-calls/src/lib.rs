@@ -55,7 +55,7 @@ pub mod pallet {
     use pallet_utils::bool_to_option;
     use scale_info::TypeInfo;
     use crate::config::{WindowConfig, WindowsConfigSize};
-    use crate::quota::{evaluate_quota, FractionOfMaxQuota, NumberOfCalls};
+    use crate::quota::{calculate_quota, FractionOfMaxQuota, NumberOfCalls};
     use crate::WeightInfo;
 
     /// A `BoundedVec` that can hold a list of `ConsumerStats` objects bounded by the size of WindowConfigs.
@@ -256,7 +256,7 @@ pub mod pallet {
                 stats = reset_stats();
             }
 
-            let can_be_called = stats.used_calls < evaluate_quota(max_quota, config.fraction_of_max_quota);
+            let can_be_called = stats.used_calls < calculate_quota(max_quota, config.fraction_of_max_quota);
 
             can_be_called.then(|| {
                 stats.used_calls = stats.used_calls.saturating_add(1);
