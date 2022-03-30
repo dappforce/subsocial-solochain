@@ -81,7 +81,35 @@ impl Contains<Call> for FreeCallsFilter {
     }
 }
 
-/// A calculation strategy for free calls quota
+/// A calculation strategy for free calls quota.
+///
+/// The calculation depends on the amount of token the user has locked and the time since lock. Each
+/// token locked will grant the user [FREE_CALLS_PER_SUB] to be used as free calls, but the full ammount
+/// will be not be fully accessible until 12 month. Before 12 month only a percentage of the free calls
+/// will be granted.
+///
+/// ```text
+/// +-------------+------+---------+
+/// |    Time     | Days | Allowed |
+/// +-------------+------+---------+
+/// | Just Locked |    0 | 15%     |
+/// | 1 week      |    7 | 30%     |
+/// | 2 week      |   14 | 35%     |
+/// | 3 week      |   21 | 40%     |
+/// | 1 month     |   30 | 45%     |
+/// | 2 month     |   60 | 50%     |
+/// | 3 month     |   90 | 55%     |
+/// | 4 month     |  120 | 60%     |
+/// | 5 month     |  150 | 65%     |
+/// | 6 month     |  180 | 70%     |
+/// | 7 month     |  210 | 75%     |
+/// | 8 month     |  240 | 80%     |
+/// | 9 month     |  270 | 85%     |
+/// | 10 month    |  300 | 90%     |
+/// | 11 month    |  330 | 95%     |
+/// | 12 month    |  360 | 100%    |
+/// +-------------+------+---------+
+/// ```
 pub struct FreeCallsCalculationStrategy;
 impl Default for FreeCallsCalculationStrategy { fn default() -> Self { Self } }
 impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalculationStrategy {
