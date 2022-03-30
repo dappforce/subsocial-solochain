@@ -65,6 +65,9 @@ pub(crate) fn evaluate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota) 
     if max_quota == 0 {
         return 0;
     }
+    if fraction.get() >= MAX_QUOTA_DECIMALS {
+        return max_quota;
+    }
     // we need to cast to u64 to avoid overflowing.
     max(1, (max_quota as u64 * fraction.get() as u64 / MAX_QUOTA_DECIMALS as u64) as NumberOfCalls)
 }
