@@ -2,15 +2,17 @@ use sp_std::cmp::max;
 use sp_std::num::NonZeroU16;
 use static_assertions::const_assert;
 
-/// Type to keep track of how many calls in the quota were used in a particular window.
+/// Type to keep track of how many calls of the quota were used in a particular window.
 pub type NumberOfCalls = u16;
 
-/// The maximum number of free calls allocated for the consumer for the biggest window.
+/// The maximum number of free calls available to the consumer in the biggest window.
 ///
 /// ## Example:
+/// ```text
 /// Window 1 => 10 Hours  <-- The biggest window
 /// Window 2 => 1 Hour
 /// Window 3 => 5 Minutes
+/// ```
 pub type MaxQuota = NumberOfCalls;
 
 /// Fraction of the [MaxQuota].
@@ -23,10 +25,18 @@ pub type MaxQuota = NumberOfCalls;
 /// ## Example:
 /// - Assuming that [MAX_QUOTA_DECIMALS] is 10
 ///     - 1 fraction of max quota is 10%
-///     - 5 fraction of max quota is 50%
+///     - 5 fractions of max quota is 50%
+///     - 10 fractions of max quota is 100%
+/// - Assuming that [MAX_QUOTA_DECIMALS] is 100
+///     - 1 fraction of max quota is 1%
+///     - 5 fractions of max quota is 5%
+///     - 10 fractions of max quota is 10%
+///     - 33 fractions of max quota is 33%
 /// - Assuming that [MAX_QUOTA_DECIMALS] is 1000
 ///     - 1 fraction of max quota is 0.1%
-///     - 10 fraction of max quota is 1%
+///     - 5 fractions of max quota is 0.5%
+///     - 10 fractions of max quota is 1%
+///     - 333 fractions of max quota is 33.3%
 pub type FractionOfMaxQuota = NonZeroU16;
 
 /// The number used to evaluate the [FractionOfMaxQuota].
@@ -40,16 +50,16 @@ const_assert!(MAX_QUOTA_DECIMALS % 10 == 0);
 
 /// Evaluating the fraction of max quota based on the [MAX_QUOTA_DECIMALS].
 ///
-/// The minuteman value that will be returned from the function is 1 unless [max_quota] is zero,
+/// The minimum value that will be returned from the function is 1 unless [max_quota] is zero,
 /// then the result is zero.
 ///
 /// ## Example
-/// Max quota is 10.
-/// Fraction is equal to 10%.
+/// Max quota is 10.\
+/// Fraction is equal to 10%.\
 /// Result will be 1.
 ///
-/// Max quota is 10.
-/// Fraction is equal to 1%.
+/// Max quota is 10.\
+/// Fraction is equal to 1%.\
 /// Result will still be 1, since this is the minimum value it can get.
 pub(crate) fn evaluate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota) -> NumberOfCalls {
     if max_quota == 0 {
