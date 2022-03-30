@@ -118,19 +118,6 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalcul
         current_block: <Runtime as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Runtime>>
     ) -> Option<NumberOfCalls> {
-        fn get_utilization_percent(lock_period: BlockNumber) -> u64 {
-            if lock_period < 1 * WEEKS {
-                return 15;
-            }
-            if lock_period < 1 * MONTHS {
-                let num_of_weeks = min(3, lock_period / (1 * WEEKS)) as u64;
-                return (num_of_weeks * 5) + 25;
-            }
-
-            let num_of_months = min(12, lock_period / (1 * MONTHS)) as u64;
-            return (num_of_months * 5) + 40;
-        }
-
         let LockedInfoOf::<Runtime>{
             locked_at,
             locked_amount,
@@ -161,6 +148,19 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalcul
 
         Some(num_of_free_calls.try_into().unwrap_or(NumberOfCalls::MAX))
     }
+}
+
+fn get_utilization_percent(lock_period: BlockNumber) -> u64 {
+    if lock_period < 1 * WEEKS {
+        return 15;
+    }
+    if lock_period < 1 * MONTHS {
+        let num_of_weeks = min(3, lock_period / (1 * WEEKS)) as u64;
+        return (num_of_weeks * 5) + 25;
+    }
+
+    let num_of_months = min(12, lock_period / (1 * MONTHS)) as u64;
+    return (num_of_months * 5) + 40;
 }
 
 
