@@ -91,24 +91,24 @@ impl Contains<Call> for FreeCallsFilter {
 ///
 /// ```text
 /// +-------------+------+---------+
-/// |    Time     | Days | Allowed |
+/// | Time Passed | Days | Allowed |
 /// +-------------+------+---------+
 /// | Just Locked |    0 | 15%     |
 /// | 1 week      |    7 | 30%     |
-/// | 2 week      |   14 | 35%     |
-/// | 3 week      |   21 | 40%     |
+/// | 2 weeks     |   14 | 35%     |
+/// | 3 weeks     |   21 | 40%     |
 /// | 1 month     |   30 | 45%     |
-/// | 2 month     |   60 | 50%     |
-/// | 3 month     |   90 | 55%     |
-/// | 4 month     |  120 | 60%     |
-/// | 5 month     |  150 | 65%     |
-/// | 6 month     |  180 | 70%     |
-/// | 7 month     |  210 | 75%     |
-/// | 8 month     |  240 | 80%     |
-/// | 9 month     |  270 | 85%     |
-/// | 10 month    |  300 | 90%     |
-/// | 11 month    |  330 | 95%     |
-/// | 12 month    |  360 | 100%    |
+/// | 2 months    |   60 | 50%     |
+/// | 3 months    |   90 | 55%     |
+/// | 4 months    |  120 | 60%     |
+/// | 5 months    |  150 | 65%     |
+/// | 6 months    |  180 | 70%     |
+/// | 7 months    |  210 | 75%     |
+/// | 8 months    |  240 | 80%     |
+/// | 9 months    |  270 | 85%     |
+/// | 10 months   |  300 | 90%     |
+/// | 11 months   |  330 | 95%     |
+/// | 12 months   |  360 | 100%    |
 /// +-------------+------+---------+
 /// ```
 pub struct FreeCallsCalculationStrategy;
