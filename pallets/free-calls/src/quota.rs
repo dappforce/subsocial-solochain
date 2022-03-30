@@ -114,11 +114,11 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case(100.0, 1.0)]
     #[case(1.0, 0.01)]
-    #[case(33.33, 0.3333)]
     #[case(2.5, 0.025)]
     #[case(25.15, 0.2515)]
+    #[case(33.33, 0.3333)]
+    #[case(100.0, 1.0)]
     fn max_quota_percentage_should_work_as_expected(
         #[case] percentage: f32,
         #[case] multiplier: f32,
