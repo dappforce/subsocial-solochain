@@ -45,12 +45,10 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
     while i < configs.len() {
         let current_config = &configs[i];
 
-        // current period shouldn't be greater than or equal to the previous period
         if current_config.period >= prev_config.period {
             return false;
         }
 
-        // current ratio shouldn't be larger than or equal to the previous ratio
         if current_config.fraction_of_max_quota.get() >= prev_config.fraction_of_max_quota.get() {
             return false;
         }
