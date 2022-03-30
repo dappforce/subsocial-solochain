@@ -135,9 +135,9 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalcul
             return None;
         }
 
-        let lock_period = current_block - locked_at;
+        let lock_duration = current_block - locked_at;
 
-        let utilization_percent = get_utilization_percent(lock_period);
+        let utilization_percent = get_utilization_percent(lock_duration);
 
         let num_of_tokens = locked_amount.saturating_div(currency::DOLLARS) as u64;
 
@@ -150,16 +150,16 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalcul
     }
 }
 
-fn get_utilization_percent(lock_period: BlockNumber) -> u64 {
-    if lock_period < 1 * WEEKS {
+fn get_utilization_percent(lock_duration: BlockNumber) -> u64 {
+    if lock_duration < 1 * WEEKS {
         return 15;
     }
-    if lock_period < 1 * MONTHS {
-        let num_of_weeks = min(3, lock_period / (1 * WEEKS)) as u64;
+    if lock_duration < 1 * MONTHS {
+        let num_of_weeks = min(3, lock_duration / (1 * WEEKS)) as u64;
         return (num_of_weeks * 5) + 25;
     }
 
-    let num_of_months = min(12, lock_period / (1 * MONTHS)) as u64;
+    let num_of_months = min(12, lock_duration / (1 * MONTHS)) as u64;
     return (num_of_months * 5) + 40;
 }
 
@@ -225,7 +225,7 @@ mod tests {
     #[trace]
     fn quota_calculation_strategy_tests(
         #[case] amount: Balance,
-        #[case] locked_period: BlockNumber,
+        #[case] locked_duration: BlockNumber,
         #[case] expected_quota: Option<NumberOfCalls>,
     ) {
         let current_block = 1000 * MONTHS;
@@ -233,7 +233,7 @@ mod tests {
         let after_current_block = current_block + 1;
 
 
-        let locked_at = current_block - locked_period;
+        let locked_at = current_block - locked_duration;
         let locked_info = LockedInfoOf::<Runtime> {
             locked_at,
             locked_amount: amount.into(),
