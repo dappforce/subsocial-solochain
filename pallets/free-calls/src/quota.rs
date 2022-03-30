@@ -33,7 +33,10 @@ pub type FractionOfMaxQuota = NonZeroU16;
 ///
 /// Must be non-zero
 pub const MAX_QUOTA_DECIMALS: u16 = 10_000;
+// [MAX_QUOTA_DECIMALS] should be non-zero
 const_assert!(MAX_QUOTA_DECIMALS != 0);
+// [MAX_QUOTA_DECIMALS] should be divisible by 10
+const_assert!(MAX_QUOTA_DECIMALS % 10 == 0);
 
 /// Evaluating the fraction of max quota based on the [MAX_QUOTA_DECIMALS].
 ///
