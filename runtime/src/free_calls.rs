@@ -229,7 +229,7 @@ mod tests {
     #[trace]
     fn quota_calculation_strategy_tests(
         #[case] amount: Balance,
-        #[case] locked_duration: BlockNumber,
+        #[case] lock_duration: BlockNumber,
         #[case] expected_quota: Option<NumberOfCalls>,
     ) {
         let current_block = 1000 * MONTHS;
@@ -237,7 +237,7 @@ mod tests {
         let after_current_block = current_block + 1;
 
 
-        let locked_at = current_block - locked_duration;
+        let locked_at = current_block - lock_duration;
         let locked_info = LockedInfoOf::<Runtime> {
             locked_at,
             locked_amount: amount.into(),
