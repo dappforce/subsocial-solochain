@@ -146,7 +146,7 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalcul
             .saturating_mul(utilization_percent)
             .saturating_div(100);
 
-        if num_of_free_calls > NumberOfCalls::MAX.into() {
+        if num_of_free_calls >= NumberOfCalls::MAX.into() {
             Some(NumberOfCalls::MAX)
         } else {
             Some(num_of_free_calls.try_into().unwrap_or(0))
