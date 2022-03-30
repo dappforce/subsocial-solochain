@@ -264,7 +264,7 @@ mod tests {
 
         ///////////////////////////////////////
 
-        // no locked_info will returns none
+        // Expect none if no locked_info provided
         assert_eq!(
             FreeCallsCalculationStrategy::calculate(current_block, None),
             None,
