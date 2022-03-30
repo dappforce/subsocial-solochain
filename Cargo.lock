@@ -7556,6 +7556,7 @@ dependencies = [
  "profiles-runtime-api",
  "reactions-runtime-api",
  "roles-runtime-api",
+ "rstest",
  "scale-info",
  "serde",
  "sp-api",
