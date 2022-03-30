@@ -35,7 +35,7 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
     }
 
     let mut prev_config = &configs[0];
-    // first config cannot have anything but 100% as the fraction
+    // A fraction of the first config should be equal to the quota precision.
     if prev_config.fraction_of_max_quota.get() != QUOTA_PRECISION {
         return false;
     }
