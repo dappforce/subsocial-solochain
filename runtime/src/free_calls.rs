@@ -84,10 +84,10 @@ impl Contains<Call> for FreeCallsFilter {
 
 /// A calculation strategy for free calls quota.
 ///
-/// The calculation depends on the amount of token the user has locked and the time passed since the
-/// lock. Each token locked will grant the user [FREE_CALLS_PER_SUB] to be used as free calls, but
-/// the full amount will be not be fully accessible until 12 month. Before 12 month only a percentage
-/// of the free calls will be granted.
+/// The calculation depends on the amount of tokens the user has locked and the time passed since
+/// the lock. Each token locked will grant the user [FREE_CALLS_PER_SUB] to be used as free calls,
+/// but the full amount will be not be fully accessible until the tokens have been locked for at
+/// least 12 months. Before 12 months only a percentage of the free calls will be granted.
 ///
 /// ```text
 /// +-------------+------+---------+
@@ -135,9 +135,9 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalcul
             return None;
         }
 
-        let lock_duration = current_block - locked_at;
+        let time_locked = current_block - locked_at;
 
-        let utilization_percent = get_utilization_percent(lock_duration);
+        let utilization_percent = get_utilization_percent(time_locked);
 
         let num_of_tokens = locked_amount.saturating_div(currency::DOLLARS) as u64;
 
@@ -154,16 +154,16 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Runtime> for FreeCallsCalcul
     }
 }
 
-fn get_utilization_percent(lock_duration: BlockNumber) -> u64 {
-    if lock_duration < 1 * WEEKS {
+fn get_utilization_percent(time_locked: BlockNumber) -> u64 {
+    if time_locked < 1 * WEEKS {
         return 15;
     }
-    if lock_duration < 1 * MONTHS {
-        let num_of_weeks = min(3, lock_duration / (1 * WEEKS)) as u64;
+    if time_locked < 1 * MONTHS {
+        let num_of_weeks = min(3, time_locked / (1 * WEEKS)) as u64;
         return (num_of_weeks * 5) + 25;
     }
 
-    let num_of_months = min(12, lock_duration / (1 * MONTHS)) as u64;
+    let num_of_months = min(12, time_locked / (1 * MONTHS)) as u64;
     return (num_of_months * 5) + 40;
 }
 
