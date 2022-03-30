@@ -18,21 +18,21 @@ pub type MaxQuota = NumberOfCalls;
 /// Fraction of the [MaxQuota].
 ///
 /// The [FractionOfMaxQuota] is a non-zero integer that represents the numerator when dividing by
-/// the [MAX_QUOTA_DECIMALS].
+/// the [QUOTA_PRECISION].
 ///
 /// You can use [max_quota_percentage] macro for convince.
 ///
 /// ## Example:
-/// - Assuming that [MAX_QUOTA_DECIMALS] is 10
+/// - Assuming that [QUOTA_PRECISION] is 10
 ///     - 1 fraction of max quota is 10%
 ///     - 5 fractions of max quota is 50%
 ///     - 10 fractions of max quota is 100%
-/// - Assuming that [MAX_QUOTA_DECIMALS] is 100
+/// - Assuming that [QUOTA_PRECISION] is 100
 ///     - 1 fraction of max quota is 1%
 ///     - 5 fractions of max quota is 5%
 ///     - 10 fractions of max quota is 10%
 ///     - 33 fractions of max quota is 33%
-/// - Assuming that [MAX_QUOTA_DECIMALS] is 1000
+/// - Assuming that [QUOTA_PRECISION] is 1000
 ///     - 1 fraction of max quota is 0.1%
 ///     - 5 fractions of max quota is 0.5%
 ///     - 10 fractions of max quota is 1%
@@ -42,13 +42,13 @@ pub type FractionOfMaxQuota = NonZeroU16;
 /// The number used to evaluate the [FractionOfMaxQuota].
 ///
 /// Must be non-zero
-pub const MAX_QUOTA_DECIMALS: u16 = 10_000;
-// [MAX_QUOTA_DECIMALS] should be non-zero
-const_assert!(MAX_QUOTA_DECIMALS != 0);
-// [MAX_QUOTA_DECIMALS] should be divisible by 10
-const_assert!(MAX_QUOTA_DECIMALS % 10 == 0);
+pub const QUOTA_PRECISION: u16 = 10_000;
+// [QUOTA_PRECISION] should be non-zero
+const_assert!(QUOTA_PRECISION != 0);
+// [QUOTA_PRECISION] should be divisible by 10
+const_assert!(QUOTA_PRECISION % 10 == 0);
 
-/// Evaluating the fraction of max quota based on the [MAX_QUOTA_DECIMALS].
+/// Evaluating the fraction of max quota based on the [QUOTA_PRECISION].
 ///
 /// The minimum value that will be returned from the function is 1 unless [max_quota] is zero,
 /// then the result is zero.
@@ -65,11 +65,11 @@ pub(crate) fn evaluate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota) 
     if max_quota == 0 {
         return 0;
     }
-    if fraction.get() >= MAX_QUOTA_DECIMALS {
+    if fraction.get() >= QUOTA_PRECISION {
         return max_quota;
     }
     // we need to cast to u64 to avoid overflowing.
-    max(1, (max_quota as u64 * fraction.get() as u64 / MAX_QUOTA_DECIMALS as u64) as NumberOfCalls)
+    max(1, (max_quota as u64 * fraction.get() as u64 / QUOTA_PRECISION as u64) as NumberOfCalls)
 }
 
 /// A convenience macro used to convert a floating number representing a percentage to non-zero
@@ -79,7 +79,7 @@ macro_rules! max_quota_percentage {
     ($percentage:expr) => {{
         $crate::__validate_percentage!($percentage);
         let fraction =
-            ($crate::quota::MAX_QUOTA_DECIMALS as f32 * ($percentage as f32) / 100f32) as u16;
+            ($crate::quota::QUOTA_PRECISION as f32 * ($percentage as f32) / 100f32) as u16;
         match $crate::quota::FractionOfMaxQuota::new(fraction) {
             Some(non_zero) => non_zero,
             None => panic!("quota_fraction must be non zero"),
@@ -110,7 +110,7 @@ macro_rules! __validate_percentage {
 
 #[cfg(test)]
 mod tests {
-    use crate::quota::{evaluate_quota, MaxQuota, NumberOfCalls, MAX_QUOTA_DECIMALS};
+    use crate::quota::{evaluate_quota, MaxQuota, NumberOfCalls, QUOTA_PRECISION};
     use rstest::rstest;
 
     #[rstest]
@@ -125,7 +125,7 @@ mod tests {
     ) {
         assert_eq!(
             max_quota_percentage!(percentage).get(),
-            (MAX_QUOTA_DECIMALS as f32 * multiplier) as u16,
+            (QUOTA_PRECISION as f32 * multiplier) as u16,
             "max_quota_percentage {}%",
             percentage,
         );

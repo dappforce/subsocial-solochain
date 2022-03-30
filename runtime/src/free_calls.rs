@@ -5,7 +5,7 @@ use sp_std::cmp::min;
 use static_assertions::const_assert;
 use pallet_free_calls::max_quota_percentage;
 use pallet_free_calls::config::WindowConfig;
-use pallet_free_calls::quota::{MAX_QUOTA_DECIMALS, NumberOfCalls};
+use pallet_free_calls::quota::{QUOTA_PRECISION, NumberOfCalls};
 use pallet_locker_mirror::LockedInfoOf;
 use crate::BlockNumber;
 use super::constants::time::*;
@@ -33,7 +33,7 @@ const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) 
 
     let mut prev_config = &configs[0];
     // first config cannot have anything but 100% as the fraction
-    if prev_config.fraction_of_max_quota.get() != MAX_QUOTA_DECIMALS {
+    if prev_config.fraction_of_max_quota.get() != QUOTA_PRECISION {
         return false;
     }
 
