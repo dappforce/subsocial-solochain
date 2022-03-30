@@ -198,9 +198,9 @@ pub mod pallet {
         pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStatsVec<T>> {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
-            let windows_config = T::WindowsConfigs::get();
+            let windows_configs = T::WindowsConfigs::get();
 
-            if windows_config.is_empty() {
+            if windows_configs.is_empty() {
                 return None;
             }
 
@@ -213,7 +213,7 @@ pub mod pallet {
             let old_stats: ConsumerStatsVec<T> = Self::window_stats_by_consumer(consumer.clone());
             let mut new_stats: ConsumerStatsVec<T> = Default::default();
 
-            for (config_index, config) in windows_config.into_iter().enumerate() {
+            for (config_index, config) in windows_configs.into_iter().enumerate() {
                 let window_stats = Self::is_call_allowed_in_window(
                     current_block,
                     max_quota,
