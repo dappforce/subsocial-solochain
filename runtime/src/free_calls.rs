@@ -84,10 +84,10 @@ impl Contains<Call> for FreeCallsFilter {
 
 /// A calculation strategy for free calls quota.
 ///
-/// The calculation depends on the amount of token the user has locked and the time since lock. Each
-/// token locked will grant the user [FREE_CALLS_PER_SUB] to be used as free calls, but the full
-/// amount will be not be fully accessible until 12 month. Before 12 month only a percentage of the
-/// free calls will be granted.
+/// The calculation depends on the amount of token the user has locked and the time passed since the
+/// lock. Each token locked will grant the user [FREE_CALLS_PER_SUB] to be used as free calls, but
+/// the full amount will be not be fully accessible until 12 month. Before 12 month only a percentage
+/// of the free calls will be granted.
 ///
 /// ```text
 /// +-------------+------+---------+
