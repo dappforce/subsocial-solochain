@@ -100,7 +100,7 @@ pub mod pallet {
         /// The configurations that will be used to limit the usage of the allocated quota to these
         /// different configs.
         #[pallet::constant]
-        type WindowsConfig: Get<Vec<WindowConfig<Self::BlockNumber>>>;
+        type WindowsConfigs: Get<Vec<WindowConfig<Self::BlockNumber>>>;
 
         /// Filter on which calls are permitted to be free.
         type CallFilter: Contains<<Self as Config>::Call>;
@@ -198,7 +198,7 @@ pub mod pallet {
         pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStatsVec<T>> {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
-            let windows_config = T::WindowsConfig::get();
+            let windows_config = T::WindowsConfigs::get();
 
             if windows_config.is_empty() {
                 return None;

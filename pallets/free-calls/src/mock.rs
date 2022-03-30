@@ -150,7 +150,7 @@ impl pallet_free_calls::MaxQuotaCalculationStrategy<Test> for TestQuotaCalculati
 impl pallet_free_calls::Config for Test {
     type Event = Event;
     type Call = Call;
-    type WindowsConfig = WindowsConfig;
+    type WindowsConfigs = WindowsConfig;
     type CallFilter = TestCallFilter;
     type WeightInfo = ();
     type MaxQuotaCalculationStrategy = TestQuotaCalculation;

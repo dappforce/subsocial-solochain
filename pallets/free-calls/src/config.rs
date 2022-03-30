@@ -37,6 +37,6 @@ impl<T: Config> Default for WindowsConfigSize<T> {
 
 impl<T: Config> Get<u32> for WindowsConfigSize<T> {
     fn get() -> u32 {
-        T::WindowsConfig::get().len().try_into().unwrap()
+        T::WindowsConfigs::get().len().try_into().unwrap()
     }
 }

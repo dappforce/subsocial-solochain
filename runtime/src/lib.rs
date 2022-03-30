@@ -341,7 +341,7 @@ impl pallet_utils::Config for Runtime {
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
-use crate::free_calls::{FreeCallsCalculationStrategy, FreeCallsFilter, FREE_CALLS_WINDOWS_CONFIG};
+use crate::free_calls::{FreeCallsCalculationStrategy, FreeCallsFilter, FREE_CALLS_WINDOWS_CONFIGS};
 
 impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
@@ -444,13 +444,13 @@ impl Contains<Call> for BaseFilter {
 }
 
 parameter_types! {
-    pub WindowsConfig: Vec<WindowConfig<BlockNumber>> = FREE_CALLS_WINDOWS_CONFIG.to_vec();
+    pub WindowsConfigs: Vec<WindowConfig<BlockNumber>> = FREE_CALLS_WINDOWS_CONFIGS.to_vec();
 }
 
 impl pallet_free_calls::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    type WindowsConfig = WindowsConfig;
+    type WindowsConfigs = WindowsConfigs;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
     type MaxQuotaCalculationStrategy = FreeCallsCalculationStrategy;

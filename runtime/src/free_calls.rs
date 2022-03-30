@@ -15,7 +15,7 @@ use super::{Runtime, Call};
 // TODO: try to find a better way to calculate it based on the circulating supply
 pub const FREE_CALLS_PER_SUB: u16 = 10;
 
-pub const FREE_CALLS_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 3] = [
+pub const FREE_CALLS_WINDOWS_CONFIGS: [WindowConfig<BlockNumber>; 3] = [
     WindowConfig::new(1 * DAYS, max_quota_percentage!(100)),
     WindowConfig::new(1 * HOURS, max_quota_percentage!(30)),
     WindowConfig::new(5 * MINUTES, max_quota_percentage!(10)),
@@ -23,7 +23,7 @@ pub const FREE_CALLS_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 3] = [
 
 
 // Assert at compile time that the free-calls configs are in the optimal shape.
-const_assert!(check_free_calls_config(&FREE_CALLS_WINDOWS_CONFIG));
+const_assert!(check_free_calls_config(&FREE_CALLS_WINDOWS_CONFIGS));
 #[allow(dead_code)] // the code is not acutely dead.
 const fn check_free_calls_config(configs: &'static [WindowConfig<BlockNumber>]) -> bool {
     // cannot have empty configs
