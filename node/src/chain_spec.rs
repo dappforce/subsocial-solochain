@@ -3,9 +3,10 @@ use subsocial_runtime::{
 	AccountId, AuraConfig, BalancesConfig,
 	GenesisConfig, GrandpaConfig, UtilsConfig,
 	SudoConfig, SpacesConfig, SystemConfig,
-	WASM_BINARY, Signature, constants::currency::DOLLARS,
+	WASM_BINARY, Signature,
 };
 use subsocial_primitives::Block;
+use subsocial_primitives::currency::DOLLARS;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};

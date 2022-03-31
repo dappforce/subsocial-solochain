@@ -11,8 +11,8 @@ use pallet_free_calls::config::WindowConfig;
 use pallet_free_calls::quota::{QUOTA_PRECISION, NumberOfCalls};
 use pallet_locker_mirror::LockedInfoOf;
 use crate::BlockNumber;
-use super::constants::time::*;
-use super::constants::currency;
+use subsocial_primitives::time::*;
+use subsocial_primitives::currency;
 use super::{Runtime, Call};
 
 // TODO: try to find a better way to calculate it based on the circulating supply

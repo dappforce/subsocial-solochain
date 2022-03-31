@@ -66,10 +66,9 @@ use pallet_reactions::{
 use pallet_spaces::rpc::FlatSpace;
 use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
 
-pub mod constants;
 mod free_calls;
 
-use constants::{currency::*, time::*};
+use subsocial_primitives::{currency::*, time::*};
 use pallet_free_calls::config::WindowConfig;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know

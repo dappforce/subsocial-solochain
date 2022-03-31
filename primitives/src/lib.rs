@@ -21,6 +21,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod currency;
+pub mod time;
+
 use sp_runtime::{
     generic, traits::{Verify, BlakeTwo256, IdentifyAccount}, OpaqueExtrinsic, MultiSignature
 };
