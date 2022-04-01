@@ -14,7 +14,7 @@ use frame_support::traits::{Contains};
 use frame_system as system;
 use frame_system::{EnsureRoot};
 use pallet_locker_mirror::{BalanceOf, LockedInfoOf};
-use crate::config::WindowConfig;
+use crate::config::{ConfigHash, RateLimiterConfig, WindowConfig};
 use crate::max_quota_percentage;
 use crate::quota::NumberOfCalls;
 
@@ -116,13 +116,17 @@ static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |current_block, 
     return Some(10);
 };
 
+pub static DEFAULT_CONFIG_HASH: ConfigHash = 0;
 
 pub static DEFAULT_WINDOWS_CONFIG: [WindowConfig<BlockNumber>; 1] = [
     WindowConfig::new(10, max_quota_percentage!(100)),
 ];
 
 parameter_types! {
-    pub static WindowsConfig: Vec<WindowConfig<BlockNumber>> = DEFAULT_WINDOWS_CONFIG.to_vec();
+    pub static TestRateLimiterConfig: RateLimiterConfig<BlockNumber> = RateLimiterConfig::new(
+        DEFAULT_WINDOWS_CONFIG.to_vec(),
+        DEFAULT_CONFIG_HASH,
+    );
 }
 
 thread_local! {
@@ -150,7 +154,7 @@ impl pallet_free_calls::quota_strategy::MaxQuotaCalculationStrategy<<Test as fra
 impl pallet_free_calls::Config for Test {
     type Event = Event;
     type Call = Call;
-    type WindowsConfigs = WindowsConfig;
+    type RateLimiterConfig = TestRateLimiterConfig;
     type CallFilter = TestCallFilter;
     type WeightInfo = ();
     type MaxQuotaCalculationStrategy = TestQuotaCalculation;
@@ -160,6 +164,7 @@ pub struct ExtBuilder {
     call_filter: CallFilterFn,
     quota_calculation: QuotaCalculationFn<Test>,
     windows_config: Vec<WindowConfig<BlockNumber>>,
+    config_hash: ConfigHash,
 }
 impl Default for ExtBuilder {
     fn default() -> Self {
@@ -167,6 +172,7 @@ impl Default for ExtBuilder {
             call_filter: DEFAULT_CALL_FILTER_FN,
             quota_calculation: DEFAULT_QUOTA_CALCULATION_FN,
             windows_config: DEFAULT_WINDOWS_CONFIG.to_vec(),
+            config_hash: DEFAULT_CONFIG_HASH,
         }
     }
 }
@@ -186,10 +192,15 @@ impl ExtBuilder {
         self
     }
 
+    pub fn config_hash(mut self, config_hash: ConfigHash) -> Self {
+        self.config_hash = config_hash;
+        self
+    }
+
     pub fn set_configs(&self) {
         CALL_FILTER.with(|filter| *filter.borrow_mut() = self.call_filter);
         QUOTA_CALCULATION.with(|calc| *calc.borrow_mut() = self.quota_calculation);
-        WINDOWS_CONFIG.with(|configs| *configs.borrow_mut() = self.windows_config.clone());
+        TEST_RATE_LIMITER_CONFIG.with(|configs| *configs.borrow_mut() = RateLimiterConfig::new(self.windows_config.clone(), self.config_hash));
     }
 
     pub fn build(self) -> TestExternalities {

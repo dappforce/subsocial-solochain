@@ -1,7 +1,7 @@
 use frame_support::{pallet_prelude::*};
 use frame_system::pallet_prelude::*;
 use frame_support::BoundedVec;
-use crate::config::WindowsConfigSize;
+use crate::config::{ConfigHash, WindowsConfigSize};
 use crate::quota::NumberOfCalls;
 use scale_info::TypeInfo;
 use crate::Config;
@@ -13,11 +13,11 @@ use crate::Config;
 #[scale_info(skip_type_params(T))]
 pub struct ConsumerStats<T: Config> {
     pub windows_stats: WindowStatsVec<T>,
-    pub config_hash: u64,
+    pub config_hash: ConfigHash,
 }
 
 impl<T: Config> ConsumerStats<T> {
-    pub fn new(windows_stats: WindowStatsVec<T>, config_hash: u64) -> Self {
+    pub fn new(windows_stats: WindowStatsVec<T>, config_hash: ConfigHash) -> Self {
         Self {
             windows_stats,
             config_hash,
