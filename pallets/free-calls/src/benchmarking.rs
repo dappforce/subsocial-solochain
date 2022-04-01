@@ -22,9 +22,9 @@ benchmarks!{
         });
     }: try_free_call(RawOrigin::Signed(caller.clone()), call)
     verify {
-        let found_stats = <WindowStatsByConsumer<T>>::get(caller.clone()).is_empty() == false;
+        let found_stats = <StatsByConsumer<T>>::get(caller.clone()).is_some();
         ensure!(found_stats, "Stats should be recorded after the call");
-        <WindowStatsByConsumer<T>>::remove(caller.clone());
+        <StatsByConsumer<T>>::remove(caller.clone());
     }
 
     impl_benchmark_test_suite!(
