@@ -69,7 +69,7 @@ use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_L
 mod free_calls;
 
 use subsocial_primitives::{currency::*, time::*};
-use pallet_free_calls::config::WindowConfig;
+use pallet_free_calls::config::{RateLimiterConfig, WindowConfig};
 use pallet_free_calls::quota_strategy::FreeCallsCalculationStrategy;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
@@ -341,7 +341,7 @@ impl pallet_utils::Config for Runtime {
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
-use crate::free_calls::{FreeCallsFilter, FREE_CALLS_WINDOWS_CONFIGS};
+use crate::free_calls::{FreeCallsFilter, FREE_CALLS_WINDOWS_CONFIGS, FREE_CALLS_CONFIG_HASH};
 
 impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
@@ -444,13 +444,16 @@ impl Contains<Call> for BaseFilter {
 }
 
 parameter_types! {
-    pub WindowsConfigs: Vec<WindowConfig<BlockNumber>> = FREE_CALLS_WINDOWS_CONFIGS.to_vec();
+    pub RateLimiterConfigPram: RateLimiterConfig<BlockNumber> = RateLimiterConfig::new(
+        FREE_CALLS_WINDOWS_CONFIGS.to_vec(),
+        FREE_CALLS_CONFIG_HASH,
+    );
 }
 
 impl pallet_free_calls::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    type WindowsConfigs = WindowsConfigs;
+    type RateLimiterConfig = RateLimiterConfigPram;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
     type MaxQuotaCalculationStrategy = FreeCallsCalculationStrategy<BlockNumber, Balance>;

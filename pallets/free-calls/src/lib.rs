@@ -56,7 +56,7 @@ pub mod pallet {
     use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoByAccount, LockedInfoOf};
     use pallet_utils::bool_to_option;
     use scale_info::TypeInfo;
-    use crate::config::{WindowConfig, WindowsConfigSize};
+    use crate::config::{RateLimiterConfig, WindowConfig, WindowsConfigSize};
     use crate::quota::{calculate_quota, FractionOfMaxQuota, NumberOfCalls};
     use crate::quota_strategy::MaxQuotaCalculationStrategy;
     use crate::stats::{ConsumerStats, WindowStats, WindowStatsVec};
@@ -82,7 +82,7 @@ pub mod pallet {
         /// The configurations that will be used to limit the usage of the allocated quota to these
         /// different configs.
         #[pallet::constant]
-        type WindowsConfigs: Get<Vec<WindowConfig<Self::BlockNumber>>>;
+        type RateLimiterConfig: Get<RateLimiterConfig<Self::BlockNumber>>;
 
         /// Filter on which calls are permitted to be free.
         type CallFilter: Contains<<Self as Config>::Call>;
@@ -180,7 +180,10 @@ pub mod pallet {
         pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStats<T>> {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
-            let windows_configs = T::WindowsConfigs::get();
+            let RateLimiterConfig::<T::BlockNumber> {
+                windows_configs,
+                hash: config_hash,
+            } = T::RateLimiterConfig::get();
 
             if windows_configs.is_empty() {
                 return None;
@@ -192,9 +195,15 @@ pub mod pallet {
                 _ => return None,
             };
 
-            let get_empty_stats = || ConsumerStats::new(WindowStatsVec::default(), 0);
+            let get_empty_stats = || ConsumerStats::new(
+                WindowStatsVec::default(),
+                config_hash,
+            );
 
-            let old_stats: ConsumerStats<T> = Self::stats_by_consumer(consumer.clone()).unwrap_or_else(get_empty_stats);
+            let old_stats: ConsumerStats<T> = Self::stats_by_consumer(consumer.clone())
+                .filter(|stats| stats.config_hash == config_hash) // filter out stats with a different config hash
+                .unwrap_or_else(get_empty_stats);
+
             let mut new_stats: ConsumerStats<T> = get_empty_stats();
 
             for (config_index, config) in windows_configs.into_iter().enumerate() {
