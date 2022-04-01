@@ -34,6 +34,7 @@ mod weights;
 pub mod quota;
 pub mod config;
 pub mod quota_strategy;
+pub mod stats;
 
 pub use weights::WeightInfo;
 use frame_support::traits::Contains;
@@ -58,29 +59,8 @@ pub mod pallet {
     use crate::config::{WindowConfig, WindowsConfigSize};
     use crate::quota::{calculate_quota, FractionOfMaxQuota, NumberOfCalls};
     use crate::quota_strategy::MaxQuotaCalculationStrategy;
+    use crate::stats::{ConsumerStats, ConsumerStatsVec};
     use crate::WeightInfo;
-
-    /// A `BoundedVec` that can hold a list of `ConsumerStats` objects bounded by the size of WindowConfigs.
-    pub type ConsumerStatsVec<T> = BoundedVec<ConsumerStats<<T as frame_system::Config>::BlockNumber>, WindowsConfigSize<T>>;
-
-    /// Keeps track of the executed number of calls per window per consumer (account).
-    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
-    pub struct ConsumerStats<BlockNumber> {
-        /// The index of this window in the timeline.
-        pub timeline_index: BlockNumber,
-
-        /// The number of calls executed during this window.
-        pub used_calls: NumberOfCalls,
-    }
-
-    impl<BlockNumber> ConsumerStats<BlockNumber> {
-        fn new(timeline_index: BlockNumber) -> Self {
-            ConsumerStats {
-                timeline_index,
-                used_calls: 0,
-            }
-        }
-    }
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
