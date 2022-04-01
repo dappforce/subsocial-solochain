@@ -1,20 +1,14 @@
 //! All related code to free-calls module
 
-use super::{Call, Runtime};
-use crate::{Block, BlockNumber};
-use frame_support::log::{debug, info};
+use super::Call;
+use crate::BlockNumber;
 use frame_support::traits::Contains;
 use pallet_free_calls::config::{
-    check_free_calls_config, hash_windows_configs, ConfigHash, RateLimiterConfig, WindowConfig,
+    check_free_calls_config, hash_windows_configs, ConfigHash, WindowConfig,
 };
 use pallet_free_calls::max_quota_percentage;
-use pallet_free_calls::quota::{NumberOfCalls, QUOTA_PRECISION};
-use pallet_locker_mirror::LockedInfoOf;
-use sp_std::cmp::min;
-use sp_std::convert::TryInto;
-use sp_std::if_std;
+use pallet_free_calls::quota::QUOTA_PRECISION;
 use static_assertions::const_assert;
-use subsocial_primitives::currency;
 use subsocial_primitives::time::*;
 
 pub const FREE_CALLS_WINDOWS_CONFIGS: [WindowConfig<BlockNumber>; 3] = [
