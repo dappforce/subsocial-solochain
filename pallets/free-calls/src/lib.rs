@@ -45,7 +45,7 @@ pub mod pallet {
     use frame_support::weights::{extract_actual_weight, GetDispatchInfo};
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
-    use sp_std::default::Default;
+    use frame_support::metadata::StorageEntryModifier::Default;
     use frame_support::traits::{Contains, IsSubType};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{Dispatchable};
@@ -59,7 +59,7 @@ pub mod pallet {
     use crate::config::{WindowConfig, WindowsConfigSize};
     use crate::quota::{calculate_quota, FractionOfMaxQuota, NumberOfCalls};
     use crate::quota_strategy::MaxQuotaCalculationStrategy;
-    use crate::stats::{WindowStats, WindowStatsVec};
+    use crate::stats::{ConsumerStats, WindowStats, WindowStatsVec};
     use crate::WeightInfo;
 
     #[pallet::pallet]
@@ -96,13 +96,13 @@ pub mod pallet {
 
     /// Keeps track of each windows usage for each consumer.
     #[pallet::storage]
-    #[pallet::getter(fn window_stats_by_consumer)]
-    pub(super) type WindowStatsByConsumer<T: Config> = StorageMap<
+    #[pallet::getter(fn stats_by_consumer)]
+    pub(super) type StatsByConsumer<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
         T::AccountId,
-        WindowStatsVec<T>,
-        ValueQuery,
+        ConsumerStats<T>,
+        OptionQuery,
     >;
 
     #[pallet::event]
@@ -177,7 +177,7 @@ pub mod pallet {
         ///
         /// If the consumer can have a free call the new stats that should be applied will be returned,
         /// otherwise `None` is returned.
-        pub fn can_make_free_call(consumer: &T::AccountId) -> Option<WindowStatsVec<T>> {
+        pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStats<T>> {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
             let windows_configs = T::WindowsConfigs::get();
@@ -192,18 +192,20 @@ pub mod pallet {
                 _ => return None,
             };
 
-            let old_stats: WindowStatsVec<T> = Self::window_stats_by_consumer(consumer.clone());
-            let mut new_stats: WindowStatsVec<T> = Default::default();
+            let get_empty_stats = || ConsumerStats::new(WindowStatsVec::default(), 0);
+
+            let old_stats: ConsumerStats<T> = Self::stats_by_consumer(consumer.clone()).unwrap_or_else(get_empty_stats);
+            let mut new_stats: ConsumerStats<T> = get_empty_stats();
 
             for (config_index, config) in windows_configs.into_iter().enumerate() {
                 let window_stats = Self::is_call_allowed_in_window(
                     current_block,
                     max_quota,
                     config,
-                    old_stats.get(config_index),
+                    old_stats.get_window_stats(config_index),
                 )?;
 
-                new_stats.try_push(window_stats).ok()?;
+                new_stats.try_push_window_stats(window_stats).ok()?;
             }
 
             return Some(new_stats);
@@ -246,9 +248,9 @@ pub mod pallet {
             })
         }
 
-        pub fn update_consumer_stats(consumer: T::AccountId, new_stats: WindowStatsVec<T>) {
+        pub fn update_consumer_stats(consumer: T::AccountId, new_stats: ConsumerStats<T>) {
             log::info!("{:?} updating consumer stats", consumer);
-            <WindowStatsByConsumer<T>>::insert(
+            <StatsByConsumer<T>>::insert(
                 consumer,
                 new_stats,
             );
