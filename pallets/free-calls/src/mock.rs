@@ -1,9 +1,7 @@
 use std::cell::RefCell;
 use sp_core::H256;
 use sp_io::TestExternalities;
-use sp_runtime::{
-    traits::{BlakeTwo256, IdentityLookup}, testing::Header
-};
+use sp_runtime::{generic, traits::{BlakeTwo256, IdentityLookup}};
 
 pub use crate as pallet_free_calls;
 
@@ -20,12 +18,17 @@ use crate::config::{ConfigHash, RateLimiterConfig, WindowConfig};
 use crate::max_quota_percentage;
 use crate::quota::NumberOfCalls;
 
-pub(crate) type AccountId = u64;
-pub(crate) type BlockNumber = u64;
-
+pub(crate) type AccountId = subsocial_primitives::AccountId;
+pub(crate) type BlockNumber = subsocial_primitives::BlockNumber;
+pub(crate) type Balance = subsocial_primitives::Balance;
+/// Opaque block header type.
+pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
+/// Opaque block type.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// Opaque block identifier type.
+pub type BlockId = generic::BlockId<Block>;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -42,7 +45,7 @@ frame_support::construct_runtime!(
 );
 
 parameter_types! {
-    pub const BlockHashCount: u64 = 250;
+    pub const BlockHashCount: BlockNumber = 250;
     pub const SS58Prefix: u8 = 28;
 }
 
@@ -78,7 +81,7 @@ impl system::Config for Test {
     type DbWeight = ();
     type Version = ();
     type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<u64>;
+    type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
@@ -91,7 +94,7 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
-    type Balance = u64;
+    type Balance = Balance;
     type DustRemoval = ();
     type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;

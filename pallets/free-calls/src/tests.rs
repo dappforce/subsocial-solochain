@@ -2,7 +2,7 @@ use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::convert::TryInto;
 use frame_benchmarking::account;
-use frame_support::{assert_err, assert_noop, assert_ok, assert_storage_noop, BoundedVec, debug};
+use frame_support::{assert_err, assert_noop, assert_ok, assert_storage_noop, BoundedVec, debug, fail};
 use frame_support::log::info;
 use frame_support::weights::{extract_actual_weight, Pays, PostDispatchInfo};
 use frame_system::{EventRecord};
@@ -12,8 +12,7 @@ use rand::{Rng, thread_rng};
 use sp_core::crypto::UncheckedInto;
 use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
-use crate::{ConsumerStats, ConsumerStatsVec, FreeCallsPrevalidation, FreeCallsValidityError, NumberOfCalls, pallet as free_calls, Pallet, QuotaToWindowRatio, test_pallet, WindowConfig};
-use crate::WindowStatsByConsumer;
+use crate::{Config, FreeCallsPrevalidation, FreeCallsValidityError, max_quota_percentage, pallet as free_calls, Pallet, StatsByConsumer, test_pallet};
 use frame_support::weights::GetDispatchInfo;
 use crate::test_pallet::Something;
 use crate::weights::WeightInfo;
@@ -25,6 +24,9 @@ use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidity, 
 use GrantedScenario::*;
 use FreeCallScenario::*;
 use DeclinedScenario::*;
+use crate::config::WindowConfig;
+use crate::quota::NumberOfCalls;
+use crate::stats::{ConsumerStats, WindowStats, WindowStatsVec};
 
 #[derive(Debug)]
 pub enum GrantedScenario {
@@ -66,30 +68,37 @@ impl TestUtils {
         events
     }
 
-    pub fn capture_stats_storage() -> Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)> {
-        <WindowStatsByConsumer<Test>>::iter().map(|x| (x.0, x.1.into_inner())).collect()
+    pub fn capture_stats_storage() -> Vec<(AccountId, ConsumerStats<Test>)> {
+        <StatsByConsumer<Test>>::iter().map(|x| (x.0, x.1)).collect()
     }
 
     pub fn set_stats_for_consumer(consumer: AccountId, stats: Vec<(BlockNumber, NumberOfCalls)>) {
         let mapped_stats: Vec<_> = stats.iter().map(|(timeline_index, used_calls)| {
-            ConsumerStats::<BlockNumber> {
+            WindowStats::<BlockNumber> {
                 timeline_index: timeline_index.clone(),
                 used_calls: used_calls.clone(),
             }
         }).collect();
 
-        let mapped_stats: ConsumerStatsVec<Test> = mapped_stats.try_into().unwrap();
+        let mapped_stats: WindowStatsVec<Test> = mapped_stats.try_into().unwrap();
 
-        <WindowStatsByConsumer<Test>>::insert(
+        <StatsByConsumer<Test>>::insert(
             consumer.clone(),
-            mapped_stats,
+            ConsumerStats::<Test> {
+                windows_stats: mapped_stats,
+                config_hash: <Test as Config>::RateLimiterConfig::get().hash,
+            },
         );
 
         TestUtils::assert_stats_equal(consumer.clone(), stats);
     }
 
     pub fn assert_stats_equal(consumer: AccountId, expected_stats: Vec<(BlockNumber, NumberOfCalls)>) {
-        let found_stats = <WindowStatsByConsumer<Test>>::get(consumer.clone());
+        let found_stats = <StatsByConsumer<Test>>::get(consumer.clone());
+        if found_stats.is_none() {
+            panic!("No stats found for consumer {}", consumer);
+        }
+        let found_stats = found_stats.unwrap().windows_stats;
 
         let found_stats: Vec<_> = found_stats.iter().map(|x| (x.timeline_index, x.used_calls)).collect();
 
@@ -105,11 +114,11 @@ impl TestUtils {
         }
     }
 
-    pub fn assert_stats_storage_have_no_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
+    pub fn assert_stats_storage_have_no_change(old_storage: Vec<(AccountId, ConsumerStats<Test>)>) {
         assert!(TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
     }
 
-    pub fn assert_stats_storage_have_change(old_storage: Vec<(AccountId, Vec<ConsumerStats<BlockNumber>>)>) {
+    pub fn assert_stats_storage_have_change(old_storage: Vec<(AccountId, ConsumerStats<Test>)>) {
         assert!(!TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
     }
 
@@ -180,7 +189,7 @@ impl TestUtils {
         let stats_storage = TestUtils::capture_stats_storage();
         let storage = storage_root();
 
-        let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer), call.clone());
+        let result = <Pallet<Test>>::try_free_call(Origin::signed(consumer.clone()), call.clone());
 
         // The free call should not return any error, regardless of the boxed call result
         assert_ok!(result);
@@ -216,7 +225,10 @@ impl TestUtils {
                     events,
                     vec![
                         Event::from(test_pallet::Event::ValueStored(something, consumer.clone())),
-                        Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Ok(()))),
+                        Event::from(pallet_free_calls::Event::FreeCallResult{
+                            who: consumer.clone(),
+                            result: Ok(()),
+                        }),
                     ],
                 );
 
@@ -229,7 +241,10 @@ impl TestUtils {
                 assert_eq!(
                     events,
                     vec![
-                        Event::from(pallet_free_calls::Event::FreeCallResult(consumer.clone(), Err(test_pallet::Error::<Test>::DoNotSendZero.into()))),
+                        Event::from(pallet_free_calls::Event::FreeCallResult{
+                            who: consumer.clone(),
+                            result: Err(test_pallet::Error::<Test>::DoNotSendZero.into()),
+                        }),
                     ],
                 );
 
@@ -285,7 +300,7 @@ fn dummy() {
 
     ExtBuilder::default()
         .windows_config(vec![
-            WindowConfig::new(1, QuotaToWindowRatio::new(1)),
+            WindowConfig::new(1, max_quota_percentage!(100)),
         ])
         .quota_calculation(|_, _| 100.into())
         .build().execute_with(|| {
@@ -300,7 +315,7 @@ fn dummy() {
 
     ExtBuilder::default()
         .windows_config(vec![
-            WindowConfig::new(1, QuotaToWindowRatio::new(1)),
+            WindowConfig::new(1, max_quota_percentage!(100)),
         ])
         .quota_calculation(|_, _| None)
         .build().execute_with(|| {
@@ -325,7 +340,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
     let get_captured_current_block = || CAPTURED_CURRENT_BLOCK.with(|x| x.borrow().clone());
 
     ExtBuilder::default()
-        .windows_config(vec![WindowConfig::new(1, QuotaToWindowRatio::new(1))])
+        .windows_config(vec![WindowConfig::new(1, max_quota_percentage!(100))])
         .quota_calculation(|current_block, locked_tokens| {
             CAPTURED_LOCKED_TOKENS.with(|x| *x.borrow_mut() = locked_tokens.clone());
             CAPTURED_CURRENT_BLOCK.with(|x| *x.borrow_mut() = Some(current_block));
@@ -384,7 +399,7 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
     let get_captured_call = || CAPTURED_CALL.with(|x| x.borrow().clone());
 
     ExtBuilder::default()
-        .windows_config(vec![WindowConfig::new(1, QuotaToWindowRatio::new(1))])
+        .windows_config(vec![WindowConfig::new(1, max_quota_percentage!(100))])
         .quota_calculation(|_, _| Some(10))
         .call_filter(|call| {
             CAPTURED_CALL.with(|x| *x.borrow_mut() = call.clone().into());
@@ -397,7 +412,7 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
             assert_eq!(get_captured_call(), None);
 
             assert_ok!(<Pallet<Test>>::try_free_call(
-                Origin::signed(consumer),
+                Origin::signed(consumer.clone()),
                 Box::new(TestPalletCall::<Test>::call_a {}.into()),
             ));
 
@@ -406,7 +421,7 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
             //////////
 
             assert_ok!(<Pallet<Test>>::try_free_call(
-                Origin::signed(consumer),
+                Origin::signed(consumer.clone()),
                 Box::new(TestPalletCall::<Test>::cause_error {}.into()),
             ));
 
@@ -415,7 +430,7 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
             //////////
 
             assert_ok!(<Pallet<Test>>::try_free_call(
-                Origin::signed(consumer),
+                Origin::signed(consumer.clone()),
                 Box::new(TestPalletCall::<Test>::call_b {}.into()),
             ));
 
@@ -424,7 +439,7 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
             //////////
 
             assert_ok!(<Pallet<Test>>::try_free_call(
-                Origin::signed(consumer),
+                Origin::signed(consumer.clone()),
                 Box::new(TestPalletCall::<Test>::store_value {something: 12}.into()),
             ));
 
@@ -442,7 +457,7 @@ fn denied_if_call_filter_returns_false() {
     let set_filter = |allow| ALLOW_CALLS.with(|x| *x.borrow_mut() = allow);
 
     ExtBuilder::default()
-        .windows_config(vec![WindowConfig::new(1, QuotaToWindowRatio::new(1))])
+        .windows_config(vec![WindowConfig::new(1, max_quota_percentage!(100))])
         .call_filter(|_| ALLOW_CALLS.with(|b| b.borrow().clone()))
         .quota_calculation(|_,_| Some(1000))
         .build()
@@ -494,12 +509,10 @@ fn denied_if_configs_are_empty() {
 fn denied_if_configs_have_one_zero_period() {
     ExtBuilder::default()
         .windows_config(vec![
-            WindowConfig::new(0, QuotaToWindowRatio::new(1)),
+            WindowConfig::new(0, max_quota_percentage!(100)),
         ])
         .build()
         .execute_with(|| {
-            let storage = TestUtils::capture_stats_storage();
-
             let consumer: AccountId = account("Consumer", 0, 0);
 
             TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
@@ -511,15 +524,13 @@ fn denied_if_configs_have_one_zero_period() {
 fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
     ExtBuilder::default()
         .windows_config(vec![
-            WindowConfig::new(0, QuotaToWindowRatio::new(1)),
-            WindowConfig::new(100, QuotaToWindowRatio::new(2)),
-            WindowConfig::new(32, QuotaToWindowRatio::new(3)),
-            WindowConfig::new(22, QuotaToWindowRatio::new(3)),
+            WindowConfig::new(0, max_quota_percentage!(100)),
+            WindowConfig::new(100, max_quota_percentage!(50)),
+            WindowConfig::new(32, max_quota_percentage!(33.33333)),
+            WindowConfig::new(22, max_quota_percentage!(33.33333)),
         ])
         .build()
         .execute_with(|| {
-            let storage = TestUtils::capture_stats_storage();
-
             let consumer: AccountId = account("Consumer", 0, 0);
 
             TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
@@ -528,15 +539,13 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
     ExtBuilder::default()
         .windows_config(vec![
-            WindowConfig::new(100, QuotaToWindowRatio::new(2)),
-            WindowConfig::new(32, QuotaToWindowRatio::new(3)),
-            WindowConfig::new(22, QuotaToWindowRatio::new(3)),
-            WindowConfig::new(0, QuotaToWindowRatio::new(1)),
+            WindowConfig::new(100, max_quota_percentage!(50)),
+            WindowConfig::new(32, max_quota_percentage!(33.33333)),
+            WindowConfig::new(22, max_quota_percentage!(33.33333)),
+            WindowConfig::new(0, max_quota_percentage!(100)),
         ])
         .build()
         .execute_with(|| {
-            let storage = TestUtils::capture_stats_storage();
-
             let consumer: AccountId = account("Consumer", 0, 0);
 
             TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
@@ -545,15 +554,13 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 
     ExtBuilder::default()
         .windows_config(vec![
-            WindowConfig::new(100, QuotaToWindowRatio::new(2)),
-            WindowConfig::new(32, QuotaToWindowRatio::new(3)),
-            WindowConfig::new(0, QuotaToWindowRatio::new(1)),
-            WindowConfig::new(22, QuotaToWindowRatio::new(3)),
+            WindowConfig::new(100, max_quota_percentage!(50)),
+            WindowConfig::new(32, max_quota_percentage!(33.33333)),
+            WindowConfig::new(0, max_quota_percentage!(100)),
+            WindowConfig::new(22, max_quota_percentage!(33.33333)),
         ])
         .build()
         .execute_with(|| {
-            let storage = TestUtils::capture_stats_storage();
-
             let consumer: AccountId = account("Consumer", 0, 0);
 
             TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
@@ -567,7 +574,7 @@ fn denied_if_configs_have_one_zero_period_and_other_non_zero() {
 fn donot_exceed_the_allowed_quota_with_one_window() {
     ExtBuilder::default()
         .windows_config(vec![
-            WindowConfig::new(20, QuotaToWindowRatio::new(1)),
+            WindowConfig::new(20, max_quota_percentage!(100)),
         ])
         .quota_calculation(|_, _| 5.into())
         .build()
@@ -609,7 +616,7 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
 #[test]
 fn consumer_with_quota_but_no_previous_usages() {
     ExtBuilder::default()
-        .windows_config(vec![ WindowConfig::new(100, QuotaToWindowRatio::new(1)) ])
+        .windows_config(vec![ WindowConfig::new(100, max_quota_percentage!(100)) ])
         .quota_calculation(|_, _| Some(100))
         .build()
         .execute_with(|| {
@@ -655,7 +662,7 @@ fn consumer_with_quota_but_no_previous_usages() {
 #[test]
 fn consumer_with_quota_and_have_previous_usages() {
     ExtBuilder::default()
-        .windows_config(vec![ WindowConfig::new(50, QuotaToWindowRatio::new(1)) ])
+        .windows_config(vec![ WindowConfig::new(50, max_quota_percentage!(100)) ])
         .quota_calculation(|_, _| Some(34))
         .build()
         .execute_with(|| {
@@ -663,12 +670,7 @@ fn consumer_with_quota_and_have_previous_usages() {
 
             TestUtils::set_block_number(10);
 
-            let stats: ConsumerStatsVec<Test> = vec![ConsumerStats::<BlockNumber> {
-                timeline_index: 0,
-                used_calls: 34,
-            }].try_into().unwrap();
-            
-            <WindowStatsByConsumer<Test>>::insert(consumer, stats);
+            TestUtils::set_stats_for_consumer(consumer.clone(), vec![(0, 34)]);
 
             // The consumer is out of quota
             TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
@@ -724,9 +726,9 @@ fn testing_scenario_1() {
     ExtBuilder::default()
         .quota_calculation(|_,_| Some(55))
         .windows_config(vec![
-            WindowConfig::new(100, QuotaToWindowRatio::new(1)),
-            WindowConfig::new(20, QuotaToWindowRatio::new(3)),
-            WindowConfig::new(10, QuotaToWindowRatio::new(2)),
+            WindowConfig::new(100, max_quota_percentage!(100)),
+            WindowConfig::new(20, max_quota_percentage!(33.33333)),
+            WindowConfig::new(10, max_quota_percentage!(50)),
         ])
         .build()
         .execute_with(|| {
