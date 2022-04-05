@@ -139,6 +139,7 @@ parameter_types! {
         DEFAULT_WINDOWS_CONFIG.to_vec(),
         DEFAULT_CONFIG_HASH,
     );
+    pub const AccountsSetLimit: u32 = 10;
 }
 
 thread_local! {
@@ -170,6 +171,7 @@ impl pallet_free_calls::Config for Test {
     type CallFilter = TestCallFilter;
     type WeightInfo = ();
     type MaxQuotaCalculationStrategy = TestQuotaCalculation;
+    type AccountsSetLimit = AccountsSetLimit;
 }
 
 pub struct ExtBuilder {

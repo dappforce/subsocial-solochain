@@ -12,14 +12,14 @@ use rand::{Rng, thread_rng};
 use sp_core::crypto::UncheckedInto;
 use sp_runtime::testing::H256;
 use subsocial_primitives::Block;
-use crate::{Config, FreeCallsPrevalidation, FreeCallsValidityError, max_quota_percentage, pallet as free_calls, Pallet, StatsByConsumer, test_pallet};
+use crate::{Config, EligibleAccounts, FreeCallsPrevalidation, FreeCallsValidityError, max_quota_percentage, pallet as free_calls, Pallet, StatsByConsumer, test_pallet};
 use frame_support::weights::GetDispatchInfo;
 use crate::test_pallet::Something;
 use crate::weights::WeightInfo;
 pub use sp_io::{self, storage::root as storage_root};
 use test_pallet::Call as TestPalletCall;
 use frame_system::Call as SystemCall;
-use sp_runtime::traits::{Dispatchable, SignedExtension};
+use sp_runtime::traits::{Dispatchable, SignedExtension, BadOrigin};
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction};
 use GrantedScenario::*;
 use FreeCallScenario::*;
@@ -50,6 +50,20 @@ pub enum FreeCallScenario {
     Granted(GrantedScenario),
     /// The consumer cannot have this free call
     Declined(DeclinedScenario),
+}
+
+fn acc(i: u32) -> AccountId {
+    account("acc", i, i * 2)
+}
+
+trait AsAccountsVec {
+    fn into_accounts(self) -> Vec<AccountId>;
+}
+
+impl AsAccountsVec for Vec<u32> {
+    fn into_accounts(self) -> Vec<AccountId> {
+        self.into_iter().map(|i| acc(i)).collect()
+    }
 }
 
 pub struct TestUtils;
@@ -818,5 +832,65 @@ fn testing_scenario_1() {
                 consumer.clone(),
                 vec![(1, 1), (5, 1), (10, 1)],
             );
+        });
+}
+
+//// Adding eligible accounts tests
+
+#[test]
+fn add_eligible_accounts_should_fail_when_caller_is_non_root() {
+    ExtBuilder::default()
+        .build()
+        .execute_with(|| {
+            let accounts = vec![1, 2, 3, 4].into_accounts().try_into().unwrap();
+            let caller = acc(0);
+
+            assert_noop!(
+                Pallet::<Test>::add_eligible_accounts(Origin::signed(caller), accounts),
+                BadOrigin,
+            );
+        });
+}
+
+#[test]
+fn add_eligible_accounts_should_pass_when_caller_is_root() {
+    ExtBuilder::default()
+        .build()
+        .execute_with(|| {
+            let accounts = vec![1, 2, 3, 4].into_accounts().try_into().unwrap();
+
+            assert_ok!(
+                Pallet::<Test>::add_eligible_accounts(Origin::root(), accounts),
+            );
+        });
+}
+
+#[test]
+fn add_eligible_accounts_should_add_account_to_storage() {
+    ExtBuilder::default()
+        .build()
+        .execute_with(|| {
+
+            assert_eq!(EligibleAccounts::<Test>::iter().count(), 0);
+
+            let accounts_to_add = vec![1, 2, 3, 4].into_accounts().try_into().unwrap();
+            assert_ok!(
+                Pallet::<Test>::add_eligible_accounts(Origin::root(), accounts_to_add),
+            );
+
+            assert!(TestUtils::compare_ignore_order::<AccountId>(
+                &vec![1, 2, 3, 4].into_accounts(),
+                &EligibleAccounts::<Test>::iter_keys().collect()
+            ));
+
+            let accounts_to_add = vec![7, 10, 3].into_accounts().try_into().unwrap();
+            assert_ok!(
+                Pallet::<Test>::add_eligible_accounts(Origin::root(), accounts_to_add),
+            );
+
+            assert!(TestUtils::compare_ignore_order::<AccountId>(
+                &vec![1, 2, 3, 4, 7, 10].into_accounts(),
+                &EligibleAccounts::<Test>::iter_keys().collect()
+            ));
         });
 }

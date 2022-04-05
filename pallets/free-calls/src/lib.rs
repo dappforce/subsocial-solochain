@@ -98,6 +98,11 @@ pub mod pallet {
 
         /// A calculation strategy to convert locked tokens info to a max quota per largest window.
         type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self::BlockNumber, BalanceOf<Self>>;
+
+        /// Maximum number of accounts that can be added as eligible at a time.
+        //TODO: remove this after we integrate locking tokens
+        #[pallet::constant]
+        type AccountsSetLimit: Get<u32>;
     }
 
     /// Keeps track of each windows usage for each consumer.
@@ -111,11 +116,26 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// Keeps track of all eligible accounts for free calls
+    //TODO: remove this after we integrate locking tokens
+    #[pallet::storage]
+    pub(super) type EligibleAccounts<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        bool,
+        ValueQuery,
+    >;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Free call was executed.
         FreeCallResult { who: T::AccountId, result: DispatchResult },
+
+        /// List of eligible accounts added.
+        //TODO: remove this after we integrate locking tokens
+        EligibleAccountsAdded { added_accounts: u16 },
     }
 
     #[pallet::call]
@@ -175,6 +195,23 @@ pub mod pallet {
                 actual_weight: Some(actual_weight),
                 pays_fee: Pays::No,
             })
+        }
+
+        #[pallet::weight(10_000)]
+        pub fn add_eligible_accounts(
+            origin: OriginFor<T>,
+            eligible_accounts: BoundedVec<T::AccountId, T::AccountsSetLimit>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let accounts_len = eligible_accounts.len();
+
+            for eligible_account in eligible_accounts {
+                <EligibleAccounts<T>>::insert(&eligible_account, true);
+            }
+
+            Self::deposit_event(Event::EligibleAccountsAdded { added_accounts: accounts_len as u16 });
+            Ok(Pays::No.into())
         }
     }
 
