@@ -70,7 +70,8 @@ mod free_calls;
 
 use subsocial_primitives::{currency::*, time::*};
 use pallet_free_calls::config::{RateLimiterConfig, WindowConfig};
-use pallet_free_calls::quota_strategy::FreeCallsCalculationStrategy;
+use pallet_free_calls::quota_strategy::{EligibleAccountsStrategy, FreeCallsCalculationStrategy};
+use pallet_free_calls::quota::NumberOfCalls;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -448,6 +449,7 @@ parameter_types! {
         FREE_CALLS_WINDOWS_CONFIGS.to_vec(),
         FREE_CALLS_CONFIG_HASH,
     );
+    pub const FreeQuotaPerEligibleAccount: NumberOfCalls = 100;
 }
 
 impl pallet_free_calls::Config for Runtime {
@@ -456,8 +458,9 @@ impl pallet_free_calls::Config for Runtime {
     type RateLimiterConfig = RateLimiterConfigPram;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
-    type MaxQuotaCalculationStrategy = FreeCallsCalculationStrategy<BlockNumber, Balance>;
+    type MaxQuotaCalculationStrategy = EligibleAccountsStrategy<Self>;
     type AccountsSetLimit = AccountsSetLimit;
+    type FreeQuotaPerEligibleAccount = FreeQuotaPerEligibleAccount;
 }
 
 impl pallet_locker_mirror::Config for Runtime {

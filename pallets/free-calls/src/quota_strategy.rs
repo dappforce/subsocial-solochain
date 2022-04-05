@@ -1,15 +1,46 @@
+use frame_support::pallet_prelude::Get;
 use crate::quota::NumberOfCalls;
-use pallet_locker_mirror::LockedInfo;
+use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoOf};
 use sp_std::cmp::min;
 use sp_std::convert::TryInto;
 use sp_std::marker::PhantomData;
 use subsocial_primitives as primitives;
-use subsocial_primitives::currency;
+use subsocial_primitives::{AccountId, Balance, BlockNumber, currency};
 use subsocial_primitives::time::*;
+use crate::{Config, EligibleAccounts};
 
 /// A strategy used to calculate the MaxQuota of a consumer.
-pub trait MaxQuotaCalculationStrategy<BlockNumber, Balance> {
-    fn calculate(current_block: BlockNumber, locked_info: Option<LockedInfo<BlockNumber, Balance>>) -> Option<NumberOfCalls>;
+pub trait MaxQuotaCalculationStrategy<AccountId, BlockNumber, Balance> {
+    fn calculate(
+        consumer: AccountId,
+        current_block: BlockNumber,
+        locked_info: Option<LockedInfo<BlockNumber, Balance>>,
+    ) -> Option<NumberOfCalls>;
+}
+
+
+/// An implementation of the MaxQuotaCalculationStrategy that grants accounts in the eligible accounts
+/// storage a fixed amount of free calls as max quota.
+pub struct EligibleAccountsStrategy<T: Config>(PhantomData<T>);
+
+impl<T: Config> Default for EligibleAccountsStrategy<T> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<T: Config> MaxQuotaCalculationStrategy<T::AccountId, T::BlockNumber, BalanceOf<T>> for EligibleAccountsStrategy<T> {
+    fn calculate(
+        consumer: T::AccountId,
+        _current_block: T::BlockNumber,
+        _locked_info: Option<LockedInfoOf<T>>,
+    ) -> Option<NumberOfCalls> {
+        if EligibleAccounts::<T>::get(consumer) {
+            Some(T::FreeQuotaPerEligibleAccount::get())
+        } else {
+            None
+        }
+    }
 }
 
 // TODO: try to find a better way to calculate it based on the circulating supply
@@ -44,21 +75,28 @@ const FREE_CALLS_PER_SUB: NumberOfCalls = 10;
 /// | 12 months   |  360 | 100%    |
 /// +-------------+------+---------+
 /// ```
-pub struct FreeCallsCalculationStrategy<BlockNumber, Balance>(
-    PhantomData<BlockNumber>,
-    PhantomData<Balance>,
+pub struct FreeCallsCalculationStrategy<AccountId, BlockNumber, Balance>(
+    PhantomData<(AccountId, BlockNumber, Balance)>,
 );
 
-impl<BlockNumber, Balance> Default for FreeCallsCalculationStrategy<BlockNumber, Balance> {
+impl<AccountId, BlockNumber, Balance> Default for FreeCallsCalculationStrategy<AccountId, BlockNumber, Balance> {
     fn default() -> Self {
-        Self(PhantomData, PhantomData)
+        Self(PhantomData)
     }
 }
 
-impl MaxQuotaCalculationStrategy<primitives::BlockNumber, primitives::Balance>
-    for FreeCallsCalculationStrategy<primitives::BlockNumber, primitives::Balance>
+impl MaxQuotaCalculationStrategy<
+    primitives::AccountId,
+    primitives::BlockNumber,
+    primitives::Balance,
+> for FreeCallsCalculationStrategy<
+        primitives::AccountId,
+        primitives::BlockNumber,
+        primitives::Balance,
+    >
 {
     fn calculate(
+        _consumer: primitives::AccountId,
         current_block: primitives::BlockNumber,
         locked_info: Option<LockedInfo<primitives::BlockNumber, primitives::Balance>>,
     ) -> Option<NumberOfCalls> {
@@ -114,6 +152,7 @@ fn get_utilization_percent(time_locked: primitives::BlockNumber) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use frame_benchmarking::account;
     use pallet_locker_mirror::{LockedInfo, LockedInfoOf};
     use subsocial_primitives::{*, currency::*, time::*};
     use crate::quota::NumberOfCalls;
@@ -208,37 +247,38 @@ mod tests {
         };
 
         ///////////////////////////////////////
+        let consumer = || account("Dummy Consumer", 0, 0);
 
         // Expect none if no locked_info provided
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, None),
+            FreeCallsCalculationStrategy::calculate(consumer(), current_block, None),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(before_current_block, None),
+            FreeCallsCalculationStrategy::calculate(consumer(),before_current_block, None),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(after_current_block, None),
+            FreeCallsCalculationStrategy::calculate(consumer(),after_current_block, None),
             None,
         );
 
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info)),
             expected_quota,
         );
 
         // test expiration
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info_just_expired)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info_just_expired)),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info_expired)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info_expired)),
             None,
         );
         assert_eq!(
-            FreeCallsCalculationStrategy::calculate(current_block, Some(locked_info_not_yet_expired)),
+            FreeCallsCalculationStrategy::calculate(consumer(),current_block, Some(locked_info_not_yet_expired)),
             expected_quota,
         );
 

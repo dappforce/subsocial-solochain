@@ -97,12 +97,17 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
 
         /// A calculation strategy to convert locked tokens info to a max quota per largest window.
-        type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self::BlockNumber, BalanceOf<Self>>;
+        type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self::AccountId, Self::BlockNumber, BalanceOf<Self>>;
 
         /// Maximum number of accounts that can be added as eligible at a time.
         //TODO: remove this after we integrate locking tokens
         #[pallet::constant]
         type AccountsSetLimit: Get<u32>;
+
+        /// Amount of free quota granted to eligible accounts.
+        //TODO: remove this after we integrate locking tokens
+        #[pallet::constant]
+        type FreeQuotaPerEligibleAccount: Get<NumberOfCalls>;
     }
 
     /// Keeps track of each windows usage for each consumer.
@@ -233,7 +238,7 @@ pub mod pallet {
             }
 
             let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
-            let max_quota = match T::MaxQuotaCalculationStrategy::calculate(current_block, locked_info) {
+            let max_quota = match T::MaxQuotaCalculationStrategy::calculate(consumer.clone(), current_block, locked_info) {
                 Some(max_quota) if max_quota > 0 => max_quota,
                 _ => return None,
             };

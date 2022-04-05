@@ -316,7 +316,7 @@ fn dummy() {
         .windows_config(vec![
             WindowConfig::new(1, max_quota_percentage!(100)),
         ])
-        .quota_calculation(|_, _| 100.into())
+        .quota_calculation(|_, _, _| 100.into())
         .build().execute_with(|| {
         let consumer: AccountId = account("Consumer", 2, 1);
 
@@ -331,7 +331,7 @@ fn dummy() {
         .windows_config(vec![
             WindowConfig::new(1, max_quota_percentage!(100)),
         ])
-        .quota_calculation(|_, _| None)
+        .quota_calculation(|_, _, _| None)
         .build().execute_with(|| {
         let consumer: AccountId = account("Consumer", 2, 1);
 
@@ -346,16 +346,19 @@ fn dummy() {
 #[test]
 fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_strategy() {
     thread_local! {
+        static CAPTURED_CONSUMER: RefCell<Option<AccountId>> = RefCell::new(None);
         static CAPTURED_LOCKED_TOKENS: RefCell<Option<LockedInfoOf<Test>>> = RefCell::new(None);
         static CAPTURED_CURRENT_BLOCK: RefCell<Option<BlockNumber>> = RefCell::new(None);
     }
 
+    let get_captured_consumer = || CAPTURED_CONSUMER.with(|x| x.borrow().clone());
     let get_captured_locked_tokens = || CAPTURED_LOCKED_TOKENS.with(|x| x.borrow().clone());
     let get_captured_current_block = || CAPTURED_CURRENT_BLOCK.with(|x| x.borrow().clone());
 
     ExtBuilder::default()
         .windows_config(vec![WindowConfig::new(1, max_quota_percentage!(100))])
-        .quota_calculation(|current_block, locked_tokens| {
+        .quota_calculation(|consumer, current_block, locked_tokens| {
+            CAPTURED_CONSUMER.with(|x| *x.borrow_mut() = Some(consumer));
             CAPTURED_LOCKED_TOKENS.with(|x| *x.borrow_mut() = locked_tokens.clone());
             CAPTURED_CURRENT_BLOCK.with(|x| *x.borrow_mut() = Some(current_block));
 
@@ -365,6 +368,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
         .execute_with(|| {
             let consumer: AccountId = account("Consumer", 0, 0);
 
+            assert_eq!(get_captured_consumer(), None);
             assert_eq!(get_captured_locked_tokens(), None);
             assert_eq!(get_captured_current_block(), None);
 
@@ -372,6 +376,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
 
             TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
 
+            assert_eq!(get_captured_consumer(), Some(consumer.clone()));
             assert_eq!(get_captured_locked_tokens(), None);
             assert_eq!(get_captured_current_block(), Some(11));
 
@@ -385,11 +390,12 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
 
             TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
 
+            assert_eq!(get_captured_consumer(), Some(consumer.clone()));
             assert_eq!(get_captured_locked_tokens(), Some(locked_info.clone()));
             assert_eq!(get_captured_current_block(), Some(55));
 
 
-            //// change locked info and try again
+            //// change locked info and try again, and change consumer
 
             let new_locked_info = TestUtils::random_locked_info();
             <LockedInfoByAccount<Test>>::insert(consumer.clone(), new_locked_info.clone());
@@ -397,6 +403,7 @@ fn locked_token_info_and_current_block_number_will_be_passed_to_the_calculation_
             // Block number is still 55 and quota is 1
             TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));
 
+            assert_eq!(get_captured_consumer(), Some(consumer.clone()));
             assert_eq!(get_captured_locked_tokens(), Some(new_locked_info));
             assert_ne!(get_captured_locked_tokens(), Some(locked_info));
             assert_eq!(get_captured_current_block(), Some(55));
@@ -414,7 +421,7 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
 
     ExtBuilder::default()
         .windows_config(vec![WindowConfig::new(1, max_quota_percentage!(100))])
-        .quota_calculation(|_, _| Some(10))
+        .quota_calculation(|_, _, _| Some(10))
         .call_filter(|call| {
             CAPTURED_CALL.with(|x| *x.borrow_mut() = call.clone().into());
             true
@@ -473,7 +480,7 @@ fn denied_if_call_filter_returns_false() {
     ExtBuilder::default()
         .windows_config(vec![WindowConfig::new(1, max_quota_percentage!(100))])
         .call_filter(|_| ALLOW_CALLS.with(|b| b.borrow().clone()))
-        .quota_calculation(|_,_| Some(1000))
+        .quota_calculation(|_, _,_| Some(1000))
         .build()
         .execute_with(|| {
             let consumer: AccountId = account("Consumer", 0, 0);
@@ -590,7 +597,7 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
         .windows_config(vec![
             WindowConfig::new(20, max_quota_percentage!(100)),
         ])
-        .quota_calculation(|_, _| 5.into())
+        .quota_calculation(|_, _, _| 5.into())
         .build()
         .execute_with(|| {
             let storage = TestUtils::capture_stats_storage();
@@ -631,7 +638,7 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
 fn consumer_with_quota_but_no_previous_usages() {
     ExtBuilder::default()
         .windows_config(vec![ WindowConfig::new(100, max_quota_percentage!(100)) ])
-        .quota_calculation(|_, _| Some(100))
+        .quota_calculation(|_, _, _| Some(100))
         .build()
         .execute_with(|| {
             TestUtils::set_block_number(315);
@@ -677,7 +684,7 @@ fn consumer_with_quota_but_no_previous_usages() {
 fn consumer_with_quota_and_have_previous_usages() {
     ExtBuilder::default()
         .windows_config(vec![ WindowConfig::new(50, max_quota_percentage!(100)) ])
-        .quota_calculation(|_, _| Some(34))
+        .quota_calculation(|_, _, _| Some(34))
         .build()
         .execute_with(|| {
             let consumer: AccountId = account("Consumer", 0, 0);
@@ -738,7 +745,7 @@ fn consumer_with_quota_and_have_previous_usages() {
 #[test]
 fn testing_scenario_1() {
     ExtBuilder::default()
-        .quota_calculation(|_,_| Some(55))
+        .quota_calculation(|_, _,_| Some(55))
         .windows_config(vec![
             WindowConfig::new(100, max_quota_percentage!(100)),
             WindowConfig::new(20, max_quota_percentage!(33.33333)),
