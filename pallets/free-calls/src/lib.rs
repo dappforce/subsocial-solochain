@@ -28,11 +28,19 @@ pub use pallet::*;
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod test_pallet;
+
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod weights;
 pub mod quota;
 pub mod config;
+pub mod quota_strategy;
+pub mod stats;
 
 pub use weights::WeightInfo;
 use frame_support::traits::Contains;
@@ -43,7 +51,7 @@ pub mod pallet {
     use frame_support::weights::{extract_actual_weight, GetDispatchInfo};
     use frame_support::{dispatch::DispatchResult, log, pallet_prelude::*};
     use frame_support::dispatch::PostDispatchInfo;
-    use sp_std::default::Default;
+    use frame_support::metadata::StorageEntryModifier::Default;
     use frame_support::traits::{Contains, IsSubType};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{Dispatchable};
@@ -51,34 +59,14 @@ pub mod pallet {
     use sp_std::boxed::Box;
     use sp_std::cmp::max;
     use sp_std::vec::Vec;
-    use pallet_locker_mirror::{LockedInfoByAccount, LockedInfoOf};
+    use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoByAccount, LockedInfoOf};
     use pallet_utils::bool_to_option;
     use scale_info::TypeInfo;
-    use crate::config::{WindowConfig, WindowsConfigSize};
+    use crate::config::{RateLimiterConfig, WindowConfig, WindowsConfigSize};
     use crate::quota::{calculate_quota, FractionOfMaxQuota, NumberOfCalls};
+    use crate::quota_strategy::MaxQuotaCalculationStrategy;
+    use crate::stats::{ConsumerStats, WindowStats, WindowStatsVec};
     use crate::WeightInfo;
-
-    /// A `BoundedVec` that can hold a list of `ConsumerStats` objects bounded by the size of WindowConfigs.
-    pub type ConsumerStatsVec<T> = BoundedVec<ConsumerStats<<T as frame_system::Config>::BlockNumber>, WindowsConfigSize<T>>;
-
-    /// Keeps track of the executed number of calls per window per consumer (account).
-    #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
-    pub struct ConsumerStats<BlockNumber> {
-        /// The index of this window in the timeline.
-        pub timeline_index: BlockNumber,
-
-        /// The number of calls executed during this window.
-        pub used_calls: NumberOfCalls,
-    }
-
-    impl<BlockNumber> ConsumerStats<BlockNumber> {
-        fn new(timeline_index: BlockNumber) -> Self {
-            ConsumerStats {
-                timeline_index,
-                used_calls: 0,
-            }
-        }
-    }
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -100,7 +88,7 @@ pub mod pallet {
         /// The configurations that will be used to limit the usage of the allocated quota to these
         /// different configs.
         #[pallet::constant]
-        type WindowsConfigs: Get<Vec<WindowConfig<Self::BlockNumber>>>;
+        type RateLimiterConfig: Get<RateLimiterConfig<Self::BlockNumber>>;
 
         /// Filter on which calls are permitted to be free.
         type CallFilter: Contains<<Self as Config>::Call>;
@@ -109,17 +97,38 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
 
         /// A calculation strategy to convert locked tokens info to a max quota per largest window.
-        type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self>;
+        type MaxQuotaCalculationStrategy: MaxQuotaCalculationStrategy<Self::AccountId, Self::BlockNumber, BalanceOf<Self>>;
+
+        /// Maximum number of accounts that can be added as eligible at a time.
+        //TODO: remove this after we integrate locking tokens
+        #[pallet::constant]
+        type AccountsSetLimit: Get<u32>;
+
+        /// Amount of free quota granted to eligible accounts.
+        //TODO: remove this after we integrate locking tokens
+        #[pallet::constant]
+        type FreeQuotaPerEligibleAccount: Get<NumberOfCalls>;
     }
 
     /// Keeps track of each windows usage for each consumer.
     #[pallet::storage]
-    #[pallet::getter(fn window_stats_by_consumer)]
-    pub(super) type WindowStatsByConsumer<T: Config> = StorageMap<
+    #[pallet::getter(fn stats_by_consumer)]
+    pub(super) type StatsByConsumer<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
         T::AccountId,
-        ConsumerStatsVec<T>,
+        ConsumerStats<T>,
+        OptionQuery,
+    >;
+
+    /// Keeps track of all eligible accounts for free calls
+    //TODO: remove this after we integrate locking tokens
+    #[pallet::storage]
+    pub(super) type EligibleAccounts<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        bool,
         ValueQuery,
     >;
 
@@ -128,6 +137,10 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Free call was executed.
         FreeCallResult { who: T::AccountId, result: DispatchResult },
+
+        /// List of eligible accounts added.
+        //TODO: remove this after we integrate locking tokens
+        EligibleAccountsAdded { added_accounts: u16 },
     }
 
     #[pallet::call]
@@ -188,6 +201,23 @@ pub mod pallet {
                 pays_fee: Pays::No,
             })
         }
+
+        #[pallet::weight(10_000)]
+        pub fn add_eligible_accounts(
+            origin: OriginFor<T>,
+            eligible_accounts: BoundedVec<T::AccountId, T::AccountsSetLimit>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let accounts_len = eligible_accounts.len();
+
+            for eligible_account in eligible_accounts {
+                <EligibleAccounts<T>>::insert(&eligible_account, true);
+            }
+
+            Self::deposit_event(Event::EligibleAccountsAdded { added_accounts: accounts_len as u16 });
+            Ok(Pays::No.into())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -195,33 +225,44 @@ pub mod pallet {
         ///
         /// If the consumer can have a free call the new stats that should be applied will be returned,
         /// otherwise `None` is returned.
-        pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStatsVec<T>> {
+        pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStats<T>> {
             let current_block = <frame_system::Pallet<T>>::block_number();
 
-            let windows_configs = T::WindowsConfigs::get();
+            let RateLimiterConfig::<T::BlockNumber> {
+                windows_configs,
+                hash: config_hash,
+            } = T::RateLimiterConfig::get();
 
             if windows_configs.is_empty() {
                 return None;
             }
 
             let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
-            let max_quota = match T::MaxQuotaCalculationStrategy::calculate(current_block, locked_info) {
+            let max_quota = match T::MaxQuotaCalculationStrategy::calculate(consumer.clone(), current_block, locked_info) {
                 Some(max_quota) if max_quota > 0 => max_quota,
                 _ => return None,
             };
 
-            let old_stats: ConsumerStatsVec<T> = Self::window_stats_by_consumer(consumer.clone());
-            let mut new_stats: ConsumerStatsVec<T> = Default::default();
+            let get_empty_stats = || ConsumerStats::new(
+                WindowStatsVec::default(),
+                config_hash,
+            );
+
+            let old_stats: ConsumerStats<T> = Self::stats_by_consumer(consumer.clone())
+                .filter(|stats| stats.config_hash == config_hash) // filter out stats with a different config hash
+                .unwrap_or_else(get_empty_stats);
+
+            let mut new_stats: ConsumerStats<T> = get_empty_stats();
 
             for (config_index, config) in windows_configs.into_iter().enumerate() {
                 let window_stats = Self::is_call_allowed_in_window(
                     current_block,
                     max_quota,
                     config,
-                    old_stats.get(config_index),
+                    old_stats.get_window_stats(config_index),
                 )?;
 
-                new_stats.try_push(window_stats).ok()?;
+                new_stats.try_push_window_stats(window_stats).ok()?;
             }
 
             return Some(new_stats);
@@ -236,8 +277,8 @@ pub mod pallet {
             current_block: T::BlockNumber,
             max_quota: NumberOfCalls,
             config: WindowConfig<T::BlockNumber>,
-            window_stats: Option<&ConsumerStats<T::BlockNumber>>,
-        ) -> Option<ConsumerStats<T::BlockNumber>> {
+            window_stats: Option<&WindowStats<T::BlockNumber>>,
+        ) -> Option<WindowStats<T::BlockNumber>> {
 
             if config.period.is_zero() {
                 return None;
@@ -245,7 +286,7 @@ pub mod pallet {
 
             let current_timeline_index = current_block / config.period;
 
-            let reset_stats = || ConsumerStats::new(current_timeline_index);
+            let reset_stats = || WindowStats::new(current_timeline_index);
 
             let mut stats = window_stats
                 .map(|r| r.clone())
@@ -264,18 +305,13 @@ pub mod pallet {
             })
         }
 
-        pub fn update_consumer_stats(consumer: T::AccountId, new_stats: ConsumerStatsVec<T>) {
+        pub fn update_consumer_stats(consumer: T::AccountId, new_stats: ConsumerStats<T>) {
             log::info!("{:?} updating consumer stats", consumer);
-            <WindowStatsByConsumer<T>>::insert(
+            <StatsByConsumer<T>>::insert(
                 consumer,
                 new_stats,
             );
         }
-    }
-
-
-    pub trait MaxQuotaCalculationStrategy<T: Config> {
-        fn calculate(current_block: T::BlockNumber, locked_info: Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
     }
 }
 
