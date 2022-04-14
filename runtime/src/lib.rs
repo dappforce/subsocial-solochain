@@ -444,7 +444,7 @@ impl Contains<Call> for BaseFilter {
 }
 
 parameter_types! {
-    pub RateLimiterConfigPram: RateLimiterConfig<BlockNumber> = RateLimiterConfig::new(
+    pub RateLimiterConfigParam: RateLimiterConfig<BlockNumber> = RateLimiterConfig::new(
         FREE_CALLS_WINDOWS_CONFIGS.to_vec(),
         FREE_CALLS_CONFIG_HASH,
     );
@@ -453,7 +453,7 @@ parameter_types! {
 impl pallet_free_calls::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    type RateLimiterConfig = RateLimiterConfigPram;
+    type RateLimiterConfig = RateLimiterConfigParam;
     type CallFilter = FreeCallsFilter;
     type WeightInfo = ();
     type MaxQuotaCalculationStrategy = FreeCallsCalculationStrategy<BlockNumber, Balance>;

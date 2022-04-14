@@ -6,7 +6,7 @@ use crate::quota::NumberOfCalls;
 use scale_info::TypeInfo;
 use crate::Config;
 
-/// A collection of windows_stats along with a hash of the config used to validate the windows.
+/// A collection of windows stats along with a hash of the config used to validate the windows.
 ///
 /// The [config_hash] can be used to detect if the the config did change in a Runtime upgrade.
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -37,13 +37,13 @@ impl<T: Config> ConsumerStats<T> {
 /// A `BoundedVec` that can hold a list of `WindowStats` objects bounded by the size of WindowConfigs.
 pub type WindowStatsVec<T> = BoundedVec<WindowStats<<T as frame_system::Config>::BlockNumber>, WindowsConfigSize<T>>;
 
-/// Keeps track of the executed number of calls per window per consumer (account).
+/// Keeps track of the executed number of free calls per window per consumer (account).
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct WindowStats<BlockNumber> {
     /// The index of this window in the timeline.
     pub timeline_index: BlockNumber,
 
-    /// The number of calls executed during this window.
+    /// The number of free calls executed during this window.
     pub used_calls: NumberOfCalls,
 }
 

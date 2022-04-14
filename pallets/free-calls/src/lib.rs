@@ -195,16 +195,16 @@ pub mod pallet {
                 _ => return None,
             };
 
-            let get_empty_stats = || ConsumerStats::new(
+            let get_default_stats = || ConsumerStats::new(
                 WindowStatsVec::default(),
                 config_hash,
             );
 
             let old_stats: ConsumerStats<T> = Self::stats_by_consumer(consumer.clone())
                 .filter(|stats| stats.config_hash == config_hash) // filter out stats with a different config hash
-                .unwrap_or_else(get_empty_stats);
+                .unwrap_or_else(get_default_stats);
 
-            let mut new_stats: ConsumerStats<T> = get_empty_stats();
+            let mut new_stats: ConsumerStats<T> = get_default_stats();
 
             for (config_index, config) in windows_configs.into_iter().enumerate() {
                 let window_stats = Self::is_call_allowed_in_window(

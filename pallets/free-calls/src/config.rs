@@ -102,6 +102,7 @@ pub const fn check_free_calls_config(configs: &'static [WindowConfig<primitives:
 }
 
 /// Create a hash for a collection of windows config.
+/// We call this function at compile time.
 pub const fn hash_windows_configs(configs: &'static [WindowConfig<primitives::BlockNumber>]) -> ConfigHash {
     let mut hash = 7u64;
     let mut i = 0;
