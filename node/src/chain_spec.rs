@@ -137,11 +137,15 @@ pub fn subsocial_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/subsocial.json")[..])
 }
 
+pub fn soonsocial_config() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&include_bytes!("../res/soonsocial.json")[..])
+}
+
 pub fn subsocial_staging_config() -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Staging wasm binary not available".to_string())?;
 
     Ok(ChainSpec::from_genesis(
-        "Subsocial Staging",
+        "SoonSocial",
         "subsocial",
         ChainType::Live,
         move || testnet_genesis(
@@ -149,9 +153,15 @@ pub fn subsocial_staging_config() -> Result<ChainSpec, String> {
             vec![
                 (
                     /* AuraId SR25519 */
-                    hex!["e6c7c6e02890bd7d762dadc7bf2b2bfd28931ae51b48780399f78950a477c760"].unchecked_into(),
+                    hex!["acdcc09f7dc4e55353d89ed441f7a6e748a57b71fd21b641bec65e19fe1dac46"].unchecked_into(),
                     /* GrandpaId ED25519 */
-                    hex!["71d83b01f2ffe5a0b44b1056c3bb6e3c537f6d9588a0342d3de6fae4b2c16442"].unchecked_into()
+                    hex!["51005ea936bf7e7118c448b20320a658ca614426fc91018182fe011f90b03141"].unchecked_into()
+                ),
+                (
+                    /* AuraId SR25519 */
+                    hex!["46c8a0343fe04761653c088c2c7bcfdcdd46a113c5cfd8cb36c8c134da274a37"].unchecked_into(),
+                    /* GrandpaId ED25519 */
+                    hex!["acf25bba3d550f197d2cd3012842925204d0a99f97645d7a3991c11fa50027bb"].unchecked_into()
                 ),
             ],
             /* Sudo Account */
@@ -161,11 +171,11 @@ pub fn subsocial_staging_config() -> Result<ChainSpec, String> {
                     /* Sudo Account */
                     hex!["ce7035e9f36c57ac8c3cc016b150ee5d36da10c4417c45e30c62c2f627f19d36"].into(),
                     /* Balance */
-                    1_000
+                    1_000_000_000
                 ),
             ],
             // Treasury
-            hex!["24d6d683750c4c10e90dd81430efec95133e1ec1f5be781d3267390d03174706"].into(),
+            hex!["222c69e0bba9f913c4941aa35d3ad80164a1ade36b517383f438a52d868a880a"].into(),
             true,
         ),
         vec![],

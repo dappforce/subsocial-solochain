@@ -41,7 +41,7 @@ pub use frame_support::{
     traits::{
         KeyOwnerProofSystem, Randomness, Currency,
         Imbalance, OnUnbalanced, Contains,
-        OnRuntimeUpgrade, StorageInfo,
+        OnRuntimeUpgrade, StorageInfo, Everything,
     },
     weights::{
         Weight, IdentityFee, DispatchClass,
@@ -170,7 +170,7 @@ const_assert!(NORMAL_DISPATCH_RATIO.deconstruct() >= AVERAGE_ON_INITIALIZE_RATIO
 
 impl frame_system::Config for Runtime {
     /// The basic call filter to use in dispatchable.
-    type BaseCallFilter = BaseFilter;
+    type BaseCallFilter = Everything;
     /// Block & extrinsics weights: base values and limits.
     type BlockWeights = RuntimeBlockWeights;
     /// The maximum length of a block (in bytes).
