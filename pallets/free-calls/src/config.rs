@@ -77,7 +77,7 @@ pub const fn check_free_calls_config(configs: &'static [WindowConfig<primitives:
 
     let mut prev_config = &configs[0];
     // A fraction of the first config should be equal to the quota precision.
-    if prev_config.fraction_of_max_quota.get() != QUOTA_PRECISION {
+    if prev_config.fraction_of_max_quota != QUOTA_PRECISION {
         return false;
     }
 
@@ -90,7 +90,7 @@ pub const fn check_free_calls_config(configs: &'static [WindowConfig<primitives:
             return false;
         }
 
-        if current_config.fraction_of_max_quota.get() >= prev_config.fraction_of_max_quota.get() {
+        if current_config.fraction_of_max_quota >= prev_config.fraction_of_max_quota {
             return false;
         }
 
@@ -118,7 +118,7 @@ pub const fn hash_windows_configs(configs: &'static [WindowConfig<primitives::Bl
 pub const fn hash_window_config(config: &'static WindowConfig<primitives::BlockNumber>) -> ConfigHash {
     let mut hash = 7u64;
     hash = 31 * hash + config.period as u64;
-    hash = 31 * hash + config.fraction_of_max_quota.get() as u64;
+    hash = 31 * hash + config.fraction_of_max_quota as u64;
     hash
 }
 
