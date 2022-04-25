@@ -1,5 +1,4 @@
 use sp_std::cmp::max;
-use sp_std::num::NonZeroU16;
 use static_assertions::const_assert;
 
 /// Type to keep track of how many calls of the quota were used in a particular window.
@@ -37,7 +36,7 @@ pub type MaxQuota = NumberOfCalls;
 ///     - 5 fractions of max quota is 0.5%
 ///     - 10 fractions of max quota is 1%
 ///     - 333 fractions of max quota is 33.3%
-pub type FractionOfMaxQuota = NonZeroU16;
+pub type FractionOfMaxQuota = u16;
 
 /// The number used to evaluate the [FractionOfMaxQuota].
 ///
@@ -65,11 +64,11 @@ pub(crate) fn calculate_quota(max_quota: MaxQuota, fraction: FractionOfMaxQuota)
     if max_quota == 0 {
         return 0;
     }
-    if fraction.get() >= QUOTA_PRECISION {
+    if fraction >= QUOTA_PRECISION {
         return max_quota;
     }
     // we need to cast to u64 to avoid overflowing.
-    max(1, (max_quota as u64 * fraction.get() as u64 / QUOTA_PRECISION as u64) as NumberOfCalls)
+    max(1, (max_quota as u64 * fraction as u64 / QUOTA_PRECISION as u64) as NumberOfCalls)
 }
 
 /// A convenience macro used to convert a floating number representing a percentage to non-zero
@@ -80,10 +79,10 @@ macro_rules! max_quota_percentage {
         $crate::__validate_percentage!($percentage);
         let fraction =
             ($crate::quota::QUOTA_PRECISION as f32 * ($percentage as f32) / 100f32) as u16;
-        match $crate::quota::FractionOfMaxQuota::new(fraction) {
-            Some(non_zero) => non_zero,
-            None => panic!("quota_fraction must be non zero"),
+        if fraction == 0 {
+            panic!("quota_fraction must be non zero");
         }
+        fraction
     }};
 }
 
@@ -124,7 +123,7 @@ mod tests {
         #[case] multiplier: f32,
     ) {
         assert_eq!(
-            max_quota_percentage!(percentage).get(),
+            max_quota_percentage!(percentage),
             (QUOTA_PRECISION as f32 * multiplier) as u16,
             "max_quota_percentage {}%",
             percentage,
