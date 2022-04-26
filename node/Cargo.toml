@@ -32,6 +32,7 @@ jsonrpc-core = '18.0.0'
 subsocial-runtime = { path = '../runtime' }
 subsocial-primitives = { path = '../primitives' }
 
+free-calls-rpc = { path = '../pallets/free-calls/rpc' }
 space-follows-rpc = { path = '../pallets/space-follows/rpc' }
 spaces-rpc = { path = '../pallets/spaces/rpc' }
 posts-rpc = { path = '../pallets/posts/rpc' }

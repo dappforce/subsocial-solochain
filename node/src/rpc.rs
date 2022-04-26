@@ -33,6 +33,7 @@ pub fn create_full<C, P>(deps: FullDeps<C, P>) -> jsonrpc_core::IoHandler<sc_rpc
         C: Send + Sync + 'static,
         C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
         C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+        C::Api: free_calls_rpc::FreeCallsRuntimeApi<Block, AccountId, BlockNumber>,
         C::Api: posts_rpc::PostsRuntimeApi<Block, AccountId, BlockNumber>,
         C::Api: profile_follows_rpc::ProfileFollowsRuntimeApi<Block, AccountId>,
         C::Api: profiles_rpc::ProfilesRuntimeApi<Block, AccountId, BlockNumber>,
@@ -46,6 +47,7 @@ pub fn create_full<C, P>(deps: FullDeps<C, P>) -> jsonrpc_core::IoHandler<sc_rpc
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
+    use free_calls_rpc::{FreeCalls, FreeCallsApi};
     use posts_rpc::{Posts, PostsApi};
     use profile_follows_rpc::{ProfileFollows, ProfileFollowsApi};
     use profiles_rpc::{Profiles, ProfilesApi};
@@ -60,6 +62,8 @@ pub fn create_full<C, P>(deps: FullDeps<C, P>) -> jsonrpc_core::IoHandler<sc_rpc
     io.extend_with(SystemApi::to_delegate(FullSystem::new(client.clone(), pool, deny_unsafe)));
 
     io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client.clone())));
+
+    io.extend_with(FreeCallsApi::to_delegate(FreeCalls::new(client.clone())));
 
     io.extend_with(SpacesApi::to_delegate(Spaces::new(client.clone())));
 

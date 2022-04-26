@@ -1,0 +1,48 @@
+[package]
+name = 'free-calls-rpc'
+version = '0.7.2'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'RPC methods for the free-calls pallet'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
+
+[dependencies.serde]
+optional = true
+features = ['derive']
+version = '1.0.119'
+
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '2.0.0'
+
+[dependencies]
+jsonrpc-core = '18.0.0'
+jsonrpc-core-client = '18.0.0'
+jsonrpc-derive = '18.0.0'
+
+# Local dependencies
+pallet-utils = { default-features = false, path = '../../utils' }
+
+# Custom Runtime API
+free-calls-runtime-api = { default-features = false, path = 'runtime-api' }
+
+# Substrate dependencies
+sp-api = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-blockchain = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-rpc = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+
+[features]
+default = ['std']
+std = [
+  'serde',
+  'sp-runtime/std',
+  'sp-api/std',
+  'free-calls-runtime-api/std',
+]

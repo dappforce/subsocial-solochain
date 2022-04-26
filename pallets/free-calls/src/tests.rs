@@ -316,8 +316,9 @@ fn dummy() {
         .quota_calculation(|_, _, _| 100.into())
         .build().execute_with(|| {
         let consumer: AccountId = account("Consumer", 2, 1);
+        let current_block = System::block_number();
 
-        let can_have_free_call = <Pallet<Test>>::can_make_free_call(&consumer).is_some();
+        let can_have_free_call = <Pallet<Test>>::can_make_free_call(&consumer, current_block).is_some();
         assert!(can_have_free_call);
 
         TestUtils::assert_try_free_call_works(consumer.clone(), Granted(Succeeded));
@@ -331,8 +332,9 @@ fn dummy() {
         .quota_calculation(|_, _, _| None)
         .build().execute_with(|| {
         let consumer: AccountId = account("Consumer", 2, 1);
+        let current_block = System::block_number();
 
-        let can_have_free_call = <Pallet<Test>>::can_make_free_call(&consumer).is_some();
+        let can_have_free_call = <Pallet<Test>>::can_make_free_call(&consumer, current_block).is_some();
         assert_eq!(can_have_free_call, false);
 
         TestUtils::assert_try_free_call_works(consumer.clone(), Declined(OutOfQuota));

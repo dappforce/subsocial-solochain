@@ -174,8 +174,10 @@ pub mod pallet {
 
             let mut actual_weight = <T as Config>::WeightInfo::try_free_call();
 
+            let current_block = <frame_system::Pallet<T>>::block_number();
+
             let maybe_new_stats = bool_to_option(T::CallFilter::contains(&call))
-                .and_then(|_| Self::can_make_free_call(&consumer));
+                .and_then(|_| Self::can_make_free_call(&consumer, current_block));
 
             if let Some(new_stats) = maybe_new_stats {
 
@@ -225,9 +227,10 @@ pub mod pallet {
         ///
         /// If the consumer can have a free call the new stats that should be applied will be returned,
         /// otherwise `None` is returned.
-        pub fn can_make_free_call(consumer: &T::AccountId) -> Option<ConsumerStats<T>> {
-            let current_block = <frame_system::Pallet<T>>::block_number();
-
+        pub fn can_make_free_call(
+            consumer: &T::AccountId,
+            current_block: T::BlockNumber,
+        ) -> Option<ConsumerStats<T>> {
             let RateLimiterConfig::<T::BlockNumber> {
                 windows_configs,
                 hash: config_hash,
@@ -237,10 +240,9 @@ pub mod pallet {
                 return None;
             }
 
-            let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
-            let max_quota = match T::MaxQuotaCalculationStrategy::calculate(consumer.clone(), current_block, locked_info) {
-                Some(max_quota) if max_quota > 0 => max_quota,
-                _ => return None,
+            let max_quota = match Self::get_max_quota(consumer.clone(), current_block) {
+                0 => return None,
+                max_quota => max_quota,
             };
 
             let get_default_stats = || ConsumerStats::new(
@@ -311,6 +313,17 @@ pub mod pallet {
                 consumer,
                 new_stats,
             );
+        }
+
+        pub fn get_max_quota(
+            consumer: T::AccountId,
+            current_block: T::BlockNumber,
+        ) -> NumberOfCalls {
+            let locked_info = <LockedInfoByAccount<T>>::get(consumer.clone());
+            return match T::MaxQuotaCalculationStrategy::calculate(consumer.clone(), current_block, locked_info) {
+                Some(max_quota) => max_quota,
+                _ => Zero::zero(),
+            }
         }
     }
 }
@@ -388,12 +401,14 @@ impl<T: Config + Send + Sync> SignedExtension for FreeCallsPrevalidation<T>
     ) -> TransactionValidity {
         if let Some(local_call) = call.is_sub_type() {
             if let Call::try_free_call { call: boxed_call } = local_call {
+                let current_block = <frame_system::Pallet<T>>::block_number();
+
                 ensure!(
                     T::CallFilter::contains(boxed_call),
                     InvalidTransaction::Custom(FreeCallsValidityError::CallCannotBeFree.into()),
                 );
                 ensure!(
-                    Pallet::<T>::can_make_free_call(who).is_some(),
+                    Pallet::<T>::can_make_free_call(who, current_block).is_some(),
                     InvalidTransaction::Custom(FreeCallsValidityError::OutOfQuota.into()),
                 );
             }

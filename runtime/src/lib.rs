@@ -818,6 +818,17 @@ impl_runtime_apis! {
 		}
 	}
 
+    impl free_calls_runtime_api::FreeCallsApi<Block, AccountId, BlockNumber> for Runtime
+    {
+    	fn get_max_quota(account: AccountId, block_number: BlockNumber) -> NumberOfCalls {
+    		FreeCalls::get_max_quota(account, block_number)
+    	}
+
+    	fn can_make_free_call(account: AccountId, block_number: BlockNumber) -> bool {
+    		FreeCalls::can_make_free_call(&account, block_number).is_some()
+    	}
+    }
+
 	impl space_follows_runtime_api::SpaceFollowsApi<Block, AccountId> for Runtime
     {
     	fn get_space_ids_followed_by_account(account: AccountId) -> Vec<SpaceId> {

@@ -1,0 +1,40 @@
+[package]
+name = 'free-calls-runtime-api'
+version = '0.7.2'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'Runtime API definition for the free-calls pallet'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
+
+[dependencies.serde]
+optional = true
+features = ["derive"]
+version = "1.0.119"
+
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '2.0.0'
+
+[dependencies]
+pallet-free-calls = { default-features = false, path = "../.." }
+
+# Substrate dependencies
+sp-api = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-runtime = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+sp-std = { git = 'https://github.com/paritytech/substrate', branch = 'polkadot-v0.9.12', default-features = false }
+
+[features]
+default = ['std']
+std = [
+	'serde',
+	'sp-api/std',
+	'sp-std/std',
+	'sp-runtime/std',
+	'pallet-free-calls/std',
+]

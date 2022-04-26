@@ -1673,6 +1673,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "free-calls-rpc"
+version = "0.7.2"
+dependencies = [
+ "free-calls-runtime-api",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "free-calls-runtime-api"
+version = "0.7.2"
+dependencies = [
+ "pallet-free-calls",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "fs-swap"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7456,6 +7485,7 @@ version = "0.7.3"
 dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
+ "free-calls-rpc",
  "hex-literal",
  "jsonrpc-core",
  "pallet-transaction-payment-rpc",
@@ -7522,6 +7552,7 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "free-calls-runtime-api",
  "hex-literal",
  "pallet-aura",
  "pallet-balances",
