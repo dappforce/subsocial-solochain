@@ -40,6 +40,7 @@ parameter_types! {
 }
 
 pub struct TestBaseCallFilter;
+
 impl Contains<Call> for TestBaseCallFilter {
     fn contains(c: &Call) -> bool {
         match *c {
@@ -111,10 +112,12 @@ impl test_pallet::Config for Test {
 
 
 type CallFilterFn = fn(&Call) -> bool;
+
 static DEFAULT_CALL_FILTER_FN: CallFilterFn = |_| true;
 
 type QuotaCalculationFn<T> = fn(<T as frame_system::Config>::BlockNumber, Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
-static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |current_block, locked_info| {
+
+static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |_, _| {
     return Some(10);
 };
 
@@ -137,6 +140,7 @@ thread_local! {
 }
 
 pub struct TestCallFilter;
+
 impl Contains<Call> for TestCallFilter {
     fn contains(call: &Call) -> bool {
         CALL_FILTER.with(|filter| filter.borrow()(call))
@@ -144,6 +148,7 @@ impl Contains<Call> for TestCallFilter {
 }
 
 pub struct TestQuotaCalculation;
+
 impl pallet_free_calls::quota_strategy::MaxQuotaCalculationStrategy<<Test as frame_system::Config>::BlockNumber, BalanceOf<Test>> for TestQuotaCalculation {
     fn calculate(
         current_block: <Test as frame_system::Config>::BlockNumber,
@@ -168,6 +173,7 @@ pub struct ExtBuilder {
     windows_config: Vec<WindowConfig<BlockNumber>>,
     config_hash: ConfigHash,
 }
+
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
@@ -178,6 +184,7 @@ impl Default for ExtBuilder {
         }
     }
 }
+
 impl ExtBuilder {
     pub fn call_filter(mut self, call_filter: CallFilterFn) -> Self {
         self.call_filter = call_filter;

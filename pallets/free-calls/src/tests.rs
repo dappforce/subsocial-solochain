@@ -49,6 +49,7 @@ pub enum FreeCallScenario {
 }
 
 pub struct TestUtils;
+
 impl TestUtils {
     pub fn set_block_number(n: BlockNumber) {
         <frame_system::Pallet<Test>>::set_block_number(n)
@@ -221,7 +222,7 @@ impl TestUtils {
                     events,
                     vec![
                         Event::from(test_pallet::Event::ValueStored(something, consumer.clone())),
-                        Event::from(pallet_free_calls::Event::FreeCallResult{
+                        Event::from(pallet_free_calls::Event::FreeCallResult {
                             who: consumer.clone(),
                             result: Ok(()),
                         }),
@@ -237,7 +238,7 @@ impl TestUtils {
                 assert_eq!(
                     events,
                     vec![
-                        Event::from(pallet_free_calls::Event::FreeCallResult{
+                        Event::from(pallet_free_calls::Event::FreeCallResult {
                             who: consumer.clone(),
                             result: Err(test_pallet::Error::<Test>::DoNotSendZero.into()),
                         }),
@@ -439,8 +440,8 @@ fn boxed_call_will_be_passed_to_the_call_filter() {
                 Box::new(TestPalletCall::<Test>::store_value {something: 12}.into()),
             ));
 
-            assert_ne!(get_captured_call(), Some(TestPalletCall::<Test>::store_value {something: 21}.into()));
-            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::store_value {something: 12}.into()));
+            assert_ne!(get_captured_call(), Some(TestPalletCall::<Test>::store_value { something: 21 }.into()));
+            assert_eq!(get_captured_call(), Some(TestPalletCall::<Test>::store_value { something: 12 }.into()));
         });
 }
 
@@ -455,7 +456,7 @@ fn denied_if_call_filter_returns_false() {
     ExtBuilder::default()
         .windows_config(vec![WindowConfig::new(1, max_quota_percentage!(100))])
         .call_filter(|_| ALLOW_CALLS.with(|b| b.borrow().clone()))
-        .quota_calculation(|_,_| Some(1000))
+        .quota_calculation(|_, _| Some(1000))
         .build()
         .execute_with(|| {
             let consumer: AccountId = account("Consumer", 0, 0);
@@ -612,7 +613,9 @@ fn donot_exceed_the_allowed_quota_with_one_window() {
 #[test]
 fn consumer_with_quota_but_no_previous_usages() {
     ExtBuilder::default()
-        .windows_config(vec![ WindowConfig::new(100, max_quota_percentage!(100)) ])
+        .windows_config(vec![
+            WindowConfig::new(100, max_quota_percentage!(100)),
+        ])
         .quota_calculation(|_, _| Some(100))
         .build()
         .execute_with(|| {
@@ -658,7 +661,9 @@ fn consumer_with_quota_but_no_previous_usages() {
 #[test]
 fn consumer_with_quota_and_have_previous_usages() {
     ExtBuilder::default()
-        .windows_config(vec![ WindowConfig::new(50, max_quota_percentage!(100)) ])
+        .windows_config(vec![
+            WindowConfig::new(50, max_quota_percentage!(100)),
+        ])
         .quota_calculation(|_, _| Some(34))
         .build()
         .execute_with(|| {
@@ -712,7 +717,6 @@ fn consumer_with_quota_and_have_previous_usages() {
                 consumer.clone(),
                 vec![(2, 1)],
             );
-
         });
 }
 
@@ -720,7 +724,7 @@ fn consumer_with_quota_and_have_previous_usages() {
 #[test]
 fn testing_scenario_1() {
     ExtBuilder::default()
-        .quota_calculation(|_,_| Some(55))
+        .quota_calculation(|_, _| Some(55))
         .windows_config(vec![
             WindowConfig::new(100, max_quota_percentage!(100)),
             WindowConfig::new(20, max_quota_percentage!(33.33333)),
