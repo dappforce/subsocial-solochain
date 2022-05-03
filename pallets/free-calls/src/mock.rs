@@ -1,39 +1,29 @@
-use std::cell::RefCell;
+use frame_support::{parameter_types, traits::Contains};
+use frame_system as system;
+use frame_system::EnsureRoot;
 use sp_core::H256;
 use sp_io::TestExternalities;
-use sp_runtime::{generic, traits::{BlakeTwo256, IdentityLookup}};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_std::cell::RefCell;
+
+use pallet_locker_mirror::{BalanceOf, LockedInfoOf};
 
 pub use crate as pallet_free_calls;
-
-use crate::test_pallet;
-
-use frame_support::{
-    parameter_types,
-};
-use frame_support::traits::{Contains};
-use frame_system as system;
-use frame_system::{EnsureRoot};
-use pallet_locker_mirror::{BalanceOf, LockedInfoOf};
 use crate::config::{ConfigHash, RateLimiterConfig, WindowConfig};
 use crate::max_quota_percentage;
 use crate::quota::NumberOfCalls;
+use crate::test_pallet;
 
 pub(crate) type AccountId = subsocial_primitives::AccountId;
 pub(crate) type BlockNumber = subsocial_primitives::BlockNumber;
 pub(crate) type Balance = subsocial_primitives::Balance;
-/// Opaque block header type.
-pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
-/// Opaque block type.
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-/// Opaque block identifier type.
-pub type BlockId = generic::BlockId<Block>;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 
 frame_support::construct_runtime!(
     pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
+        Block = subsocial_primitives::Block,
+        NodeBlock = subsocial_primitives::Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: system::{Pallet, Call, Config, Storage, Event<T>},
@@ -75,7 +65,7 @@ impl system::Config for Test {
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
+    type Header = subsocial_primitives::Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();

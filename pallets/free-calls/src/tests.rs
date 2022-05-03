@@ -1,32 +1,28 @@
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::RefCell;
-use std::convert::TryInto;
 use frame_benchmarking::account;
-use frame_support::{assert_err, assert_noop, assert_ok, assert_storage_noop, BoundedVec, debug, fail};
-use frame_support::log::info;
-use frame_support::weights::{extract_actual_weight, Pays, PostDispatchInfo};
-use frame_system::{EventRecord};
-use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
-use crate::mock::*;
+use frame_support::{assert_ok, weights::{GetDispatchInfo, Pays, PostDispatchInfo}};
+use frame_system::EventRecord;
 use rand::{Rng, thread_rng};
-use sp_core::crypto::UncheckedInto;
-use sp_runtime::testing::H256;
-use subsocial_primitives::Block;
-use crate::{Config, FreeCallsPrevalidation, FreeCallsValidityError, max_quota_percentage, pallet as free_calls, Pallet, StatsByConsumer, test_pallet};
-use frame_support::weights::GetDispatchInfo;
-use crate::test_pallet::Something;
-use crate::weights::WeightInfo;
 pub use sp_io::{self, storage::root as storage_root};
-use test_pallet::Call as TestPalletCall;
-use frame_system::Call as SystemCall;
-use sp_runtime::traits::{Dispatchable, SignedExtension};
-use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction};
-use GrantedScenario::*;
-use FreeCallScenario::*;
+use sp_runtime::{
+    testing::H256, traits::SignedExtension,
+    transaction_validity::{
+        InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction,
+    },
+};
+use sp_std::{cell::RefCell, convert::TryInto};
+
 use DeclinedScenario::*;
-use crate::config::WindowConfig;
-use crate::quota::NumberOfCalls;
-use crate::stats::{ConsumerStats, WindowStats, WindowStatsVec};
+use FreeCallScenario::*;
+use GrantedScenario::*;
+use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
+use test_pallet::Call as TestPalletCall;
+
+use crate::{
+    Config, config::WindowConfig, FreeCallsPrevalidation, FreeCallsValidityError, max_quota_percentage,
+    mock::*, Pallet, pallet as free_calls, quota::NumberOfCalls,
+    stats::{ConsumerStats, WindowStats, WindowStatsVec},
+    StatsByConsumer, test_pallet, test_pallet::Something,
+};
 
 #[derive(Debug)]
 pub enum GrantedScenario {
@@ -106,7 +102,7 @@ impl TestUtils {
     }
 
     pub fn random_locked_info() -> LockedInfoOf<Test> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         LockedInfoOf::<Test> {
             locked_amount: rng.gen_range(0..BalanceOf::<Test>::max_value()).into(),
             locked_at: rng.gen_range(0..<Test as frame_system::Config>::BlockNumber::max_value()).into(),
@@ -151,7 +147,7 @@ impl TestUtils {
         let old_something = <Something<Test>>::get();
         let something = match scenario {
             Granted(Errored) => 0, // zero should cause an error
-            _ => rand::thread_rng().gen_range(1..1024), // other values should be okay
+            _ => thread_rng().gen_range(1..1024), // other values should be okay
         };
 
         println!(
