@@ -115,9 +115,9 @@ type CallFilterFn = fn(&Call) -> bool;
 
 static DEFAULT_CALL_FILTER_FN: CallFilterFn = |_| true;
 
-type QuotaCalculationFn<T> = fn(<T as frame_system::Config>::BlockNumber, Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
+type QuotaCalculationFn<T> = fn(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::BlockNumber, Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
 
-static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |_, _| {
+static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |consumer, current_block, locked_info| {
     return Some(10);
 };
 
@@ -132,6 +132,7 @@ parameter_types! {
         DEFAULT_WINDOWS_CONFIG.to_vec(),
         DEFAULT_CONFIG_HASH,
     );
+    pub const AccountsSetLimit: u32 = 10;
 }
 
 thread_local! {
@@ -149,13 +150,21 @@ impl Contains<Call> for TestCallFilter {
 
 pub struct TestQuotaCalculation;
 
-impl pallet_free_calls::quota_strategy::MaxQuotaCalculationStrategy<<Test as frame_system::Config>::BlockNumber, BalanceOf<Test>> for TestQuotaCalculation {
+impl pallet_free_calls::quota_strategy::MaxQuotaCalculationStrategy<
+    <Test as frame_system::Config>::AccountId,
+    <Test as frame_system::Config>::BlockNumber,
+    BalanceOf<Test>> for TestQuotaCalculation {
     fn calculate(
+        consumer: <Test as frame_system::Config>::AccountId,
         current_block: <Test as frame_system::Config>::BlockNumber,
         locked_info: Option<LockedInfoOf<Test>>
     ) -> Option<NumberOfCalls> {
-        QUOTA_CALCULATION.with(|strategy| strategy.borrow()(current_block, locked_info))
+        QUOTA_CALCULATION.with(|strategy| strategy.borrow()(consumer, current_block, locked_info))
     }
+}
+
+parameter_types! {
+    pub const FreeQuotaPerEligibleAccount: NumberOfCalls = 100;
 }
 
 impl pallet_free_calls::Config for Test {
@@ -165,6 +174,8 @@ impl pallet_free_calls::Config for Test {
     type CallFilter = TestCallFilter;
     type WeightInfo = ();
     type MaxQuotaCalculationStrategy = TestQuotaCalculation;
+    type AccountsSetLimit = AccountsSetLimit;
+    type FreeQuotaPerEligibleAccount = FreeQuotaPerEligibleAccount;
 }
 
 pub struct ExtBuilder {
