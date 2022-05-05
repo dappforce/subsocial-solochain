@@ -1,10 +1,10 @@
 use frame_benchmarking::account;
-use frame_support::{assert_ok, weights::{GetDispatchInfo, Pays, PostDispatchInfo}};
+use frame_support::{assert_noop, assert_ok, weights::{GetDispatchInfo, Pays, PostDispatchInfo}};
 use frame_system::EventRecord;
 use rand::{Rng, thread_rng};
 pub use sp_io::{self, storage::root as storage_root};
 use sp_runtime::{
-    testing::H256, traits::SignedExtension,
+    testing::H256, traits::{BadOrigin, SignedExtension},
     transaction_validity::{
         InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction,
     },
@@ -18,8 +18,8 @@ use pallet_locker_mirror::{BalanceOf, LockedInfoByAccount, LockedInfoOf};
 use test_pallet::Call as TestPalletCall;
 
 use crate::{
-    Config, config::WindowConfig, FreeCallsPrevalidation, FreeCallsValidityError, max_quota_percentage,
-    mock::*, Pallet, pallet as free_calls, quota::NumberOfCalls,
+    Config, config::WindowConfig, EligibleAccounts, FreeCallsPrevalidation, FreeCallsValidityError,
+    max_quota_percentage, mock::*, Pallet, pallet as free_calls, quota::NumberOfCalls,
     stats::{ConsumerStats, WindowStats, WindowStatsVec},
     StatsByConsumer, test_pallet, test_pallet::Something,
 };
