@@ -103,7 +103,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 18,
+	spec_version: 19,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 3,
@@ -457,7 +457,7 @@ impl pallet_free_calls::Config for Runtime {
     type Call = Call;
     type RateLimiterConfig = RateLimiterConfigParam;
     type CallFilter = FreeCallsFilter;
-    type WeightInfo = ();
+    type WeightInfo = pallet_free_calls::weights::SubstrateWeight<Runtime>;
     type MaxQuotaCalculationStrategy = EligibleAccountsStrategy<Self>;
     type AccountsSetLimit = AccountsSetLimit;
     type FreeQuotaPerEligibleAccount = FreeQuotaPerEligibleAccount;

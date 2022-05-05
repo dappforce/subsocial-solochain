@@ -36,7 +36,7 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-mod weights;
+pub mod weights;
 pub mod quota;
 pub mod config;
 pub mod quota_strategy;

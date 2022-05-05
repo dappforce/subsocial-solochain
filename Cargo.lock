@@ -1148,7 +1148,7 @@ dependencies = [
 
 [[package]]
 name = "df-integration-tests"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1179,7 +1179,7 @@ dependencies = [
 
 [[package]]
 name = "df-traits"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "pallet-permissions",
@@ -1674,7 +1674,7 @@ dependencies = [
 
 [[package]]
 name = "free-calls-rpc"
-version = "0.7.2"
+version = "0.7.4-1"
 dependencies = [
  "free-calls-runtime-api",
  "jsonrpc-core",
@@ -1691,7 +1691,7 @@ dependencies = [
 
 [[package]]
 name = "free-calls-runtime-api"
-version = "0.7.2"
+version = "0.7.4-1"
 dependencies = [
  "pallet-free-calls",
  "parity-scale-codec",
@@ -3825,7 +3825,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-dotsama-claims"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3844,7 +3844,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-faucets"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3862,7 +3862,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-free-calls"
-version = "0.7.2"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -3911,7 +3911,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-locker-mirror"
-version = "0.7.2"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -3936,7 +3936,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-moderation"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3961,7 +3961,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-permissions"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3975,7 +3975,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-post-history"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3990,7 +3990,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-posts"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -4009,7 +4009,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile-follows"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4022,7 +4022,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile-history"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4036,7 +4036,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profiles"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4066,7 +4066,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-reactions"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -4084,7 +4084,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-roles"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -4141,7 +4141,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-follows"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -4156,7 +4156,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-history"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4171,7 +4171,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-ownership"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -4185,7 +4185,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-spaces"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -4294,7 +4294,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-utils"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4670,7 +4670,7 @@ dependencies = [
 
 [[package]]
 name = "posts-rpc"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4688,7 +4688,7 @@ dependencies = [
 
 [[package]]
 name = "posts-runtime-api"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "pallet-posts",
  "pallet-utils",
@@ -4784,7 +4784,7 @@ dependencies = [
 
 [[package]]
 name = "profile-follows-rpc"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4801,7 +4801,7 @@ dependencies = [
 
 [[package]]
 name = "profile-follows-runtime-api"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -4812,7 +4812,7 @@ dependencies = [
 
 [[package]]
 name = "profiles-rpc"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4830,7 +4830,7 @@ dependencies = [
 
 [[package]]
 name = "profiles-runtime-api"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "pallet-profiles",
  "parity-scale-codec",
@@ -5103,7 +5103,7 @@ dependencies = [
 
 [[package]]
 name = "reactions-rpc"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -5121,7 +5121,7 @@ dependencies = [
 
 [[package]]
 name = "reactions-runtime-api"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "pallet-reactions",
  "pallet-utils",
@@ -5273,7 +5273,7 @@ dependencies = [
 
 [[package]]
 name = "roles-rpc"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -5291,7 +5291,7 @@ dependencies = [
 
 [[package]]
 name = "roles-runtime-api"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "pallet-permissions",
  "pallet-utils",
@@ -7325,7 +7325,7 @@ dependencies = [
 
 [[package]]
 name = "space-follows-rpc"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -7342,7 +7342,7 @@ dependencies = [
 
 [[package]]
 name = "space-follows-runtime-api"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "pallet-utils",
  "parity-scale-codec",
@@ -7354,7 +7354,7 @@ dependencies = [
 
 [[package]]
 name = "spaces-rpc"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -7372,7 +7372,7 @@ dependencies = [
 
 [[package]]
 name = "spaces-runtime-api"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "pallet-spaces",
  "pallet-utils",
@@ -7481,7 +7481,7 @@ dependencies = [
 
 [[package]]
 name = "subsocial-node"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
@@ -7532,7 +7532,7 @@ dependencies = [
 
 [[package]]
 name = "subsocial-primitives"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-system",
  "parity-scale-codec",
@@ -7544,7 +7544,7 @@ dependencies = [
 
 [[package]]
 name = "subsocial-runtime"
-version = "0.7.3"
+version = "0.7.4-1"
 dependencies = [
  "frame-benchmarking",
  "frame-executive",

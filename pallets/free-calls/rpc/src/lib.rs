@@ -1,7 +1,7 @@
 use std::sync::Arc;
-use codec::{Codec, Encode};
+use codec::Codec;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::{Block as BlockT, Header as HeaderT, Zero}};
+use sp_runtime::{generic::BlockId, traits::{Block as BlockT, Header as HeaderT}};
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
