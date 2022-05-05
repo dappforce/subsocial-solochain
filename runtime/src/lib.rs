@@ -66,8 +66,11 @@ use pallet_reactions::{
 use pallet_spaces::rpc::FlatSpace;
 use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_LEN};
 
-pub mod constants;
-use constants::{currency::*, time::*};
+mod free_calls;
+
+use subsocial_primitives::{currency::*, time::*};
+use pallet_free_calls::config::{RateLimiterConfig, WindowConfig};
+use pallet_free_calls::quota_strategy::FreeCallsCalculationStrategy;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -338,6 +341,7 @@ impl pallet_utils::Config for Runtime {
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
+use crate::free_calls::{FreeCallsFilter, FREE_CALLS_WINDOWS_CONFIGS, FREE_CALLS_CONFIG_HASH};
 
 impl pallet_permissions::Config for Runtime {
 	type DefaultSpacePermissions = DefaultSpacePermissions;
@@ -439,6 +443,29 @@ impl Contains<Call> for BaseFilter {
     }
 }
 
+parameter_types! {
+    pub RateLimiterConfigParam: RateLimiterConfig<BlockNumber> = RateLimiterConfig::new(
+        FREE_CALLS_WINDOWS_CONFIGS.to_vec(),
+        FREE_CALLS_CONFIG_HASH,
+    );
+}
+
+impl pallet_free_calls::Config for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type RateLimiterConfig = RateLimiterConfigParam;
+    type CallFilter = FreeCallsFilter;
+    type WeightInfo = ();
+    type MaxQuotaCalculationStrategy = FreeCallsCalculationStrategy<BlockNumber, Balance>;
+}
+
+impl pallet_locker_mirror::Config for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type OracleOrigin = EnsureRoot<AccountId>;
+    type WeightInfo = ();
+}
+
 /*parameter_types! {
     pub const DefaultAutoblockThreshold: u16 = 20;
 }
@@ -485,6 +512,8 @@ construct_runtime!(
 		SpaceOwnership: pallet_space_ownership::{Pallet, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Pallet, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Pallet, Storage, Event<T>, Config<T>},
+        LockerMirror: pallet_locker_mirror::{Pallet, Call, Storage, Event<T>},
+		FreeCalls: pallet_free_calls::{Pallet, Call, Storage, Event<T>},
 
 		// New experimental pallets. Not recommended to use in production yet.
 
@@ -512,6 +541,7 @@ pub type SignedExtra = (
     frame_system::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
     pallet_dotsama_claims::EnsureAllowedToClaimTokens<Runtime>,
+    pallet_free_calls::FreeCallsPrevalidation<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
