@@ -133,10 +133,6 @@ impl TestUtils {
         assert!(!TestUtils::compare_ignore_order(&old_storage, &TestUtils::capture_stats_storage()))
     }
 
-    pub fn assert_no_new_events() {
-        assert!(TestUtils::system_events().is_empty());
-    }
-
     pub fn compare_ignore_order<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
         if a.len() != b.len() {
             return false;

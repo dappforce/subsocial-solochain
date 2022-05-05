@@ -5,7 +5,7 @@ use sp_std::cmp::min;
 use sp_std::convert::TryInto;
 use sp_std::marker::PhantomData;
 use subsocial_primitives as primitives;
-use subsocial_primitives::{AccountId, Balance, BlockNumber, currency};
+use subsocial_primitives::currency;
 use subsocial_primitives::time::*;
 use crate::{Config, EligibleAccounts};
 
@@ -153,7 +153,7 @@ fn get_utilization_percent(time_locked: primitives::BlockNumber) -> u64 {
 #[cfg(test)]
 mod tests {
     use frame_benchmarking::account;
-    use pallet_locker_mirror::{LockedInfo, LockedInfoOf};
+    use pallet_locker_mirror::LockedInfo;
     use subsocial_primitives::{*, currency::*, time::*};
     use crate::quota::NumberOfCalls;
     use rstest::rstest;

@@ -117,7 +117,7 @@ static DEFAULT_CALL_FILTER_FN: CallFilterFn = |_| true;
 
 type QuotaCalculationFn<T> = fn(<T as frame_system::Config>::AccountId, <T as frame_system::Config>::BlockNumber, Option<LockedInfoOf<T>>) -> Option<NumberOfCalls>;
 
-static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |consumer, current_block, locked_info| {
+static DEFAULT_QUOTA_CALCULATION_FN: QuotaCalculationFn<Test> = |_, _, _| {
     return Some(10);
 };
 
@@ -212,6 +212,8 @@ impl ExtBuilder {
         self
     }
 
+    // FIXME
+    #[allow(dead_code)]
     pub fn config_hash(mut self, config_hash: ConfigHash) -> Self {
         self.config_hash = config_hash;
         self

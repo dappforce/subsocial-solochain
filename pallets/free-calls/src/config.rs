@@ -4,7 +4,6 @@ use crate::Config;
 use crate::quota::{FractionOfMaxQuota, QUOTA_PRECISION};
 use scale_info::TypeInfo;
 use frame_support::{pallet_prelude::*};
-use frame_system::pallet_prelude::*;
 use subsocial_primitives as primitives;
 use sp_std::convert::TryInto;
 
@@ -161,11 +160,11 @@ mod window_hashing_tests {
     fn hash_windows_configs_should_work_as_expected() {
         static C1: WindowConfig<BlockNumber> = WindowConfig::new(1 * DAYS, max_quota_percentage!(100));
         static C2: WindowConfig<BlockNumber> = WindowConfig::new(3 * DAYS, max_quota_percentage!(50));
-        static C3: WindowConfig<BlockNumber> = WindowConfig::new(3 * MONTHS, max_quota_percentage!(10));
+        // static C3: WindowConfig<BlockNumber> = WindowConfig::new(3 * MONTHS, max_quota_percentage!(10));
         static C4: WindowConfig<BlockNumber> = WindowConfig::new(3 * MONTHS, max_quota_percentage!(11));
         static C5: WindowConfig<BlockNumber> = WindowConfig::new(1 * HOURS, max_quota_percentage!(1));
         static C6: WindowConfig<BlockNumber> = WindowConfig::new(9 * MINUTES, max_quota_percentage!(68));
-        static C7: WindowConfig<BlockNumber> = WindowConfig::new(1 * MINUTES, max_quota_percentage!(12));
+        // static C7: WindowConfig<BlockNumber> = WindowConfig::new(1 * MINUTES, max_quota_percentage!(12));
 
         static A1: [WindowConfig<BlockNumber>; 0] = [];
         static A2: [WindowConfig<BlockNumber>; 0] = [];

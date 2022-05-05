@@ -2,16 +2,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::*;
-use frame_benchmarking::{account, benchmarks, whitelisted_caller};
+use frame_benchmarking::{account, benchmarks, whitelisted_caller, Box};
 use frame_system::RawOrigin;
-use frame_benchmarking::Box;
-use frame_benchmarking::vec;
 use sp_runtime::traits::Bounded;
 use frame_support::traits::Get;
-use frame_support::BoundedVec;
-use sp_std::convert::TryInto;
-use sp_std::prelude;
-use crate::benchmarking::prelude::Vec;
+use sp_std::{convert::TryInto, prelude::*};
 use pallet_locker_mirror::{BalanceOf, LockedInfo, LockedInfoByAccount};
 
 fn _create_eligible_account<T: Config>(index: u32) -> T::AccountId {

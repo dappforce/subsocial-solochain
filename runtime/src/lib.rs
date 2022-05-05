@@ -69,8 +69,8 @@ use pallet_utils::{SpaceId, PostId, DEFAULT_MIN_HANDLE_LEN, DEFAULT_MAX_HANDLE_L
 mod free_calls;
 
 use subsocial_primitives::{currency::*, time::*};
-use pallet_free_calls::config::{RateLimiterConfig, WindowConfig};
-use pallet_free_calls::quota_strategy::{EligibleAccountsStrategy, FreeCallsCalculationStrategy};
+use pallet_free_calls::config::RateLimiterConfig;
+use pallet_free_calls::quota_strategy::EligibleAccountsStrategy;
 use pallet_free_calls::quota::NumberOfCalls;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know

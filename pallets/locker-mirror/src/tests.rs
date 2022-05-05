@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use frame_benchmarking::account;
-use crate::{mock::*, LockedInfoByAccount, BalanceOf, Config, LockedInfoOf, LockerEvent, LastProcessedLockerEvent, LockedInfo};
+use crate::{mock::*, LockedInfoByAccount, BalanceOf, LockedInfoOf, LockerEvent, LastProcessedLockerEvent};
 use frame_support::{assert_ok, assert_err, assert_noop, assert_storage_noop};
 use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::weights::{Pays, PostDispatchInfo};
@@ -247,9 +247,9 @@ fn check_if_storage_is_mutated_correctly(
         .build()
         .execute_with(|| {
             initialization();
-            
+
             assert_ok!(call(Origin::signed(oracle.clone())));
-            
+
             assertion();
         });
 }

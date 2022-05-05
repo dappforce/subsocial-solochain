@@ -7,7 +7,6 @@ use pallet_free_calls::config::{
     check_free_calls_config, hash_windows_configs, ConfigHash, WindowConfig,
 };
 use pallet_free_calls::max_quota_percentage;
-use pallet_free_calls::quota::QUOTA_PRECISION;
 use static_assertions::const_assert;
 use subsocial_primitives::time::*;
 
