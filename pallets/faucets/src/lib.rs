@@ -1,6 +1,6 @@
 //! # Faucets Module
 //!
-//! The Faucets module allows a root key (sudo) to add accounts (faucets) that are eligible
+//! The Faucets pallet allows a root key (sudo) to add accounts (faucets) that are eligible
 //! to drip free tokens to other accounts (recipients).
 //!
 //! Currently, only sudo account can add, update and remove faucets.
@@ -52,6 +52,8 @@ pub struct Faucet<T: Config> {
     pub dripped_in_current_period: BalanceOf<T>,
 }
 
+//TODO: use better nomenclature for `period`, `period_limit`, `drip_limit` &
+//`dripped_in_current_period`.
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct FaucetUpdate<BlockNumber, Balance> {
@@ -59,25 +61,6 @@ pub struct FaucetUpdate<BlockNumber, Balance> {
     pub period: Option<BlockNumber>,
     pub period_limit: Option<Balance>,
     pub drip_limit: Option<Balance>,
-}
-
-impl<T: Config> Faucet<T> {
-
-    pub fn new(
-        period: T::BlockNumber,
-        period_limit: BalanceOf<T>,
-        drip_limit: BalanceOf<T>,
-    ) -> Self {
-        Self {
-            enabled: true,
-            period,
-            period_limit,
-            drip_limit,
-
-            next_period_at: Zero::zero(),
-            dripped_in_current_period: Zero::zero(),
-        }
-    }
 }
 
 #[frame_support::pallet]
@@ -116,6 +99,7 @@ pub mod pallet {
         NoFaucetsProvided,
         NoUpdatesProvided,
         NothingToUpdate,
+        InvalidUpdate,
         FaucetDisabled,
         NotFaucetOwner,
         RecipientEqualsFaucet,
@@ -132,41 +116,34 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn faucet_by_account)]
-    pub type FaucetByAccount<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Faucet<T>>;
+    pub(super) type FaucetByAccount<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Faucet<T>>;
     
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::weight(50_000 + T::DbWeight::get().reads_writes(2,1))]
-        pub fn add_faucet(
+        pub fn force_add_faucet(
             origin: OriginFor<T>,
-            faucet: T::AccountId,
+            distro: T::AccountId,
             period: T::BlockNumber,
-            period_limit: BalanceOf<T>, // why not BlockNumber
+            period_limit: BalanceOf<T>,
             drip_limit: BalanceOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            Self::ensure_period_not_zero(period)?;
-            Self::ensure_period_limit_not_zero(period_limit)?;
-            Self::ensure_drip_limit_not_zero(drip_limit)?;
-            Self::ensure_drip_limit_lte_period_limit(drip_limit, period_limit)?;
-            ensure!(
-                Self::faucet_by_account(&faucet).is_none(),
-                Error::<T>::FaucetAlreadyAdded
-            );
-            ensure!(
-                T::Currency::free_balance(&faucet) >=
-                T::Currency::minimum_balance(),
-                Error::<T>::NoFreeBalanceOnFaucet
-            );
-            let new_faucet = Faucet::<T>::new(
-                period,
-                period_limit,
-                drip_limit
-            );
-            FaucetByAccount::<T>::insert(faucet.clone(), new_faucet);
-            Self::deposit_event(Event::<T>::FaucetAdded { who: faucet });
-            Ok(())
+
+            Self::new(distro, period, period_limit, drip_limit)
+        }
+
+        #[pallet::weight(50_000 + T::DbWeight::get().reads_writes(2, 1))]
+        pub fn add_faucet(
+            origin: OriginFor<T>,
+            period: T::BlockNumber,
+            period_limit: BalanceOf<T>,
+            drip_limit: BalanceOf<T>,
+        ) -> DispatchResult {
+            let distro = ensure_signed(origin)?;
+
+            Self::new(distro, period, period_limit, drip_limit)
         }
 
         #[pallet::weight(50_000 + T::DbWeight::get().reads_writes(1, 1))]
@@ -186,36 +163,43 @@ pub mod pallet {
             let mut settings = Self::require_faucet(&faucet)?;
             let mut should_update = false;
             if let Some(enabled) = update.enabled {
-                if enabled != settings.enabled {
-                    settings.enabled = enabled;
-                    should_update = true;
-                }
+                ensure!(enabled != settings.enabled, Error::<T>::InvalidUpdate);
+                settings.enabled = enabled;
+                should_update = true;
             }
             if let Some(period) = update.period {
                 Self::ensure_period_not_zero(period)?;
-                if period != settings.period {
-                    settings.period = period;
-                    should_update = true;
-                }
+                ensure!(period != settings.period, Error::<T>::InvalidUpdate);
+                settings.period = period;
+                should_update = true;
             }
             if let Some(period_limit) = update.period_limit {
                 Self::ensure_period_limit_not_zero(period_limit)?;
-                if period_limit != settings.period_limit {
-                    Self::ensure_drip_limit_lte_period_limit(settings.drip_limit, period_limit)?; //?
-                    settings.period_limit = period_limit;
-                    should_update = true;
-                }
+                ensure!(period_limit != settings.period_limit, Error::<T>::InvalidUpdate);
+                Self::ensure_drip_limit_lte_period_limit(settings.drip_limit, period_limit)?;
+                settings.period_limit = period_limit;
+                should_update = true;
             }
             if let Some(drip_limit) = update.drip_limit {
                 Self::ensure_drip_limit_not_zero(drip_limit)?;
-                if drip_limit != settings.drip_limit {
-                    Self::ensure_drip_limit_lte_period_limit(drip_limit, settings.period_limit)?; //?
-                    settings.drip_limit = drip_limit;
-                    should_update = true;
-                }
+                ensure!(drip_limit != settings.drip_limit, Error::<T>::InvalidUpdate);
+                Self::ensure_drip_limit_lte_period_limit(drip_limit, settings.period_limit)?;
+                settings.drip_limit = drip_limit;
+                should_update = true;
             }
             ensure!(should_update, Error::<T>::NothingToUpdate);
-            FaucetByAccount::<T>::insert(faucet.clone(), settings);
+
+            FaucetByAccount::<T>::try_mutate(&faucet, |data| -> DispatchResult {
+                if let Some(ref mut faucet) = data {
+                    faucet.enabled = settings.enabled;
+                    faucet.period = settings.period;
+                    faucet.period_limit = settings.period_limit;
+                    faucet.drip_limit = settings.drip_limit;
+                }
+                
+                Ok(())
+            })?;
+            
             Self::deposit_event(Event::<T>::FaucetUpdated { who: faucet });
             Ok(())
         }
@@ -229,6 +213,7 @@ pub mod pallet {
             ensure!(!faucets.len().is_zero(), Error::<T>::NoFaucetsProvided);
             let unique_faucets = faucets.iter().collect::<BTreeSet<_>>();
             for faucet in unique_faucets.iter() {
+                ensure!(FaucetByAccount::<T>::contains_key(faucet), Error::<T>::FaucetNotFound);
                 FaucetByAccount::<T>::remove(faucet);
             }
             Self::deposit_event(Event::<T>::FaucetsRemoved { removed: faucets });
@@ -265,15 +250,58 @@ pub mod pallet {
             )?;
             settings.dripped_in_current_period = amount
                 .saturating_add(settings.dripped_in_current_period);
-            FaucetByAccount::<T>::insert(&faucet, settings);
+            FaucetByAccount::<T>::try_mutate(&faucet, |data| -> DispatchResult {
+                if let Some(ref mut faucet) = data {
+                    faucet.next_period_at = settings.next_period_at;
+                    faucet.dripped_in_current_period = settings.dripped_in_current_period;
+                }
+
+                Ok(())
+            })?;
             Self::deposit_event(Event::<T>::Dripped { issuer: faucet, recipient, amount });
             Ok(Pays::No.into())
         }
     }
 
     impl<T: Config> Pallet<T> {
+
+        pub fn new(
+            distro: T::AccountId,
+            period: T::BlockNumber,
+            period_limit: BalanceOf<T>,
+            drip_limit: BalanceOf<T>,
+        ) -> DispatchResult {
+            Self::ensure_period_not_zero(period)?;
+            Self::ensure_period_limit_not_zero(period_limit)?;
+            Self::ensure_drip_limit_not_zero(drip_limit)?;
+            Self::ensure_drip_limit_lte_period_limit(drip_limit, period_limit)?;
+
+            ensure!(
+                !FaucetByAccount::<T>::contains_key(&distro),
+                Error::<T>::FaucetAlreadyAdded
+            );
+
+            ensure!(
+                T::Currency::free_balance(&distro) >=
+                T::Currency::minimum_balance(),
+                Error::<T>::NoFreeBalanceOnFaucet
+            );
+            let faucet = Faucet {
+                enabled: true,
+                period,
+                period_limit,
+                drip_limit,
+                next_period_at: Zero::zero(),
+                dripped_in_current_period: Zero::zero(),
+            };
+
+            FaucetByAccount::<T>::insert(distro.clone(), faucet);
+            Self::deposit_event(Event::<T>::FaucetAdded { who: distro });
+            Ok(())
+        }
+
         pub fn require_faucet(faucet: &T::AccountId) -> Result<Faucet<T>, DispatchError> {
-            Ok(Self::faucet_by_account(faucet).ok_or(Error::<T>::FaucetNotFound)?)
+            Ok(FaucetByAccount::<T>::get(faucet).ok_or(Error::<T>::FaucetNotFound)?)
         }
 
         fn ensure_period_not_zero(period: T::BlockNumber) -> DispatchResult {
