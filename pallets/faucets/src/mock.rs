@@ -129,7 +129,7 @@ impl ExtBuilder {
 
 }
 
-pub(crate) const fn default_faucet_update(
+pub(crate) fn default_faucet_update(
     enabled: Option<bool>, 
     period: Option<BlockNumber>, 
     period_limit: Option<Balance>, 
