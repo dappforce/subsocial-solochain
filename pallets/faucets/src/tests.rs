@@ -507,69 +507,55 @@ ExtBuilder::new_test_ext().execute_with(|| {
     });
 }
 
-/*
 #[test]
 fn drip_should_fail_when_period_limit_reached() {
-    ExtBuilder::build_with_one_default_drip().execute_with(|| {
-        System::set_block_number(INITIAL_BLOCK_NUMBER);
+    ExtBuilder::new_test_ext().execute_with(|| {
+        assert_ok!(Faucets::force_add_faucet(
+                Origin::root(),
+                6,
+                50,
+                21,
+                20
+        ));
+        assert_ok!(Faucets::drip(Origin::signed(6), 5, 11));
 
-        // Do the second drip
-        assert_ok!(_do_default_drip());
-
-        // The third drip should fail, b/c it exceeds the period limit of this faucet
         assert_noop!(
-            _do_default_drip(),
+            Faucets::drip(Origin::signed(6), 5, 11), 
             Error::<Test>::PeriodLimitReached
         );
-
-        let drip_limit = default_faucet().drip_limit;
-
-        // Balance should be unchanged and equal to two drip
-        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
     });
 }
 
 #[test]
-fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled() {
-    ExtBuilder::build_with_faucet().execute_with(|| {
-        
-        // Account should have no tokens by default
-        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
-
-        // Disable the faucet, so it will be not possible to drip
-        assert_ok!(_update_faucet_settings(
-            FaucetUpdate {
-                enabled: Some(false),
-                period: None,
-                period_limit: None,
-                drip_limit: None
-            }
+fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_update() {
+    ExtBuilder::new_test_ext().execute_with(|| {
+        assert_ok!(Faucets::force_add_faucet(
+                Origin::root(),
+                6,
+                100,
+                50,
+                25
         ));
 
-        // Faucet should not drip tokens if it is disabled
+        let update = default_faucet_update(Some(false), Some(7_200), Some(100), Some(50));
+        assert_ok!(Faucets::update_faucet(
+                Origin::root(),
+                6,
+                update.clone()
+        ));
         assert_noop!(
-            _do_default_drip(),
+            Faucets::drip(Origin::signed(6), 5, 11), 
             Error::<Test>::FaucetDisabled
         );
 
-        // Account should not receive any tokens
-        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
-
-        // Make the faucet enabled again
-        assert_ok!(_update_faucet_settings(
-            FaucetUpdate {
-                enabled: Some(true),
-                period: None,
-                period_limit: None,
-                drip_limit: None
-            }
+        let next_update = default_faucet_update(Some(true), Some(5_200), Some(200), Some(60));
+        assert_ok!(Faucets::update_faucet(
+                Origin::root(),
+                6,
+                next_update.clone()
         ));
+        assert_ok!(Faucets::drip(Origin::signed(6), 5, 11));
 
-        // Should be able to drip again
-        assert_ok!(_do_default_drip());
-
-        // Account should receive the tokens
-        assert_eq!(Balances::free_balance(ACCOUNT1), default_faucet().drip_limit);
     });
 }
-*/
+
