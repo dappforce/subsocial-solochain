@@ -216,7 +216,7 @@ pub fn subsocial_properties() -> Properties {
 
 	properties.insert("ss58Format".into(), 28.into());
 	properties.insert("tokenDecimals".into(), 10.into());
-	properties.insert("tokenSymbol".into(), "SUB".into());
+	properties.insert("tokenSymbol".into(), "NRG".into());
 
 	properties
 }
