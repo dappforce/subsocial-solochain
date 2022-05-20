@@ -1,6 +1,6 @@
 [package]
 name = 'posts-runtime-api'
-version = '0.7.3'
+version = '0.7.4'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
