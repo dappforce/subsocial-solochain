@@ -432,8 +432,23 @@ impl Contains<Call> for BaseFilter {
     fn contains(c: &Call) -> bool {
         let is_set_balance = matches!(c, Call::Balances(pallet_balances::Call::set_balance { .. }));
         let is_force_transfer = matches!(c, Call::Balances(pallet_balances::Call::force_transfer { .. }));
+
+        let is_social_call =
+            matches!(c,
+                Call::Permissions(..) |
+				Call::Posts(..) |
+				Call::ProfileFollows(..) |
+				Call::Profiles(..) |
+				Call::Reactions(..) |
+				Call::Roles(..) |
+				Call::SpaceFollows(..) |
+				Call::SpaceOwnership(..) |
+				Call::Spaces(..)
+			);
+
         match *c {
             Call::Balances(..) => is_set_balance || is_force_transfer,
+            _ if is_social_call => false,
             _ => true,
         }
     }
