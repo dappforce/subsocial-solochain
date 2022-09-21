@@ -1,3 +1,6 @@
+> **Note**:
+> Development continues in [subsocial-parachain](https://github.com/dappforce/subsocial-parachain) repo.
+
 # Subsocial Node by [DappForce](https://github.com/dappforce)
 
 Subsocial is a set of Substrate pallets with web UI that allows anyone to launch their own decentralized censorship-resistant social network aka community. Every community can be a separate Substrate chain and connect with other communities via a Polkadot-based relay chain.
