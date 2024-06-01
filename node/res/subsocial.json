@@ -2,7 +2,10 @@
   "name": "Subsocial",
   "id": "subsocial",
   "chainType": "Live",
-  "bootNodes": [],
+  "bootNodes": [
+    "/dns/val-1.subsocial.network/tcp/30333/p2p/12D3KooWB1na4BnQ4oG52eEaggUCTCutS5PsHiSekJB9gDEBMdNm",
+    "/dns/val-2.subsocial.network/tcp/30333/p2p/12D3KooWP8jKp1xJJBLLi4TWuiPjS3sDoVq64tM2FRs1FXJBW8ax"
+  ],
   "telemetryEndpoints": [
     [
       "/dns/telemetry.polkadot.io/tcp/443/x-parity-wss/%2Fsubmit%2F",
