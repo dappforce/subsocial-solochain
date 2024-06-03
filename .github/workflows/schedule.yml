@@ -1,14 +1,10 @@
-name: Build and deploy node
+name: activate GH runner
 on:
-  pull_request:
-    types:
-      - closed
-    branches:
-      - master
-  workflow_dispatch:
+
+  schedule:
+    - cron: "0 0 * * 0"
 
 jobs:
-
   create_runner:
     name: create_runner
     runs-on: ubuntu-latest
@@ -68,7 +64,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.prep.outputs.tagged_image }}
-            dappforce/subsocial-node:latest
+            dappforce/subsocial-node:activation
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
@@ -77,43 +73,9 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-
-  deploy_1:
-    name: deploy-validator-1
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: executing remote ssh commands
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
-          script: |
-            cd /home/ops/
-            ./validator.sh
-
-
-  deploy_2:
-    name: deploy-validator-2
-    needs: deploy_1
-    runs-on: ubuntu-latest
-    steps:
-      - name: executing remote ssh commands
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_2 }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
-          script: |
-            cd /home/ops/
-            ./validator.sh
-
   remove_snapshot:
     name: remove_snapshot
-    needs: deploy_2
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: executing remote ssh commands
@@ -126,7 +88,6 @@ jobs:
           script: |
             cd /root/runners/solochain-nodes/terraform-snapshot/
             ./delete.sh
-
 
   create_snapshot:
     name: create_snapshot
